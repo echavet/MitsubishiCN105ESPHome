@@ -17,10 +17,10 @@ Of course it is a bad practice to integrate a library directly in the code. But 
 - Integrates a slightly rewriting of the [SwiCago/HeatPump](https://github.com/SwiCago/HeatPump) Arduino
   libary to talk to the unit directly via the internal `CN105` connector.
 
-- Thermostat on homeassistant with compressor Frequency
+- Thermostat on homeassistant with compressor Frequency <br/>
   <IMG src="captures/Climate%20Thermostat%20.png"/>
 
-- With options buttons to configure the connection
+- With options buttons to configure the connection <br/>
   <IMG src="captures/Debug%20settings.png"/>
 
 ## Requirements
