@@ -12,6 +12,10 @@ using namespace esphome;
 
 static const char* TAG = "CN105"; // Logging tag
 
+static const char* SHEDULER_INTERVAL_SYNC_NAME = "hp->sync"; // name of the scheduler to prpgram hp updates
+static const char* DEFER_SHEDULER_INTERVAL_SYNC_NAME = "hp->sync_defer"; // name of the scheduler to prpgram hp updates
+
+static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 500;
 static const int PACKET_LEN = 22;
 static const int PACKET_SENT_INTERVAL_MS = 1000;
 static const int PACKET_INFO_INTERVAL_MS = 2000;
@@ -189,7 +193,8 @@ public:
     void setupUART();
     void disconnectUART();
     void buildAndSendRequestsInfoPackets();
-
+    void buildAndSendRequestPacket(int packetType);
+    void sendWantedSettings();
     // Use the temperature from an external sensor. Use
     // set_remote_temp(0) to switch back to the internal sensor.
     void set_remote_temperature(float);
@@ -315,6 +320,9 @@ private:
     bool firstRun;
     int infoMode;
     bool externalUpdate;
+
+    bool isReading = false;
+    bool isWriting = false;
 
     bool foundStart = false;
     int bytesRead = 0;

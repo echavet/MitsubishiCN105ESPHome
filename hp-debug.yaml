@@ -176,7 +176,7 @@ switch:
           id(clim_seb).disconnectUART();
 
   - platform: template
-    name: "Send 1 packet Switch"
+    name: "Send 1st packet Switch"
     id: send_packet_switch
     #setup_priority : -100.0 ## late
     optimistic: true
