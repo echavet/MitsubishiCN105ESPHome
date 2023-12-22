@@ -8,7 +8,8 @@
 using namespace esphome;
 
 #define CUSTOM_MILLIS ::millis()
-#define MAX_DATA_BYTES          64 // max number of data bytes in incoming messages
+#define MAX_DATA_BYTES     64       // max number of data bytes in incoming messages
+#define MAX_DELAY_RESPONSE 10000    // 10 seconds max without response
 
 static const char* TAG = "CN105"; // Logging tag
 
@@ -50,6 +51,9 @@ static const int RCVD_PKT_UPDATE_SUCCESS = 4;
 static const int RCVD_PKT_STATUS = 5;
 static const int RCVD_PKT_TIMER = 6;
 static const int RCVD_PKT_FUNCTIONS = 7;
+
+// the nb of request without response before we declare UART is not connected anymore
+static const int MAX_NON_RESPONSE_REQ = 5;
 
 static const byte CONTROL_PACKET_1[5] = { 0x01,    0x02,  0x04,  0x08, 0x10 };
 //{"POWER","MODE","TEMP","FAN","VANE"};
@@ -176,6 +180,7 @@ public:
     const int RQST_PKT_STATUS = 4;
     const int RQST_PKT_STANDBY = 5;
 
+
     int get_compressor_frequency();
     bool is_operating();
 
@@ -194,6 +199,10 @@ public:
     void disconnectUART();
     void buildAndSendRequestsInfoPackets();
     void buildAndSendRequestPacket(int packetType);
+    bool isHeatpumpConnectionActive();
+    // will check if hp did respond
+    void programResponseCheck(int packetType);
+
     void sendWantedSettings();
     // Use the temperature from an external sensor. Use
     // set_remote_temp(0) to switch back to the internal sensor.
@@ -262,7 +271,7 @@ protected:
     void getDataFromResponsePacket();
     void programUpdateInterval();
 
-    void checkCommand();
+    void processCommand();
     bool checkSum();
     byte checkSum(byte bytes[], int len);
 
@@ -277,7 +286,7 @@ private:
     int lookupByteMapValue(const int valuesMap[], const byte byteMap[], int len, byte byteValue);
     int lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue);
     int lookupByteMapIndex(const int valuesMap[], int len, int lookupValue);
-    void writePacket(byte* packet, int length);
+    void writePacket(byte* packet, int length, bool checkIsActive = true);
     void prepareInfoPacket(byte* packet, int length);
     void prepareSetPacket(byte* packet, int length);
 
@@ -293,8 +302,9 @@ private:
     heatpumpSettings currentSettings{};
     heatpumpSettings wantedSettings{};
 
-    // Hacks
-    unsigned long lastWanted;
+
+    unsigned long lastResponseMs;
+
 
     HardwareSerial* hw_serial_;
     int baud_ = 0;
@@ -320,6 +330,10 @@ private:
     bool firstRun;
     int infoMode;
     bool externalUpdate;
+
+    // counter for status request for checking heatpump is still connected
+    // is the counter > MAX_NON_RESPONSE_REQ then we conclude uart is not connected anymore
+    int nonResponseCounter = 0;
 
     bool isReading = false;
     bool isWriting = false;

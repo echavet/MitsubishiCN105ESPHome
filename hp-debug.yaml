@@ -13,7 +13,7 @@ esp8266:
 # mqtt:  
 #   broker: homeassistant.local
 #   username: heatpumpSejour
-#   password: !secret mqtt_password_sejour
+#   password: !secret mqtt_password
 #   discovery: true
   
 

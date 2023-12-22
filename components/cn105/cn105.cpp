@@ -97,7 +97,6 @@ CN105Climate::CN105Climate(HardwareSerial* hw_serial)
     this->autoUpdate = false;
     this->firstRun = true;
     this->externalUpdate = false;
-    this->lastWanted = CUSTOM_MILLIS;
     this->lastSend = 0;
     this->infoMode = 0;
     this->currentStatus.operating = false;
@@ -284,7 +283,7 @@ void CN105Climate::settingsChanged() {
     }
 
     this->updateAction();
-    ESP_LOGI(TAG, "Climate mode is: %i", this->mode);
+    ESP_LOGD(TAG, "Climate mode is: %i", this->mode);
 
     /*
      * ******* HANDLE FAN CHANGES ********
@@ -304,7 +303,7 @@ void CN105Climate::settingsChanged() {
     } else { //case "AUTO" or default:
         this->fan_mode = climate::CLIMATE_FAN_AUTO;
     }
-    ESP_LOGI(TAG, "Fan mode is: %i", this->fan_mode);
+    ESP_LOGD(TAG, "Fan mode is: %i", this->fan_mode);
 
     /* ******** HANDLE MITSUBISHI VANE CHANGES ********
      * const char* VANE_MAP[7]        = {"AUTO", "1", "2", "3", "4", "5", "SWING"};
@@ -314,13 +313,13 @@ void CN105Climate::settingsChanged() {
     } else {
         this->swing_mode = climate::CLIMATE_SWING_OFF;
     }
-    ESP_LOGI(TAG, "Swing mode is: %i", this->swing_mode);
+    ESP_LOGD(TAG, "Swing mode is: %i", this->swing_mode);
 
     /*
      * ******** HANDLE TARGET TEMPERATURE CHANGES ********
      */
     this->target_temperature = currentSettings.temperature;
-    ESP_LOGI(TAG, "Target temp is: %f", this->target_temperature);
+    ESP_LOGD(TAG, "Target temp is: %f", this->target_temperature);
 
     /*
      * ******** Publish state back to ESPHome. ********
@@ -394,7 +393,6 @@ void CN105Climate::setupUART() {
     // Votre code ici
     ESP_LOGI(TAG, "setupUART() with baudrate %d", this->baud_);
 
-    this->lastWanted = CUSTOM_MILLIS;
     this->isHeatpumpConnected_ = false;
     this->isConnected_ = false;
 
@@ -423,7 +421,6 @@ void CN105Climate::setupUART() {
 }
 void CN105Climate::sendFirstConnectionPacket() {
     if (this->isConnected_) {
-
         this->isHeatpumpConnected_ = false;
 
         ESP_LOGD(TAG, "Envoi du packet de connexion...");
@@ -431,7 +428,7 @@ void CN105Climate::sendFirstConnectionPacket() {
         memcpy(packet, CONNECT, CONNECT_LEN);
         //for(int count = 0; count < 2; count++) {
 
-        this->writePacket(packet, CONNECT_LEN);
+        this->writePacket(packet, CONNECT_LEN, false);      // checkIsActive=false because it's the first packet and we don't have any reply yet
 
         lastSend = CUSTOM_MILLIS;
 
@@ -440,7 +437,7 @@ void CN105Climate::sendFirstConnectionPacket() {
             if (!this->isHeatpumpConnected_) {
                 ESP_LOGE(TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
             } else {
-                // not usefull because the response has been processed in checkCommand()
+                // not usefull because the response has been processed in processCommand()
             }
 
             });
@@ -501,6 +498,7 @@ void CN105Climate::parse(byte inputData) {
         if (this->dataLength != -1) {       // is header complete ?
 
             if ((this->bytesRead) == this->dataLength + 5) {
+
                 this->processDataPacket();
                 this->initBytePointer();
             } else {                                        // packet is still filling
@@ -549,7 +547,11 @@ void CN105Climate::processDataPacket() {
     this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "READ");
 
     if (this->checkSum()) {
-        checkCommand();
+        // checkPoint of a heatpump response
+        this->lastResponseMs = CUSTOM_MILLIS;    //esphome::CUSTOM_MILLIS;        
+
+        // processing the specific command
+        processCommand();
     }
 }
 void CN105Climate::getDataFromResponsePacket() {
@@ -621,18 +623,21 @@ void CN105Climate::getDataFromResponsePacket() {
 
     case 0x04:
         /* unknown */
-        ESP_LOGD("Decoder", "[0x04 is unknown]");
+        ESP_LOGI("Decoder", "[0x04 is unknown]");
         break;
 
     case 0x05:
         /* timer packet */
-        ESP_LOGD("Decoder", "[0x05 is timer packet: not implemented]");
+        ESP_LOGW("Decoder", "[0x05 is timer packet: not implemented]");
         break;
 
     case 0x06: {
         /* status */
 
         ESP_LOGD("Decoder", "[0x06 is status]");
+
+        // reset counter (because a reply indicates it is connected)
+        this->nonResponseCounter = 0;
 
         heatpumpStatus receivedStatus;
         receivedStatus.operating = data[4];
@@ -672,7 +677,7 @@ void CN105Climate::getDataFromResponsePacket() {
         break;
     }
 }
-void CN105Climate::checkCommand() {
+void CN105Climate::processCommand() {
     switch (this->command) {
     case 0x61:  /* last update was successful */
         ESP_LOGI(TAG, "Last heatpump data update successful!");
@@ -762,9 +767,6 @@ void CN105Climate::setModeSetting(const char* setting) {
     } else {
         wantedSettings.mode = MODE_MAP[0];
     }
-    lastWanted =
-        //esphome::CUSTOM_MILLIS;
-        CUSTOM_MILLIS;
 }
 
 void CN105Climate::setPowerSetting(const char* setting) {
@@ -774,8 +776,6 @@ void CN105Climate::setPowerSetting(const char* setting) {
     } else {
         wantedSettings.power = POWER_MAP[0];
     }
-    lastWanted = //esphome::CUSTOM_MILLIS;
-        CUSTOM_MILLIS;
 }
 
 void CN105Climate::setFanSpeed(const char* setting) {
@@ -785,8 +785,6 @@ void CN105Climate::setFanSpeed(const char* setting) {
     } else {
         wantedSettings.fan = FAN_MAP[0];
     }
-    lastWanted = //esphome::millis();
-        CUSTOM_MILLIS;
 }
 
 void CN105Climate::setVaneSetting(const char* setting) {
@@ -796,8 +794,6 @@ void CN105Climate::setVaneSetting(const char* setting) {
     } else {
         wantedSettings.vane = VANE_MAP[0];
     }
-    lastWanted = //esphome::millis();
-        CUSTOM_MILLIS;
 }
 
 void CN105Climate::setWideVaneSetting(const char* setting) {
@@ -807,7 +803,6 @@ void CN105Climate::setWideVaneSetting(const char* setting) {
     } else {
         wantedSettings.wideVane = WIDEVANE_MAP[0];
     }
-    lastWanted = CUSTOM_MILLIS; //esphome::millis();
 }
 
 
@@ -914,7 +909,6 @@ void CN105Climate::controlTemperature() {
         setting = setting / 2;
         this->wantedSettings.temperature = setting < 10 ? 10 : (setting > 31 ? 31 : setting);
     }
-    this->lastWanted = CUSTOM_MILLIS;  //esphome::millis();
 }
 
 
@@ -988,12 +982,25 @@ climate::ClimateTraits& CN105Climate::config_traits() {
     return traits_;
 }
 
+bool CN105Climate::isHeatpumpConnectionActive() {
+    long lrTimeMs = CUSTOM_MILLIS - this->lastResponseMs;
+
+    if (lrTimeMs < MAX_DELAY_RESPONSE) {
+        ESP_LOGW(TAG, "Heatpump has not replied for %d ms", lrTimeMs);
+        ESP_LOGI(TAG, "We think Heatpump is not connected anymore..");
+    }
+
+    return  (lrTimeMs < MAX_DELAY_RESPONSE);
+}
 //#endregion climate
 
 //#region packet_management Gestion des paquets
 
-void CN105Climate::writePacket(byte* packet, int length) {
-    if (this->isConnected_) {
+void CN105Climate::writePacket(byte* packet, int length, bool checkIsActive) {
+
+    if ((this->isConnected_) &&
+        (this->isHeatpumpConnectionActive() || (!checkIsActive))) {
+
         if (this->get_hw_serial_()->availableForWrite() >= length) {
             ESP_LOGD(TAG, "writing packet...");
             this->hpPacketDebug(packet, length, "WRITE");
@@ -1002,11 +1009,17 @@ void CN105Climate::writePacket(byte* packet, int length) {
                 this->get_hw_serial_()->write((uint8_t)packet[i]);
             }
         } else {
-            ESP_LOGD(TAG, "delaying packet writing because serial buffer is not ready...");
+            ESP_LOGW(TAG, "delaying packet writing because serial buffer is not ready...");
             this->set_timeout("write", 200, [this, packet, length]() { this->writePacket(packet, length); });
         }
     } else {
         ESP_LOGW(TAG, "could not write as asked, because UART is not connected");
+        this->disconnectUART();
+        this->setupUART();
+        this->sendFirstConnectionPacket();
+
+        ESP_LOGW(TAG, "delaying packet writing because we need to reconnect first...");
+        this->set_timeout("write", 500, [this, packet, length]() { this->writePacket(packet, length); });
     }
 }
 
@@ -1053,8 +1066,8 @@ void CN105Climate::createPacket(byte* packet, heatpumpSettings settings) {
     // add the checksum
     byte chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
-    ESP_LOGD(TAG, "debug before write packet:");
-    this->hpPacketDebug(packet, 22, "WRITE");
+    //ESP_LOGD(TAG, "debug before write packet:");
+    //this->hpPacketDebug(packet, 22, "WRITE");
 }
 
 /**
@@ -1064,14 +1077,6 @@ void CN105Climate::createPacket(byte* packet, heatpumpSettings settings) {
  *
 */
 void CN105Climate::sendWantedSettings() {
-
-    /*if (this->isReading) {
-        this->set_timeout("sendWantedSettings()", 80, [this]() {
-            this->sendWantedSettings();
-            });
-        ESP_LOGD(TAG, "deferring the process because a reading operation is in process");
-        return;
-    }*/
 
     if (this->autoUpdate) {
         ESP_LOGD(TAG, "cancelling the update loop during the push of the settings..");
@@ -1087,25 +1092,67 @@ void CN105Climate::sendWantedSettings() {
     this->createPacket(packet, wantedSettings);
     this->writePacket(packet, PACKET_LEN);
 
-
+    // here we restore the update scheduler we had canceled 
     this->set_timeout(DEFER_SHEDULER_INTERVAL_SYNC_NAME, DEFER_SCHEDULE_UPDATE_LOOP_DELAY, [this]() {
         this->programUpdateInterval();
         });
 
-    /*if (this->autoUpdate) {
-        ESP_LOGD(TAG, "defer the scheduling of the update loop in %d ms...", DEFER_SCHEDULE_UPDATE_LOOP_DELAY);
-        // program of the scheduling of the update loop
-        this->set_timeout(DEFER_SHEDULER_INTERVAL_SYNC_NAME, DEFER_SCHEDULE_UPDATE_LOOP_DELAY, [this]() {
-            this->programUpdateInterval();
-            });
-    }*/
 }
 
+
+
+// void CN105Climate::programResponseCheck(byte* packet) {
+//     int packetType = packet[5];
+//     // 0x01 Settings
+//     // 0x06 status
+//     // 0x07 Update remote temp
+//     if ((packetType == 0x01) || (packetType == 0x06) || (packetType == 0x07)) {
+//         // increment the counter which will be decremented by the response handled by
+//         // getDataFromResponsePacket() method case 0x06 
+//         // processCommand (case 0x61)
+//         this->nonResponseCounter++;
+
+//     }
+
+// }
+
+// TODO: changer cette methode afin qu'elle programme le check aussi pour les paquets de 
+// setRemoteTemperature et pour les sendWantedSettings
+// deprecated: we now use isHeatpumpConnectionActive() each time a packet is written 
+// checkPoints are when we get a packet and before we send one
+
+void CN105Climate::programResponseCheck(int packetType) {
+    if (packetType == RQST_PKT_STATUS) {
+        // increment the counter which will be decremented by the response handled by
+        //getDataFromResponsePacket() method case 0x06
+        this->nonResponseCounter++;
+
+        this->set_timeout("checkpacketResponse", this->update_interval_ * 0.9, [this]() {
+
+            if (this->nonResponseCounter > MAX_NON_RESPONSE_REQ) {
+                ESP_LOGI(TAG, "There are too many status resquests without response: %d of max %d", this->nonResponseCounter, MAX_NON_RESPONSE_REQ);
+                ESP_LOGI(TAG, "Heater is not connected anymore");
+                this->disconnectUART();
+                this->setupUART();
+                this->sendFirstConnectionPacket();
+                this->nonResponseCounter = 0;
+            }
+
+            });
+    }
+
+}
 void CN105Climate::buildAndSendRequestPacket(int packetType) {
     byte packet[PACKET_LEN] = {};
     createInfoPacket(packet, packetType);
     this->writePacket(packet, PACKET_LEN);
+
+    // When we send a status request, we expect a response
+    // and we use that expectation as a connection status
+    // deprecade: cet appel est remplacé par une check isHeatpumpConnectionActive dans la methode writePacket     
+    // this->programResponseCheck(packetType);
 }
+
 
 /**
  * builds ans send all 3 types of packet to get a full informations back from heatpump
@@ -1132,10 +1179,13 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
     this->programUpdateInterval();*/
 
     if (this->isHeatpumpConnected_) {
+
         uint32_t interval = 300;
         if (this->update_interval_ > 0) {
+            // we get the max interval of update_interval_ / 4 or interval (300)
             interval = (this->update_interval_ / 4) > interval ? interval : (this->update_interval_ / 4);
         }
+
         ESP_LOGD(TAG, "buildAndSendRequestsInfoPackets: sending 3 request packet at interval: %d", interval);
 
         ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
@@ -1148,14 +1198,17 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
                 this->buildAndSendRequestPacket(RQST_PKT_STATUS);
                 });
             });
+
     } else {
         ESP_LOGE(TAG, "sync impossible: heatpump not connected");
         //this->setupUART();
         //this->sendFirstConnectionPacket();
     }
-
     this->programUpdateInterval();
 }
+
+
+
 
 void CN105Climate::createInfoPacket(byte* packet, byte packetType) {
     ESP_LOGD(TAG, "creating Info packet");
