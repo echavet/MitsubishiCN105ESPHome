@@ -985,7 +985,7 @@ climate::ClimateTraits& CN105Climate::config_traits() {
 bool CN105Climate::isHeatpumpConnectionActive() {
     long lrTimeMs = CUSTOM_MILLIS - this->lastResponseMs;
 
-    if (lrTimeMs < MAX_DELAY_RESPONSE) {
+    if (lrTimeMs > MAX_DELAY_RESPONSE) {
         ESP_LOGW(TAG, "Heatpump has not replied for %d ms", lrTimeMs);
         ESP_LOGI(TAG, "We think Heatpump is not connected anymore..");
     }
