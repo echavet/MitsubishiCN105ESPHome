@@ -67,6 +67,7 @@ CN105Climate::CN105Climate(HardwareSerial* hw_serial)
     this->traits_.set_visual_max_temperature(ESPMHP_MAX_TEMPERATURE);
     this->traits_.set_visual_temperature_step(ESPMHP_TEMPERATURE_STEP);
 
+
     this->traits_.set_supported_modes({
         //climate::CLIMATE_MODE_AUTO,
         climate::CLIMATE_MODE_COOL,
@@ -82,12 +83,12 @@ CN105Climate::CN105Climate(HardwareSerial* hw_serial)
         climate::CLIMATE_FAN_HIGH,
         climate::CLIMATE_FAN_MEDIUM });
 
-    /*this->traits_.set_supported_swing_modes({
-        climate::CLIMATE_SWING_BOTH,
-        climate::CLIMATE_SWING_HORIZONTAL,
-        climate::CLIMATE_SWING_VERTICAL,
-        climate::CLIMATE_SWING_OFF });*/
 
+    this->traits_.set_supported_swing_modes({
+        //climate::CLIMATE_SWING_BOTH,
+        //climate::CLIMATE_SWING_HORIZONTAL,
+        climate::CLIMATE_SWING_VERTICAL,
+        climate::CLIMATE_SWING_OFF });
 
 
     this->isConnected_ = false;
@@ -847,6 +848,8 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
         this->controlSwing();
     }
 
+
+
     if (updated) {
         ESP_LOGD(TAG, "User changed something, sending change to heatpump...");
         this->sendWantedSettings();
@@ -859,9 +862,20 @@ void CN105Climate::controlSwing() {
     switch (this->swing_mode) {
     case climate::CLIMATE_SWING_OFF:
         this->setVaneSetting("AUTO");
+        //setVaneSetting supports:  AUTO 1 2 3 4 5 and SWING
+        //this->setWideVaneSetting("|");
         break;
     case climate::CLIMATE_SWING_VERTICAL:
         this->setVaneSetting("SWING");
+        //this->setWideVaneSetting("|");
+        break;
+    case climate::CLIMATE_SWING_HORIZONTAL:
+        this->setVaneSetting("3");
+        this->setWideVaneSetting("SWING");
+        break;
+    case climate::CLIMATE_SWING_BOTH:
+        this->setVaneSetting("SWING");
+        this->setWideVaneSetting("SWING");
         break;
     default:
         ESP_LOGW(TAG, "control - received unsupported swing mode request.");
