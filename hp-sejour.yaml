@@ -1,6 +1,6 @@
 substitutions:
   name: "hpsejour"
-  friendly_name: Climatisation Séjour Debug
+  friendly_name: Climatisation Séjour
 
 esphome:
   name: ${name}
@@ -10,11 +10,11 @@ esphome:
 esp8266:
   board: esp01_1m
 
-# mqtt:  
-#   broker: homeassistant.local
-#   username: heatpumpSejour
-#   password: !secret mqtt_password
-#   discovery: true
+mqtt:  
+  broker: homeassistant.local
+  username: heatpumpSejour
+  password: !secret mqtt_password
+  discovery: true
   
 
 # Enable logging
@@ -22,12 +22,16 @@ logger:
   hardware_uart: UART1
   level: DEBUG
   logs:
-    CN105Climate: DEBUG    
-    sensor: DEBUG
+    CN105Climate: WARN
+    CN105: WARN
+    climate: WARN
+    sensor: WARN
     chkSum : INFO
-    WRITE : DEBUG
-    READ : DEBUG
-    Decoder : DEBUG
+    WRITE : WARN
+    READ : WARN
+    Header: INFO
+    Decoder : WARN
+    VAN_CTRL : DEBUG 
 
 # Enable Home Assistant API
 api:
@@ -41,11 +45,11 @@ api:
       variables:
         temperature: float
       then:
-        - lambda: 'id(clim_seb).set_remote_temperature(temperature);'
+        - lambda: 'id(clim_sejour).set_remote_temperature(temperature);'
 
     - service: use_internal_temperature
       then:
-        - lambda: 'id(clim_seb).set_remote_temperature(0);'
+        - lambda: 'id(clim_sejour).set_remote_temperature(0);'
   encryption:
     key: !secret encryption_key
 
@@ -53,14 +57,14 @@ ota:
   password: !secret ota_pwd
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+  #ssid: !secret wifi_ssid
+  #password: !secret wifi_password
   
-  #networks:
-  #- ssid : !secret wifi_ssid
-  #  password: !secret wifi_password
-  #- ssid: !secret wifi_ssid2
-  #  password: !secret wifi_password2
+  networks:
+  - ssid : !secret wifi_ssid
+    password: !secret wifi_password
+  - ssid: !secret wifi_ssid2
+    password: !secret wifi_password2
   #- ssid: !secret wifi_ssid2
   #  password: !secret wifi_password2
 
@@ -70,7 +74,8 @@ wifi:
     password: !secret ota_pwd
 
 captive_portal:
-  
+
+# pas assez de place pour update ota 
 #web_server:
 #  port: 80
   
@@ -78,23 +83,24 @@ time:
   - platform: homeassistant
     id: homeassistant_time
 
-# Chemin vers les fichiers C++ personnalisés
+# this setting is for local component (code is not on github)
 external_components:
  - source:
      type: local
      path: components 
 
 
-#external_components:
+# this setting is for github component 
+# external_components:
 #  - source: github://echavet/MitsubishiCN105ESPHome
-#    refresh: 0s                ## to force refresh sources every compile time
+#    refresh: 0s
 
 
         # Text sensors with general information.
 text_sensor:
   # Expose ESPHome version as sensor.
-#  - platform: version
-#    name: ${name} ESPHome Version
+  - platform: version
+    name: ${name} ESPHome Version
   # Expose WiFi information as sensors.
   - platform: wifi_info
     ip_address:
@@ -105,91 +111,72 @@ text_sensor:
       name: ${name} BSSID
 
 # Sensors with general information.
-#sensor:
+sensor:
   # Uptime sensor.
-#  - platform: uptime
-#    name: ${name} Uptime
+  - platform: uptime
+    name: ${name} Uptime
 
   # WiFi Signal sensor.
-#  - platform: wifi_signal
-#    name: ${name} WiFi Signal
-#    update_interval: 60s
+  - platform: wifi_signal
+    name: ${name} WiFi Signal
+    update_interval: 60s
+  
+  # Etat de l'attribut operating décodé dans les trames de réponse du clim
+  # - platform: template
+  #   name: Operating (Clim)
+  #   update_interval: 10s
+  #   lambda: |-
+  #     return(id(clim_sejour).is_operating());
+  
+  # Etat de l'attribut compressor°frequency décodé dans les trames de réponse du clim
+  # généré dynamiquement dans le code de la clim
+  # - platform: template
+  #   name: Compressor Frequency (Clim)
+  #   update_interval: 10s
+  #   lambda: |-
+  #     return(id(clim_sejour).get_compressor_frequency());
 
 # Configuration pour l'objet 'climate'
 climate:
   - platform: cn105  # remplis avec la plateforme de ton choix
-    name: "Clim Seb"
-    id: "clim_seb"
-    baud_rate: 0
+    name: ${friendly_name}
+    id: "clim_sejour"
+    baud_rate: 2400
     hardware_uart: UART0
-    update_interval: 4s
+    update_interval: 4s         # shouldn't be less than 4 seconds
     # Ajoute d'autres paramètres spécifiques à ton matériel et tes besoins
-    
-# Configuration pour l'objet 'select' pour choisir un baud_rate
-select:
-  - platform: template 
-    name: "Baud Rate Select"
-    id: baud_rate_select
-    #setup_priority : -100.0 ## late
-    options:
-      #- "400"
-      #- "1200"
-      - "2400"
-      - "4800"
-      - "9600"
-      #- "19200"
-      #- "38400"
-      #- "57600"
-      #- "115200"
-    optimistic: true
-    on_value:
-      - lambda: |-
-          int baud_rate = atoi(x.c_str());
-          id(clim_seb).set_baud_rate(baud_rate);
 
-#id(baud_rate_select).publish_state(x);
-
-# extra_components in the code automatically add them
-# sensor: 
-#   - platform: template
-#     name: Operating (Clim)
-#     lambda: |-
-#       return(id(clim_seb).is_operating());
-#   - platform: template
-#     name: Compressor Frequency (Clim)
-#     lambda: |-
-#       return(id(clim_seb).get_compressor_frequency());
 
 # Configuration pour l'objet 'switch' (bouton)
 switch:
   - platform: template
-    name: "UART Setup Switch"
+    name: ${name} UART Setup Switch
     id: uart_setup_switch
     #setup_priority : -100.0 ## late
     optimistic: true
     turn_on_action:
       - lambda: |-
           // Appelle la méthode 'setupUART' quand le switch est activé
-          id(clim_seb).setupUART();
+          id(clim_sejour).setupUART();
     turn_off_action:
       - lambda: |-
           // Appelle la méthode 'setupUART' quand le switch est activé
-          id(clim_seb).disconnectUART();
+          id(clim_sejour).disconnectUART();
 
   - platform: template
-    name: "Send 1st packet Switch"
+    name: Send 1st packet to ${name}
     id: send_packet_switch
     #setup_priority : -100.0 ## late
     optimistic: true
     turn_on_action:
       - lambda: |-          
-          id(clim_seb).sendFirstConnectionPacket();    
+          id(clim_sejour).sendFirstConnectionPacket();    
   
   - platform: template
-    name: "Send request Info packets"
+    name: Requests ${name} Synchro
     id: build_and_send_requests_info_packets
     #setup_priority : -100.0 ## late
     optimistic: true    
     turn_on_action:
       - lambda: |-          
-          id(clim_seb).buildAndSendRequestsInfoPackets(); 
+          id(clim_sejour).buildAndSendRequestsInfoPackets(); 

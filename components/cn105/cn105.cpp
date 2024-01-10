@@ -1,3 +1,6 @@
+// TODO: extra_components: add a last_request_datetime et last_response_datetime
+// TODO: instead of having to entry points, control and update, we should only record control modifications and run them in the nexte update call
+
 #include "cn105.h"
 #include <exception>
 
