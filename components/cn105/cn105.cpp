@@ -57,6 +57,27 @@ bool operator!=(const heatpumpTimers& lhs, const heatpumpTimers& rhs) {
         lhs.offMinutesSet != rhs.offMinutesSet ||
         lhs.offMinutesRemaining != rhs.offMinutesRemaining;
 }
+
+class VanOrientationSelect : public select::Select {
+public:
+    VanOrientationSelect(CN105Climate* parent) : parent_(parent) {}
+
+    void control(const std::string& value) override {
+
+        ESP_LOGD("VAN_CTRL", "Demande un chgt de réglage de la vane: %s", value.c_str());
+
+        parent_->setVaneSetting(value.c_str());
+        parent_->sendWantedSettings();
+
+    }
+private:
+    CN105Climate* parent_;
+
+};
+
+
+
+
 //#endregion operators
 CN105Climate::CN105Climate(HardwareSerial* hw_serial)
     : hw_serial_(hw_serial) {
@@ -103,7 +124,29 @@ CN105Climate::CN105Climate(HardwareSerial* hw_serial)
     this->currentStatus.operating = false;
     this->currentStatus.compressorFrequency = -1;
 
+    generateExtraComponents();
+
+
 }
+
+void CN105Climate::generateExtraComponents() {
+    this->compressor_frequency_sensor = new sensor::Sensor();
+    this->compressor_frequency_sensor->set_name("Compressor Frequency");
+    this->compressor_frequency_sensor->set_unit_of_measurement("Hz");
+    this->compressor_frequency_sensor->set_accuracy_decimals(0);
+    this->compressor_frequency_sensor->publish_state(0);
+    // Enregistrer le capteur pour que ESPHome le gère
+    App.register_sensor(compressor_frequency_sensor);
+
+
+    this->van_orientation = new  VanOrientationSelect(this);
+    this->van_orientation->set_name("Van orientation");
+    this->van_orientation->traits.set_options({ "AUTO", "1", "2", "3", "4", "5", "SWING" });
+    App.register_select(this->van_orientation);
+
+}
+
+
 void CN105Climate::set_baud_rate(int baud) {
     this->baud_ = baud;
     ESP_LOGD(TAG, "set_baud_rate()");
@@ -252,73 +295,41 @@ void CN105Climate::programUpdateInterval() {
     }
 }
 
-void CN105Climate::settingsChanged() {
-    if (currentSettings.power == NULL) {
+
+bool CN105Climate::hasChanged(const char* before, const char* now, const char* field) {
+    if (now == NULL) {
+        ESP_LOGE(TAG, "CAUTION: expected value in hasChanged() function for %s, got NULL", field);
+        return false;
+    }
+    return ((before == NULL) || (strcmp(before, now) != 0));
+}
+
+
+void CN105Climate::settingsChanged(heatpumpSettings settings) {
+
+    /*if (settings.power == NULL) {
+        // should never happen because settingsChanged is only called from getDataFromResponsePacket()
         ESP_LOGW(TAG, "Waiting for HeatPump to read the settings the first time.");
         return;
-    }
-    if (strcmp(currentSettings.power, "ON") == 0) {
-        if (strcmp(currentSettings.mode, "HEAT") == 0) {
-            this->mode = climate::CLIMATE_MODE_HEAT;
-        } else if (strcmp(currentSettings.mode, "DRY") == 0) {
-            this->mode = climate::CLIMATE_MODE_DRY;
-        } else if (strcmp(currentSettings.mode, "COOL") == 0) {
-            this->mode = climate::CLIMATE_MODE_COOL;
-            /*if (cool_setpoint != currentSettings.temperature) {
-                cool_setpoint = currentSettings.temperature;
-                save(currentSettings.temperature, cool_storage);
-            }*/
-        } else if (strcmp(currentSettings.mode, "FAN") == 0) {
-            this->mode = climate::CLIMATE_MODE_FAN_ONLY;
-        } else if (strcmp(currentSettings.mode, "AUTO") == 0) {
-            this->mode = climate::CLIMATE_MODE_HEAT_COOL;
-        } else {
-            ESP_LOGW(
-                TAG,
-                "Unknown climate mode value %s received from HeatPump",
-                currentSettings.mode
-            );
-        }
-    } else {
-        this->mode = climate::CLIMATE_MODE_OFF;
-    }
+    }*/
+
+
+    checkPowerAndModeSettings(settings);
 
     this->updateAction();
-    ESP_LOGD(TAG, "Climate mode is: %i", this->mode);
 
-    /*
-     * ******* HANDLE FAN CHANGES ********
-     *
-     * const char* FAN_MAP[6]         = {"AUTO", "QUIET", "1", "2", "3", "4"};
-     */
-    if (strcmp(currentSettings.fan, "QUIET") == 0) {
-        this->fan_mode = climate::CLIMATE_FAN_QUIET;
-    } else if (strcmp(currentSettings.fan, "1") == 0) {
-        this->fan_mode = climate::CLIMATE_FAN_LOW;
-    } else if (strcmp(currentSettings.fan, "2") == 0) {
-        this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
-    } else if (strcmp(currentSettings.fan, "3") == 0) {
-        this->fan_mode = climate::CLIMATE_FAN_MIDDLE;
-    } else if (strcmp(currentSettings.fan, "4") == 0) {
-        this->fan_mode = climate::CLIMATE_FAN_HIGH;
-    } else { //case "AUTO" or default:
-        this->fan_mode = climate::CLIMATE_FAN_AUTO;
-    }
-    ESP_LOGD(TAG, "Fan mode is: %i", this->fan_mode);
+    checkFanSettings(settings);
 
-    /* ******** HANDLE MITSUBISHI VANE CHANGES ********
-     * const char* VANE_MAP[7]        = {"AUTO", "1", "2", "3", "4", "5", "SWING"};
-     */
-    if (strcmp(currentSettings.vane, "SWING") == 0) {
-        this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
-    } else {
-        this->swing_mode = climate::CLIMATE_SWING_OFF;
-    }
-    ESP_LOGD(TAG, "Swing mode is: %i", this->swing_mode);
+    checkVaneSettings(settings);
 
     /*
      * ******** HANDLE TARGET TEMPERATURE CHANGES ********
      */
+
+    this->currentSettings.temperature = settings.temperature;
+    this->currentSettings.iSee = settings.iSee;
+    this->currentSettings.connected = settings.connected;
+
     this->target_temperature = currentSettings.temperature;
     ESP_LOGD(TAG, "Target temp is: %f", this->target_temperature);
 
@@ -326,6 +337,92 @@ void CN105Climate::settingsChanged() {
      * ******** Publish state back to ESPHome. ********
      */
     this->publish_state();
+
+
+}
+void CN105Climate::checkVaneSettings(heatpumpSettings& settings) {
+    /* ******** HANDLE MITSUBISHI VANE CHANGES ********
+         * const char* VANE_MAP[7]        = {"AUTO", "1", "2", "3", "4", "5", "SWING"};
+         */
+    if (this->hasChanged(currentSettings.vane, settings.vane, "vane")) { // vane setting change ?
+        ESP_LOGI(TAG, "vane setting changed");
+        currentSettings.vane = settings.vane;
+
+        if (strcmp(currentSettings.vane, "SWING") == 0) {
+            this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+        } else {
+            this->swing_mode = climate::CLIMATE_SWING_OFF;
+        }
+        ESP_LOGD(TAG, "Swing mode is: %i", this->swing_mode);
+    }
+
+    if (this->hasChanged(this->van_orientation->state.c_str(), settings.vane, "select vane")) {
+        ESP_LOGI(TAG, "vane setting (extra select component) changed");
+        this->van_orientation->publish_state(currentSettings.vane);
+    }
+}
+void CN105Climate::checkFanSettings(heatpumpSettings& settings) {
+    /*
+         * ******* HANDLE FAN CHANGES ********
+         *
+         * const char* FAN_MAP[6]         = {"AUTO", "QUIET", "1", "2", "3", "4"};
+         */
+         // currentSettings.fan== NULL is true when it is the first time we get en answer from hp
+
+    if (this->hasChanged(currentSettings.fan, settings.fan, "fan")) { // fan setting change ?
+        ESP_LOGI(TAG, "fan setting changed");
+        currentSettings.fan = settings.fan;
+        if (strcmp(currentSettings.fan, "QUIET") == 0) {
+            this->fan_mode = climate::CLIMATE_FAN_QUIET;
+        } else if (strcmp(currentSettings.fan, "1") == 0) {
+            this->fan_mode = climate::CLIMATE_FAN_LOW;
+        } else if (strcmp(currentSettings.fan, "2") == 0) {
+            this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
+        } else if (strcmp(currentSettings.fan, "3") == 0) {
+            this->fan_mode = climate::CLIMATE_FAN_MIDDLE;
+        } else if (strcmp(currentSettings.fan, "4") == 0) {
+            this->fan_mode = climate::CLIMATE_FAN_HIGH;
+        } else { //case "AUTO" or default:
+            this->fan_mode = climate::CLIMATE_FAN_AUTO;
+        }
+        ESP_LOGD(TAG, "Fan mode is: %i", this->fan_mode);
+    }
+}
+void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings) {
+    // currentSettings.power== NULL is true when it is the first time we get en answer from hp
+    if (this->hasChanged(currentSettings.power, settings.power, "power") ||
+        this->hasChanged(currentSettings.mode, settings.mode, "mode")) {           // mode or power change ?
+
+        ESP_LOGI(TAG, "power or mode changed");
+        currentSettings.power = settings.power;
+        currentSettings.mode = settings.mode;
+
+        if (strcmp(currentSettings.power, "ON") == 0) {
+            if (strcmp(currentSettings.mode, "HEAT") == 0) {
+                this->mode = climate::CLIMATE_MODE_HEAT;
+            } else if (strcmp(currentSettings.mode, "DRY") == 0) {
+                this->mode = climate::CLIMATE_MODE_DRY;
+            } else if (strcmp(currentSettings.mode, "COOL") == 0) {
+                this->mode = climate::CLIMATE_MODE_COOL;
+                /*if (cool_setpoint != currentSettings.temperature) {
+                    cool_setpoint = currentSettings.temperature;
+                    save(currentSettings.temperature, cool_storage);
+                }*/
+            } else if (strcmp(currentSettings.mode, "FAN") == 0) {
+                this->mode = climate::CLIMATE_MODE_FAN_ONLY;
+            } else if (strcmp(currentSettings.mode, "AUTO") == 0) {
+                this->mode = climate::CLIMATE_MODE_HEAT_COOL;
+            } else {
+                ESP_LOGW(
+                    TAG,
+                    "Unknown climate mode value %s received from HeatPump",
+                    currentSettings.mode
+                );
+            }
+        } else {
+            this->mode = climate::CLIMATE_MODE_OFF;
+        }
+    }
 }
 int CN105Climate::get_compressor_frequency() {
     return currentStatus.compressorFrequency;
@@ -386,6 +483,9 @@ void CN105Climate::updateAction() {
     default:
         this->action = climate::CLIMATE_ACTION_OFF;
     }
+
+    ESP_LOGD(TAG, "Climate mode is: %i", this->mode);
+    ESP_LOGD(TAG, "Climate action is: %i", this->action);
 }
 
 
@@ -560,6 +660,7 @@ void CN105Climate::getDataFromResponsePacket() {
     case 0x02: {            /* setting information */
         ESP_LOGD("Decoder", "[0x02 is settings]");
         heatpumpSettings receivedSettings;
+        receivedSettings.connected = true;      // we're here so we're connected (actually not used property)
         receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3]);
         receivedSettings.iSee = data[4] > 0x08 ? true : false;
         receivedSettings.mode = lookupByteMapValue(MODE_MAP, MODE, 5, receivedSettings.iSee ? (data[4] - 0x08) : data[4]);
@@ -584,19 +685,25 @@ void CN105Climate::getDataFromResponsePacket() {
         receivedSettings.vane = lookupByteMapValue(VANE_MAP, VANE, 7, data[7]);
         ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
 
+
         receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F);
+
+
 
         wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
 
         ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, wideVaneAdj);
-        currentSettings = receivedSettings;
+
+        // moved to settingsChanged()
+        //currentSettings = receivedSettings;
 
         if (this->firstRun) {
-            wantedSettings = currentSettings;
+            //wantedSettings = currentSettings;
+            wantedSettings = receivedSettings;
             firstRun = false;
         }
 
-        this->settingsChanged();
+        this->settingsChanged(receivedSettings);
 
     }
 
@@ -645,6 +752,8 @@ void CN105Climate::getDataFromResponsePacket() {
         receivedStatus.compressorFrequency = data[3];
         currentStatus.operating = receivedStatus.operating;
         currentStatus.compressorFrequency = receivedStatus.compressorFrequency;
+
+        this->compressor_frequency_sensor->publish_state(currentStatus.compressorFrequency);
 
         ESP_LOGD("Decoder", "[Operating: %d]", currentStatus.operating);
         ESP_LOGD("Decoder", "[Compressor Freq: %d]", currentStatus.compressorFrequency);

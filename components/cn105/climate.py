@@ -1,6 +1,8 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import climate
+from esphome.components import select
+
 from esphome.components.logger import HARDWARE_UART_TO_SERIAL
 from esphome.const import (
     CONF_ID,
@@ -13,7 +15,7 @@ from esphome.const import (
 )
 from esphome.core import CORE, coroutine
 
-AUTO_LOAD = ["climate"]
+AUTO_LOAD = ["climate", "sensor", "select"]
 
 CONF_SUPPORTS = "supports"
 DEFAULT_CLIMATE_MODES = ["HEAT_COOL", "COOL", "HEAT", "DRY", "FAN_ONLY"]

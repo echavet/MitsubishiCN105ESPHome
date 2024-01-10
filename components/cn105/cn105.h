@@ -5,6 +5,7 @@
 #include <esphome/core/preferences.h>
 
 
+
 using namespace esphome;
 
 #define CUSTOM_MILLIS ::millis()
@@ -169,9 +170,14 @@ public:
 };
 
 
+class VanOrientationSelect;  // Déclaration anticipée
+
 
 
 class CN105Climate : public climate::Climate, public Component {
+
+    friend class VanOrientationSelect;
+
 public:
 
     const int RQST_PKT_SETTINGS = 0;
@@ -180,9 +186,14 @@ public:
     const int RQST_PKT_STATUS = 4;
     const int RQST_PKT_STANDBY = 5;
 
+    sensor::Sensor* compressor_frequency_sensor;
+    select::Select* van_orientation;
 
     int get_compressor_frequency();
     bool is_operating();
+
+    // checks if the field has changed
+    bool hasChanged(const char* before, const char* now, const char* field);
 
     float get_setup_priority() const override {
         return setup_priority::AFTER_WIFI;  // Configurez ce composant après le WiFi
@@ -190,6 +201,8 @@ public:
 
 
     CN105Climate(HardwareSerial* hw_serial);
+
+    void generateExtraComponents();
 
     void setup() override;
     void loop() override;
@@ -291,7 +304,11 @@ private:
     void prepareSetPacket(byte* packet, int length);
 
 
-    void settingsChanged();
+    void settingsChanged(heatpumpSettings settings);
+    void checkPowerAndModeSettings(heatpumpSettings& settings);
+    void checkFanSettings(heatpumpSettings& settings);
+    void checkVaneSettings(heatpumpSettings& settings);
+
     void statusChanged();
     void updateAction();
     void setActionIfOperatingTo(climate::ClimateAction action);
