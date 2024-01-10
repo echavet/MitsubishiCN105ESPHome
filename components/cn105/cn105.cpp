@@ -144,7 +144,11 @@ void CN105Climate::generateExtraComponents() {
 
     this->van_orientation = new  VanOrientationSelect(this);
     this->van_orientation->set_name("Van orientation");
-    this->van_orientation->traits.set_options({ "AUTO", "1", "2", "3", "4", "5", "SWING" });
+
+    //this->van_orientation->traits.set_options({ "AUTO", "1", "2", "3", "4", "5", "SWING" });    
+    std::vector<std::string> vaneOptions(std::begin(VANE_MAP), std::end(VANE_MAP));
+    this->van_orientation->traits.set_options(vaneOptions);
+
     App.register_select(this->van_orientation);
 
 }
