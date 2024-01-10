@@ -15,7 +15,7 @@ from esphome.const import (
 )
 from esphome.core import CORE, coroutine
 
-AUTO_LOAD = ["climate", "sensor", "select"]
+AUTO_LOAD = ["climate", "sensor", "select", "binary_sensor", "text_sensor"]
 
 CONF_SUPPORTS = "supports"
 DEFAULT_CLIMATE_MODES = ["HEAT_COOL", "COOL", "HEAT", "DRY", "FAN_ONLY"]

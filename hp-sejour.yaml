@@ -20,7 +20,7 @@ mqtt:
 # Enable logging
 logger:  
   hardware_uart: UART1
-  level: DEBUG
+  level: INFO
   logs:
     CN105Climate: WARN
     CN105: WARN
@@ -31,7 +31,7 @@ logger:
     READ : WARN
     Header: INFO
     Decoder : WARN
-    VAN_CTRL : DEBUG 
+    
 
 # Enable Home Assistant API
 api:
@@ -148,35 +148,38 @@ climate:
 
 
 # Configuration pour l'objet 'switch' (bouton)
-switch:
-  - platform: template
-    name: ${name} UART Setup Switch
-    id: uart_setup_switch
-    #setup_priority : -100.0 ## late
-    optimistic: true
-    turn_on_action:
-      - lambda: |-
-          // Appelle la méthode 'setupUART' quand le switch est activé
-          id(clim_sejour).setupUART();
-    turn_off_action:
-      - lambda: |-
-          // Appelle la méthode 'setupUART' quand le switch est activé
-          id(clim_sejour).disconnectUART();
+# switch:
+#   - platform: template
+#     name: ${name} UART Setup Switch
+#     id: uart_setup_switch
+#     entity_category: DIAGNOSTIC
+#     #setup_priority : -100.0 ## late
+#     optimistic: true
+#     turn_on_action:
+#       - lambda: |-
+#           // Appelle la méthode 'setupUART' quand le switch est activé
+#           id(clim_sejour).setupUART();
+#     turn_off_action:
+#       - lambda: |-
+#           // Appelle la méthode 'setupUART' quand le switch est activé
+#           id(clim_sejour).disconnectUART();
 
-  - platform: template
-    name: Send 1st packet to ${name}
-    id: send_packet_switch
-    #setup_priority : -100.0 ## late
-    optimistic: true
-    turn_on_action:
-      - lambda: |-          
-          id(clim_sejour).sendFirstConnectionPacket();    
+#   - platform: template
+#     name: Send 1st packet to ${name}
+#     id: send_packet_switch
+#     entity_category: DIAGNOSTIC
+#     #setup_priority : -100.0 ## late
+#     optimistic: true
+#     turn_on_action:
+#       - lambda: |-          
+#           id(clim_sejour).sendFirstConnectionPacket();    
   
-  - platform: template
-    name: Requests ${name} Synchro
-    id: build_and_send_requests_info_packets
-    #setup_priority : -100.0 ## late
-    optimistic: true    
-    turn_on_action:
-      - lambda: |-          
-          id(clim_sejour).buildAndSendRequestsInfoPackets(); 
+#   - platform: template
+#     name: Requests ${name} Synchro
+#     id: build_and_send_requests_info_packets
+#     entity_category: DIAGNOSTIC
+#     #setup_priority : -100.0 ## late
+#     optimistic: true    
+#     turn_on_action:
+#       - lambda: |-          
+#           id(clim_sejour).buildAndSendRequestsInfoPackets(); 

@@ -130,6 +130,7 @@ select:
   - platform: template 
     name: "Baud Rate Select"
     id: baud_rate_select
+    entity_category: DIAGNOSTIC
     #setup_priority : -100.0 ## late
     options:
       #- "400"
@@ -165,6 +166,7 @@ switch:
   - platform: template
     name: "UART Setup Switch"
     id: uart_setup_switch
+    entity_category: DIAGNOSTIC
     #setup_priority : -100.0 ## late
     optimistic: true
     turn_on_action:
@@ -179,6 +181,7 @@ switch:
   - platform: template
     name: "Send 1st packet Switch"
     id: send_packet_switch
+    entity_category: DIAGNOSTIC
     #setup_priority : -100.0 ## late
     optimistic: true
     turn_on_action:
@@ -188,6 +191,7 @@ switch:
   - platform: template
     name: "Send request Info packets"
     id: build_and_send_requests_info_packets
+    entity_category: DIAGNOSTIC
     #setup_priority : -100.0 ## late
     optimistic: true    
     turn_on_action:

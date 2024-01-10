@@ -4,6 +4,8 @@
 #include "cn105.h"
 #include <exception>
 
+
+
 // Définition des constantes
 //const uint32_t ESPMHP_POLL_INTERVAL_DEFAULT = 500;
 const uint8_t ESPMHP_MIN_TEMPERATURE = 16;
@@ -11,6 +13,25 @@ const uint8_t ESPMHP_MAX_TEMPERATURE = 31;
 const float ESPMHP_TEMPERATURE_STEP = 0.5;
 
 using namespace esphome;
+
+class VanOrientationSelect : public select::Select {
+public:
+    VanOrientationSelect(CN105Climate* parent) : parent_(parent) {}
+
+    void control(const std::string& value) override {
+
+        ESP_LOGD("VAN_CTRL", "Demande un chgt de réglage de la vane: %s", value.c_str());
+
+        parent_->setVaneSetting(value.c_str());
+        parent_->sendWantedSettings();
+
+    }
+private:
+    CN105Climate* parent_;
+
+};
+
+
 
 
 
@@ -60,26 +81,6 @@ bool operator!=(const heatpumpTimers& lhs, const heatpumpTimers& rhs) {
         lhs.offMinutesSet != rhs.offMinutesSet ||
         lhs.offMinutesRemaining != rhs.offMinutesRemaining;
 }
-
-class VanOrientationSelect : public select::Select {
-public:
-    VanOrientationSelect(CN105Climate* parent) : parent_(parent) {}
-
-    void control(const std::string& value) override {
-
-        ESP_LOGD("VAN_CTRL", "Demande un chgt de réglage de la vane: %s", value.c_str());
-
-        parent_->setVaneSetting(value.c_str());
-        parent_->sendWantedSettings();
-
-    }
-private:
-    CN105Climate* parent_;
-
-};
-
-
-
 
 //#endregion operators
 CN105Climate::CN105Climate(HardwareSerial* hw_serial)
@@ -138,9 +139,14 @@ void CN105Climate::generateExtraComponents() {
     this->compressor_frequency_sensor->set_unit_of_measurement("Hz");
     this->compressor_frequency_sensor->set_accuracy_decimals(0);
     this->compressor_frequency_sensor->publish_state(0);
+
     // Enregistrer le capteur pour que ESPHome le gère
     App.register_sensor(compressor_frequency_sensor);
 
+    this->iSee_sensor = new binary_sensor::BinarySensor();
+    this->iSee_sensor->set_name("iSee sensor");
+    this->iSee_sensor->publish_initial_state(false);
+    App.register_binary_sensor(this->iSee_sensor);
 
     this->van_orientation = new  VanOrientationSelect(this);
     this->van_orientation->set_name("Van orientation");
@@ -150,6 +156,18 @@ void CN105Climate::generateExtraComponents() {
     this->van_orientation->traits.set_options(vaneOptions);
 
     App.register_select(this->van_orientation);
+
+    /*this->last_sent_packet_sensor = new TextSensor();
+    this->last_sent_packet_sensor->set_name("Last Sent Packet");
+    this->last_sent_packet_sensor->set_entity_category(esphome::EntityCategory::ENTITY_CATEGORY_DIAGNOSTIC);
+    App.register_text_sensor(this->last_sent_packet_sensor);
+
+
+    this->last_received_packet_sensor = new text_sensor::TextSensor();
+    this->last_received_packet_sensor->set_name("Last Received Packet");
+    this->last_received_packet_sensor->set_entity_category(esphome::EntityCategory::ENTITY_CATEGORY_DIAGNOSTIC);
+    App.register_text_sensor(this->last_received_packet_sensor);*/
+
 
 }
 
@@ -303,9 +321,13 @@ void CN105Climate::programUpdateInterval() {
 }
 
 
-bool CN105Climate::hasChanged(const char* before, const char* now, const char* field) {
+bool CN105Climate::hasChanged(const char* before, const char* now, const char* field, bool checkNotNull) {
     if (now == NULL) {
-        ESP_LOGE(TAG, "CAUTION: expected value in hasChanged() function for %s, got NULL", field);
+        if (checkNotNull) {
+            ESP_LOGE(TAG, "CAUTION: expected value in hasChanged() function for %s, got NULL", field);
+        } else {
+            ESP_LOGD(TAG, "No value in hasChanged() function for %s", field);
+        }
         return false;
     }
     return ((before == NULL) || (strcmp(before, now) != 0));
@@ -666,6 +688,7 @@ void CN105Climate::getDataFromResponsePacket() {
     switch (this->data[0]) {
     case 0x02: {            /* setting information */
         ESP_LOGD("Decoder", "[0x02 is settings]");
+        //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");
         heatpumpSettings receivedSettings;
         receivedSettings.connected = true;      // we're here so we're connected (actually not used property)
         receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3]);
@@ -709,6 +732,7 @@ void CN105Climate::getDataFromResponsePacket() {
             wantedSettings = receivedSettings;
             firstRun = false;
         }
+        this->iSee_sensor->publish_state(receivedSettings.iSee);
 
         this->settingsChanged(receivedSettings);
 
@@ -719,6 +743,7 @@ void CN105Climate::getDataFromResponsePacket() {
     case 0x03: {
         /* room temperature reading */
         ESP_LOGD("Decoder", "[0x03 room temperature]");
+        //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");
         heatpumpStatus receivedStatus;
 
         if (data[6] != 0x00) {
@@ -739,17 +764,19 @@ void CN105Climate::getDataFromResponsePacket() {
     case 0x04:
         /* unknown */
         ESP_LOGI("Decoder", "[0x04 is unknown]");
+        //this->last_received_packet_sensor->publish_state("0x62-> 0x04: Data -> Unknown");
         break;
 
     case 0x05:
         /* timer packet */
         ESP_LOGW("Decoder", "[0x05 is timer packet: not implemented]");
+        //this->last_received_packet_sensor->publish_state("0x62-> 0x05: Data -> Timer Packet");
         break;
 
     case 0x06: {
         /* status */
-
         ESP_LOGD("Decoder", "[0x06 is status]");
+        //this->last_received_packet_sensor->publish_state("0x62-> 0x06: Data -> Heatpump Status");
 
         // reset counter (because a reply indicates it is connected)
         this->nonResponseCounter = 0;
@@ -772,10 +799,12 @@ void CN105Climate::getDataFromResponsePacket() {
     case 0x09:
         /* unknown */
         ESP_LOGD("Decoder", "[0x09 is unknown]");
+        //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
         break;
     case 0x20:
     case 0x22: {
         ESP_LOGD("Decoder", "[Packet Functions 0x20 et 0x22]");
+        //this->last_received_packet_sensor->publish_state("0x62-> 0x20/0x22: Data -> Packet functions");
         if (dataLength == 0x10) {
             if (data[0] == 0x20) {
                 functions.setData1(&data[1]);
@@ -791,13 +820,16 @@ void CN105Climate::getDataFromResponsePacket() {
 
     default:
         ESP_LOGW("Decoder", "type de packet [%02X] <-- inconnu et inattendu", data[0]);
+        //this->last_received_packet_sensor->publish_state("0x62-> ?? : Data -> Unknown");
         break;
     }
 }
 void CN105Climate::processCommand() {
     switch (this->command) {
     case 0x61:  /* last update was successful */
-        ESP_LOGI(TAG, "Last heatpump data update successful!");
+        ESP_LOGI(TAG, "Last heatpump data update successfull!");
+
+        //this->last_received_packet_sensor->publish_state("0x61: update success");
 
         if (!this->autoUpdate) {
             this->buildAndSendRequestsInfoPackets();
@@ -812,6 +844,8 @@ void CN105Climate::processCommand() {
     case 0x7a:
         ESP_LOGI(TAG, "--> Heatpump did reply: connection success! <--");
         this->isHeatpumpConnected_ = true;
+        //this->last_received_packet_sensor->publish_state("0x7A: Connection success");
+
         programUpdateInterval();        // we know a check in this method is done on autoupdate value        
         break;
     default:
@@ -1158,37 +1192,47 @@ void CN105Climate::createPacket(byte* packet, heatpumpSettings settings) {
 
     ESP_LOGD(TAG, "checking differences bw asked settings and current ones...");
 
-    if (settings.power != currentSettings.power) {
+    if (this->hasChanged(currentSettings.power, settings.power, "power (wantedSettings)")) {
+        //if (settings.power != currentSettings.power) {
         ESP_LOGD(TAG, "power changed -> %s", settings.power);
         packet[8] = POWER[lookupByteMapIndex(POWER_MAP, 2, settings.power)];
         packet[6] += CONTROL_PACKET_1[0];
     }
-    if (settings.mode != currentSettings.mode) {
+    if (this->hasChanged(currentSettings.mode, settings.mode, "mode (wantedSettings)")) {
+        //if (settings.mode != currentSettings.mode) {
         ESP_LOGD(TAG, "heatpump mode changed -> %s", settings.mode);
         packet[9] = MODE[lookupByteMapIndex(MODE_MAP, 5, settings.mode)];
         packet[6] += CONTROL_PACKET_1[1];
     }
-    if (!tempMode && settings.temperature != currentSettings.temperature) {
-        ESP_LOGD(TAG, "temperature changed (tempmode is false) -> %f", settings.temperature);
-        packet[10] = TEMP[lookupByteMapIndex(TEMP_MAP, 16, settings.temperature)];
-        packet[6] += CONTROL_PACKET_1[2];
-    } else if (tempMode && settings.temperature != currentSettings.temperature) {
-        ESP_LOGD(TAG, "temperature changed (tempmode is true) -> %f", settings.temperature);
-        float temp = (settings.temperature * 2) + 128;
-        packet[19] = (int)temp;
-        packet[6] += CONTROL_PACKET_1[2];
+
+    if (settings.temperature != -1) {   // a target temperature was (not) set
+        if (!tempMode && settings.temperature != currentSettings.temperature) {
+            ESP_LOGD(TAG, "temperature changed (tempmode is false) -> %f", settings.temperature);
+            packet[10] = TEMP[lookupByteMapIndex(TEMP_MAP, 16, settings.temperature)];
+            packet[6] += CONTROL_PACKET_1[2];
+        } else if (tempMode && settings.temperature != currentSettings.temperature) {
+            ESP_LOGD(TAG, "temperature changed (tempmode is true) -> %f", settings.temperature);
+            float temp = (settings.temperature * 2) + 128;
+            packet[19] = (int)temp;
+            packet[6] += CONTROL_PACKET_1[2];
+        }
     }
-    if (settings.fan != currentSettings.fan) {
+
+    if (this->hasChanged(currentSettings.fan, settings.fan, "fan (wantedSettings)")) {
+        //if (settings.fan != currentSettings.fan) {
         ESP_LOGD(TAG, "heatpump fan changed -> %s", settings.fan);
         packet[11] = FAN[lookupByteMapIndex(FAN_MAP, 6, settings.fan)];
         packet[6] += CONTROL_PACKET_1[3];
     }
-    if (settings.vane != currentSettings.vane) {
+
+    if (this->hasChanged(currentSettings.vane, settings.vane, "vane (wantedSettings)")) {
+        //if (settings.vane != currentSettings.vane) {
         ESP_LOGD(TAG, "heatpump vane changed -> %s", settings.vane);
         packet[12] = VANE[lookupByteMapIndex(VANE_MAP, 7, settings.vane)];
         packet[6] += CONTROL_PACKET_1[4];
     }
-    if (settings.wideVane != currentSettings.wideVane) {
+    if (this->hasChanged(currentSettings.wideVane, settings.wideVane, "wideVane (wantedSettings)")) {
+        //if (settings.wideVane != currentSettings.wideVane) {        
         ESP_LOGD(TAG, "heatpump widevane changed -> %s", settings.wideVane);
         packet[18] = WIDEVANE[lookupByteMapIndex(WIDEVANE_MAP, 7, settings.wideVane)] | (wideVaneAdj ? 0x80 : 0x00);
         packet[7] += CONTROL_PACKET_2[0];
@@ -1221,6 +1265,11 @@ void CN105Climate::sendWantedSettings() {
     byte packet[PACKET_LEN] = {};
     this->createPacket(packet, wantedSettings);
     this->writePacket(packet, PACKET_LEN);
+
+    // wantedSettings are sent so we don't need to keep them anymore
+    // this is usefull because we might look at wantedSettings later to check if a request is pending
+    wantedSettings = {};
+    wantedSettings.temperature = -1;    // to know user did not ask 
 
     // here we restore the update scheduler we had canceled 
     this->set_timeout(DEFER_SHEDULER_INTERVAL_SYNC_NAME, DEFER_SCHEDULE_UPDATE_LOOP_DELAY, [this]() {
@@ -1405,6 +1454,14 @@ void CN105Climate::hpPacketDebug(byte* packet, unsigned int length, const char* 
         snprintf(buffer, sizeof(buffer), "%02X ", packet[i]); // Utilisation de snprintf pour éviter les dépassements de tampon
         strcat(outputBuffer, buffer);
     }
+
+    char outputForSensor[15];
+    strncpy(outputForSensor, outputBuffer, 14);
+    outputForSensor[14] = '\0'; // Ajouter un caract
+
+    /*if (strcasecmp(packetDirection, "WRITE") == 0) {
+        this->last_sent_packet_sensor->publish_state(outputForSensor);
+    }*/
 
     ESP_LOGD(packetDirection, "%s", outputBuffer);
 }

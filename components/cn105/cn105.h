@@ -187,13 +187,17 @@ public:
     const int RQST_PKT_STANDBY = 5;
 
     sensor::Sensor* compressor_frequency_sensor;
+    binary_sensor::BinarySensor* iSee_sensor;
     select::Select* van_orientation;
+
+    //text_sensor::TextSensor* last_sent_packet_sensor;
+    //text_sensor::TextSensor* last_received_packet_sensor;
 
     int get_compressor_frequency();
     bool is_operating();
 
     // checks if the field has changed
-    bool hasChanged(const char* before, const char* now, const char* field);
+    bool hasChanged(const char* before, const char* now, const char* field, bool checkNotNull = false);
 
     float get_setup_priority() const override {
         return setup_priority::AFTER_WIFI;  // Configurez ce composant après le WiFi
