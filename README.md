@@ -16,7 +16,7 @@ Of course it is a bad practice to integrate a library directly in the code. But 
 - Direct control without the remote.
 - Integrates a slightly rewriting of the [SwiCago/HeatPump](https://github.com/SwiCago/HeatPump) Arduino
   libary to talk to the unit directly via the internal `CN105` connector.
-
+- Full modes vane orientation support
 - Thermostat on homeassistant with compressor Frequency <br/>
   <IMG src="captures/Climate%20Thermostat%20.png"/>
 
