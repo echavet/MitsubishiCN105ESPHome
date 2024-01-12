@@ -82,6 +82,8 @@ I have tested with and without regulator on ESP8266 Wemos D1, some can manage to
 The they all do it well when a regulator is installed:.
 You can find it here: https://www.amazon.fr/dp/B07CPXVDDN?ref=ppx_yo2ov_dt_b_product_details&th=1
 
+Note: auto_update is required for the moment. Just because no auto_update has not been tested for connection loss. 
+
 ### Step 2: Use ESPHome
 
 The code in this repository makes use of a number of features in the 1.18.0
@@ -209,7 +211,7 @@ climate:
     update_interval: 4s
 ```
 
-See the provided hp-debug.yaml for more options. Or have a look at the original project as this is a copy of it.
+See the provided hp-debug.yaml and hp-sejour.yaml examples for more options. Or have a look at the original project as this is a copy of it.
 
 ## Other Implementations
 
