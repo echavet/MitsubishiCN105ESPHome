@@ -11,9 +11,6 @@ void CN105Climate::initBytePointer() {
     this->command = 0;
 }
 
-
-//#region input_parsing
-
 /**
  *
  * La taille totale d'une trame, se compose de plusieurs éléments :
@@ -416,4 +413,3 @@ void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings) {
     }
 }
 
-//#endregion input_parsing

@@ -1,40 +1,9 @@
 #pragma once
 #include "Globals.h"
+#include "heatpumpFunctions.h"
 
 using namespace esphome;
 
-
-
-class heatpumpFunctions {
-private:
-    byte raw[MAX_FUNCTION_CODE_COUNT];
-    bool _isValid1;
-    bool _isValid2;
-
-    int getCode(byte b);
-    int getValue(byte b);
-
-public:
-    heatpumpFunctions();
-
-    bool isValid() const;
-
-    // data must be 15 bytes
-    void setData1(byte* data);
-    void setData2(byte* data);
-    void getData1(byte* data) const;
-    void getData2(byte* data) const;
-
-    void clear();
-
-    int getValue(int code);
-    bool setValue(int code, int value);
-
-    heatpumpFunctionCodes getAllCodes();
-
-    bool operator==(const heatpumpFunctions& rhs);
-    bool operator!=(const heatpumpFunctions& rhs);
-};
 
 
 bool operator==(const heatpumpTimers& lhs, const heatpumpTimers& rhs);
@@ -44,7 +13,7 @@ bool operator!=(const heatpumpTimers& lhs, const heatpumpTimers& rhs);
 bool operator==(const heatpumpSettings& lhs, const heatpumpSettings& rhs);
 bool operator!=(const heatpumpSettings& lhs, const heatpumpSettings& rhs);
 
-class VaneOrientationSelect;  // Déclaration anticipée
+class VaneOrientationSelect;  // Déclaration anticipée, définie dans extraComponents
 
 
 

@@ -64,18 +64,6 @@ void CN105Climate::set_baud_rate(int baud) {
     ESP_LOGD(TAG, "baud: %d", baud);
 }
 
-// void CN105Climate::set_wifi_connected_state(bool state) {
-
-//     ESP_LOGD(TAG, "setting WiFi connection state do %d", state);
-
-//     this->wifi_connected_state_ = state;
-//     if (state) {
-//         // Réinitialiser la variable de temporisation et planifier la fin du délai        
-//         this->setWifiDelayCompleted(false);
-//         this->set_timeout("wifi_delay", 5000, [this]() { this->setWifiDelayCompleted(true); });
-//     }
-// }
-
 
 
 void CN105Climate::check_logger_conflict_() {
@@ -87,6 +75,7 @@ void CN105Climate::check_logger_conflict_() {
             " logger:baud_rate to 0.");
 
         //this->mark_failed();
+        // we don't want to mark the object as failed because we want to be able to reconfigure it at runtime
 
     }
 #endif
@@ -159,4 +148,4 @@ bool CN105Climate::isHeatpumpConnectionActive() {
 
     return  (lrTimeMs < MAX_DELAY_RESPONSE);
 }
-//#endregion climate
+

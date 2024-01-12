@@ -1,4 +1,5 @@
 #include "cn105.h"
+#include "heatpumpFunctions.h"
 
 //#region heatpump_functions fonctions clim
 
