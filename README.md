@@ -62,6 +62,7 @@ The whole integration with the integrated and underlying HeatPump library has be
 tested on the following units:
 
 - `MSZ-SF50VE3`
+- `MSZ-SF35VE3`
 
 ## Usage
 
