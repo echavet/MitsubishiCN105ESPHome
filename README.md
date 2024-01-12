@@ -1,14 +1,21 @@
 # MitsubishiCN105ESPHome
 
-This file is an adaptation of the original author from https://github.com/geoffdavis/esphome-mitsubishiheatpump
+This component is an adaptation of the original author from https://github.com/geoffdavis/esphome-mitsubishiheatpump
 
-Wirelessly control your Mitsubishi Comfort HVAC equipment with an ESP8266 or
-ESP32 using the [ESPHome](https://esphome.io) framework.
+What's new in it:
+- Communication with Heatpump via UART has been improved to prevent the use of delays in esphome loop() which couldn't be done with the original SwiCago lib.
+- Reading is done byte by byte in the loop() function. No loss, no lag because the component never stops reading et never blocks esphome.
+- Writing on the UART is not followed by a instant reading response. Response is processed in loop() when received. 
+- Code is fragmented thanks to concerns for bettter reading.
+- Extra components : van orientation (with full support of the swicago map), compressor freq for energy monitoring, i-see sensor.
+- Logs, many logs.
+- refactoring, code can always be improved and still needs to.
 
-This project is a mix of the famous SwiGago/Heatpump library (https://github.com/SwiCago/HeatPump) and the non less famous esphome Climate component (https://github.com/geoffdavis/esphome-mitsubishiheatpump).
-It aims to remove all delays from the esphome loop to prevent data loss and component lag.
-It is the first version which has not entirely been tested... but it seems to be in good way...
-Of course it is a bad practice to integrate a library directly in the code. But it was easier for me. Sorry.
+But it keeps allowing, even if it not tested by many people, to Wirelessly control your Mitsubishi Comfort HVAC equipment with an ESP8266 or
+ESP32(not tested) using the [ESPHome](https://esphome.io) framework.
+
+So component is a mix of the famous SwiGago/Heatpump library (https://github.com/SwiCago/HeatPump) and the non less famous esphome Climate component (https://github.com/geoffdavis/esphome-mitsubishiheatpump).
+
 
 ## Features
 
@@ -69,6 +76,11 @@ not using the pull-up resistors, and just [directly connecting a Wemos D1 mini
 to the control
 board](https://github.com/SwiCago/HeatPump/issues/13#issuecomment-457897457)
 via CN105.
+
+Note: using an external regulator like the AMS1117 makes the connexion far more reliable.
+I have tested with and without regulator on ESP8266 Wemos D1, some can manage to communicate on the UART without regulator others don't. 
+The they all do it well when a regulator is installed:.
+You can find it here: https://www.amazon.fr/dp/B07CPXVDDN?ref=ppx_yo2ov_dt_b_product_details&th=1
 
 ### Step 2: Use ESPHome
 
