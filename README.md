@@ -4,9 +4,9 @@ This component is an adaptation of the original author from https://github.com/g
 
 What's new in it:
 - Communication with Heatpump via UART has been improved to prevent the use of delays in esphome loop() which couldn't be done with the original SwiCago lib.
-- Reading is done byte by byte in the loop() function. No loss, no lag because the component never stops reading et never blocks esphome.
+- Reading is done byte by byte in the loop() function. No loss, no lag because the component never stops reading and never blocks esphome.
 - Writing on the UART is not followed by a instant reading response. Response is processed in loop() when received. 
-- Code is fragmented thanks to concerns for bettter reading.
+- Code is fragmented in different concerns for bettter reading.
 - Extra components : van orientation (with full support of the swicago map), compressor freq for energy monitoring, i-see sensor.
 - Logs, many logs.
 - refactoring, code can always be improved and still needs to.
@@ -14,7 +14,7 @@ What's new in it:
 But it keeps allowing, even if it not tested by many people, to Wirelessly control your Mitsubishi Comfort HVAC equipment with an ESP8266 or
 ESP32(not tested) using the [ESPHome](https://esphome.io) framework.
 
-So component is a mix of the famous SwiGago/Heatpump library (https://github.com/SwiCago/HeatPump) and the non less famous esphome Climate component (https://github.com/geoffdavis/esphome-mitsubishiheatpump).
+Code is a mix of the famous SwiGago/Heatpump library (https://github.com/SwiCago/HeatPump) and the non less famous esphome Climate component (https://github.com/geoffdavis/esphome-mitsubishiheatpump).
 
 
 ## Features
