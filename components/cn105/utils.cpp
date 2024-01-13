@@ -1,6 +1,8 @@
 #include "cn105.h"
+#include "Globals.h"
 
-
+static const char* LOG_SETTINGS_TAG = "SETTINGS"; // Logging tag
+static const char* LOG_STATUS_TAG = "STATUS"; // Logging tag
 
 bool CN105Climate::hasChanged(const char* before, const char* now, const char* field, bool checkNotNull) {
     if (now == NULL) {
@@ -13,6 +15,64 @@ bool CN105Climate::hasChanged(const char* before, const char* now, const char* f
     }
     return ((before == NULL) || (strcmp(before, now) != 0));
 }
+
+
+
+bool CN105Climate::isWantedSettingApplied(const char* wantedSettingProp, const char* currentSettingProp, const char* field) {
+
+    bool isEqual = ((wantedSettingProp == NULL) || (strcmp(wantedSettingProp, currentSettingProp) == 0));
+
+    if (!isEqual) {
+        ESP_LOGD(TAG, "wanted %s is not set yet", field);
+        ESP_LOGD(TAG, "Wanted %s is not set yet, want:%s, got: %s", field, wantedSettingProp, currentSettingProp);
+    }
+
+    if (wantedSettingProp != NULL) {
+        ESP_LOGE(TAG, "CAUTION: expected value in hasChanged() function for %s, got NULL", field);
+        ESP_LOGD(TAG, "No value in hasChanged() function for %s", field);
+    }
+
+    return isEqual;
+}
+
+
+const char* getIfNotNull(const char* what, const char* defaultValue) {
+    if (what == NULL) {
+        return defaultValue;
+    }
+    return what;
+}
+
+void CN105Climate::debugSettings(const char* settingName, heatpumpSettings settings) {
+
+    ESP_LOGI(LOG_SETTINGS_TAG, "[%-*s]-> [power: %-*s, target °C: %2f, mode: %-*s, fan: %-*s, vane: %-*s]",
+        15, getIfNotNull(settingName, "unnamed"),
+        3, getIfNotNull(settings.power, "-"),
+        settings.temperature,
+        6, getIfNotNull(settings.mode, "-"),
+        6, getIfNotNull(settings.fan, "-"),
+        6, getIfNotNull(settings.vane, "-")
+    );
+}
+
+
+void CN105Climate::debugStatus(const char* statusName, heatpumpStatus status) {
+
+    ESP_LOGI(LOG_STATUS_TAG, "[%-*s]-> [room C°: %.1f, operating: %-*s, compressor freq: %2d Hz]",
+        15, statusName,
+        status.roomTemperature,
+        3, status.operating ? "YES" : "NO ",
+        status.compressorFrequency);
+
+}
+
+
+void CN105Climate::debugSettingsAndStatus(const char* settingName, heatpumpSettings settings, heatpumpStatus status) {
+    this->debugSettings(settingName, settings);
+    this->debugStatus(settingName, status);
+}
+
+
 
 void CN105Climate::hpPacketDebug(byte* packet, unsigned int length, const char* packetDirection) {
     char buffer[4]; // Petit tampon pour stocker chaque octet sous forme de texte

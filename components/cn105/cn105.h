@@ -37,6 +37,7 @@ public:
 
     // checks if the field has changed
     bool hasChanged(const char* before, const char* now, const char* field, bool checkNotNull = false);
+    bool isWantedSettingApplied(const char* wantedSettingProp, const char* currentSettingProp, const char* field);
 
     float get_setup_priority() const override {
         return setup_priority::AFTER_WIFI;  // Configurez ce composant après le WiFi
@@ -86,7 +87,7 @@ public:
 
     void sendFirstConnectionPacket();
 
-    bool can_proceed() override;
+    //bool can_proceed() override;
 
 
     heatpumpFunctions getFunctions();
@@ -119,7 +120,7 @@ protected:
         //ESP8266 or UART0 on ESP32
     void check_logger_conflict_();
 
-    void processInput(void);
+    bool processInput(void);
     void parse(byte inputData);
     void checkHeader(byte inputData);
     void initBytePointer();
@@ -148,6 +149,9 @@ private:
 
 
     void settingsChanged(heatpumpSettings settings);
+    void statusChanged(heatpumpStatus status);
+
+    void checkPendingWantedSettings();
     void checkPowerAndModeSettings(heatpumpSettings& settings);
     void checkFanSettings(heatpumpSettings& settings);
     void checkVaneSettings(heatpumpSettings& settings);
@@ -157,6 +161,10 @@ private:
     void setActionIfOperatingTo(climate::ClimateAction action);
     void setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateAction action);
     void hpPacketDebug(byte* packet, unsigned int length, const char* packetDirection);
+
+    void debugSettings(const char* settingName, heatpumpSettings settings);
+    void debugStatus(const char* statusName, heatpumpStatus status);
+    void debugSettingsAndStatus(const char* settingName, heatpumpSettings settings, heatpumpStatus status);
     void createPacket(byte* packet, heatpumpSettings settings);
     void createInfoPacket(byte* packet, byte packetType);
     heatpumpSettings currentSettings{};

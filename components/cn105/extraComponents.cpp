@@ -11,8 +11,10 @@ public:
 
         ESP_LOGD("VAN_CTRL", "Demande un chgt de réglage de la vane: %s", value.c_str());
 
-        parent_->setVaneSetting(value.c_str());
-        parent_->sendWantedSettings();
+        parent_->setVaneSetting(value.c_str()); // should be enough to trigger a sendWantedSettings
+
+        // TODO: update thanks to new sendWantedSettings policy 
+        // parent_->sendWantedSettings();
 
     }
 private:

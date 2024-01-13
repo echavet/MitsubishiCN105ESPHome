@@ -20,18 +20,22 @@ mqtt:
 # Enable logging
 logger:  
   hardware_uart: UART1
-  level: INFO
+  level: DEBUG
   logs:
-    CN105Climate: WARN
-    CN105: WARN
-    climate: WARN
-    sensor: WARN
-    chkSum : INFO
-    WRITE : WARN
-    READ : WARN
-    Header: INFO
-    Decoder : WARN
-    
+    WIFI : INFO
+    MQTT : INFO
+    #SETTINGS : INFO
+    #STATUS : INFO
+    #CN105Climate: WARN
+    #CN105: DEBUG
+    #climate: WARN
+    #sensor: WARN
+    #chkSum : INFO
+    #WRITE : WARN
+    #READ : WARN
+    #Header: INFO
+    #Decoder : WARN
+    #CONTROL_WANTED_SETTINGS: DEBUG
 
 # Enable Home Assistant API
 api:
@@ -143,7 +147,7 @@ climate:
     id: "clim_sejour"
     baud_rate: 2400
     hardware_uart: UART0
-    update_interval: 4s         # shouldn't be less than 4 seconds
+    update_interval: 10s         # shouldn't be less than 4 seconds
     # Ajoute d'autres paramètres spécifiques à ton matériel et tes besoins
 
 

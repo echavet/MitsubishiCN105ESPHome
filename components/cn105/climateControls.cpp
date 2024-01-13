@@ -2,6 +2,23 @@
 
 using namespace esphome;
 
+
+void CN105Climate::checkPendingWantedSettings() {
+
+
+    if (this->firstRun) {
+        return;
+    }
+
+    if ((this->wantedSettings.fan != this->currentSettings.fan) ||
+        (this->wantedSettings.mode != this->currentSettings.mode) ||
+        (this->wantedSettings.power != this->currentSettings.power) ||
+        (this->wantedSettings.temperature != this->currentSettings.temperature) ||
+        (this->wantedSettings.vane != this->currentSettings.vane)) {
+        this->sendWantedSettings();
+    }
+}
+
 //#region climate
 void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 
@@ -42,8 +59,10 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 
 
     if (updated) {
-        ESP_LOGD(TAG, "User changed something, sending change to heatpump...");
-        this->sendWantedSettings();
+        // we don't call sendWantedSettings() anymore because it will be called by the loop() method
+        // just because we changed something doesn't mean we want to send it to the heatpump right away
+        //ESP_LOGD(TAG, "User changed something, sending change to heatpump...");
+        //this->sendWantedSettings();
     }
 
     // send the update back to esphome:

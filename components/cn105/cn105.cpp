@@ -141,11 +141,11 @@ void CN105Climate::disconnectUART() {
 bool CN105Climate::isHeatpumpConnectionActive() {
     long lrTimeMs = CUSTOM_MILLIS - this->lastResponseMs;
 
-    if (lrTimeMs > MAX_DELAY_RESPONSE) {
-        ESP_LOGW(TAG, "Heatpump has not replied for %d ms", lrTimeMs);
+    if (lrTimeMs > MAX_DELAY_RESPONSE_FACTOR * this->update_interval_) {
+        ESP_LOGW(TAG, "Heatpump has not replied for %d s", lrTimeMs / 1000);
         ESP_LOGI(TAG, "We think Heatpump is not connected anymore..");
     }
 
-    return  (lrTimeMs < MAX_DELAY_RESPONSE);
+    return  (lrTimeMs < MAX_DELAY_RESPONSE_FACTOR * this->update_interval_);
 }
 

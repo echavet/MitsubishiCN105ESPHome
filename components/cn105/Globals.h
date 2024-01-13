@@ -4,7 +4,7 @@
 
 #define CUSTOM_MILLIS ::millis()
 #define MAX_DATA_BYTES     64       // max number of data bytes in incoming messages
-#define MAX_DELAY_RESPONSE 10000    // 10 seconds max without response
+#define MAX_DELAY_RESPONSE_FACTOR 3    // 30 seconds max without response
 
 static const char* TAG = "CN105"; // Logging tag
 

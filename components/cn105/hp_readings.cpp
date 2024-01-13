@@ -95,17 +95,14 @@ void CN105Climate::checkHeader(byte inputData) {
     }
 }
 
-void CN105Climate::processInput(void) {
-
-    /*if (this->get_hw_serial_()->available()) {
-        this->isReading = true;
-    }*/
-
+bool CN105Climate::processInput(void) {
+    bool processed = false;
     while (this->get_hw_serial_()->available()) {
+        processed = true;
         int inputData = this->get_hw_serial_()->read();
         parse(inputData);
     }
-    //this->isReading = false;
+    return processed;
 }
 
 void CN105Climate::processDataPacket() {
@@ -125,11 +122,20 @@ void CN105Climate::processDataPacket() {
     }
 }
 void CN105Climate::getDataFromResponsePacket() {
+
+    heatpumpStatus receivedStatus{};
+    heatpumpSettings receivedSettings{};
+
+    //receivedSettings.temperature = -1;              // -1 means not set
+    receivedStatus.roomTemperature = -1;            // -1 means not set
+    //receivedStatus.compressorFrequency = -1;        // -1 means not set
+
+    bool statusDidChange = false;
+
     switch (this->data[0]) {
     case 0x02: {            /* setting information */
         ESP_LOGD("Decoder", "[0x02 is settings]");
-        //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");
-        heatpumpSettings receivedSettings;
+        //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");        
         receivedSettings.connected = true;      // we're here so we're connected (actually not used property)
         receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3]);
         receivedSettings.iSee = data[4] > 0x08 ? true : false;
@@ -144,10 +150,12 @@ void CN105Climate::getDataFromResponsePacket() {
             temp -= 128;
             receivedSettings.temperature = (float)temp / 2;
             tempMode = true;
+            ESP_LOGD("Decoder", "tempMode is true");
         } else {
             receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5]);
-            ESP_LOGD("Decoder", "[Consigne °C: %f]", receivedSettings.temperature);
         }
+
+        ESP_LOGD("Decoder", "[Consigne °C: %f]", receivedSettings.temperature);
 
         receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6]);
         ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
@@ -168,12 +176,13 @@ void CN105Climate::getDataFromResponsePacket() {
         //currentSettings = receivedSettings;
 
         if (this->firstRun) {
-            //wantedSettings = currentSettings;
             wantedSettings = receivedSettings;
             firstRun = false;
         }
         this->iSee_sensor->publish_state(receivedSettings.iSee);
 
+        this->debugSettings("received", receivedSettings);
+        this->debugSettings("current", currentSettings);
         this->settingsChanged(receivedSettings);
 
     }
@@ -183,8 +192,7 @@ void CN105Climate::getDataFromResponsePacket() {
     case 0x03: {
         /* room temperature reading */
         ESP_LOGD("Decoder", "[0x03 room temperature]");
-        //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");
-        heatpumpStatus receivedStatus;
+        //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");        
 
         if (data[6] != 0x00) {
             int temp = data[6];
@@ -195,8 +203,7 @@ void CN105Climate::getDataFromResponsePacket() {
         }
         ESP_LOGD("Decoder", "[Room °C: %f]", receivedStatus.roomTemperature);
 
-        currentStatus.roomTemperature = receivedStatus.roomTemperature;
-        this->current_temperature = currentStatus.roomTemperature;
+        statusDidChange = true;
 
     }
              break;
@@ -221,13 +228,14 @@ void CN105Climate::getDataFromResponsePacket() {
         // reset counter (because a reply indicates it is connected)
         this->nonResponseCounter = 0;
 
-        heatpumpStatus receivedStatus;
+
         receivedStatus.operating = data[4];
         receivedStatus.compressorFrequency = data[3];
         currentStatus.operating = receivedStatus.operating;
         currentStatus.compressorFrequency = receivedStatus.compressorFrequency;
 
         this->compressor_frequency_sensor->publish_state(currentStatus.compressorFrequency);
+        statusDidChange = true;
 
         ESP_LOGD("Decoder", "[Operating: %d]", currentStatus.operating);
         ESP_LOGD("Decoder", "[Compressor Freq: %d]", currentStatus.compressorFrequency);
@@ -263,13 +271,26 @@ void CN105Climate::getDataFromResponsePacket() {
         //this->last_received_packet_sensor->publish_state("0x62-> ?? : Data -> Unknown");
         break;
     }
+
+    if (statusDidChange) {
+        this->debugStatus("received", receivedStatus);
+        this->debugStatus("current", currentStatus);
+        this->statusChanged(receivedStatus);
+    }
 }
 void CN105Climate::processCommand() {
     switch (this->command) {
     case 0x61:  /* last update was successful */
         ESP_LOGI(TAG, "Last heatpump data update successfull!");
-
         //this->last_received_packet_sensor->publish_state("0x61: update success");
+        // as the updat was successfull, we can set currentSettings to wantedSettings        
+        // even if the next settings request will do the same.
+        this->currentSettings.power = this->wantedSettings.power;
+        this->currentSettings.mode = this->wantedSettings.mode;
+        this->currentSettings.fan = this->wantedSettings.fan;
+        this->currentSettings.vane = this->wantedSettings.vane;
+        //this->currentSettings.wideVane = this->wantedSettings.wideVane;
+        this->currentSettings.temperature = this->wantedSettings.temperature;
 
         if (!this->autoUpdate) {
             this->buildAndSendRequestsInfoPackets();
@@ -294,6 +315,16 @@ void CN105Climate::processCommand() {
 }
 
 
+void CN105Climate::statusChanged(heatpumpStatus status) {
+    if (status.roomTemperature != -1) {
+        currentStatus.roomTemperature = status.roomTemperature;
+        this->current_temperature = currentStatus.roomTemperature;
+    }
+    this->publish_state();
+}
+
+
+
 void CN105Climate::settingsChanged(heatpumpSettings settings) {
 
     /*if (settings.power == NULL) {
@@ -311,17 +342,16 @@ void CN105Climate::settingsChanged(heatpumpSettings settings) {
 
     checkVaneSettings(settings);
 
-    /*
-     * ******** HANDLE TARGET TEMPERATURE CHANGES ********
-     */
 
-    this->currentSettings.temperature = settings.temperature;
     this->currentSettings.iSee = settings.iSee;
     this->currentSettings.connected = settings.connected;
 
+    /*
+     * ******** HANDLE TARGET TEMPERATURE CHANGES ********
+     */
+    this->currentSettings.temperature = settings.temperature;
     this->target_temperature = currentSettings.temperature;
     ESP_LOGD(TAG, "Target temp is: %f", this->target_temperature);
-
     /*
      * ******** Publish state back to ESPHome. ********
      */
