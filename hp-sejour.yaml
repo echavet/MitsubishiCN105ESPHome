@@ -20,7 +20,7 @@ mqtt:
 # Enable logging
 logger:  
   hardware_uart: UART1
-  level: DEBUG
+  level: INFO
   logs:
     WIFI : INFO
     MQTT : INFO
