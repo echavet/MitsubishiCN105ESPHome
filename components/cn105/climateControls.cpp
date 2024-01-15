@@ -15,8 +15,17 @@ void CN105Climate::checkPendingWantedSettings() {
         (this->wantedSettings.power != this->currentSettings.power) ||
         (this->wantedSettings.temperature != this->currentSettings.temperature) ||
         (this->wantedSettings.vane != this->currentSettings.vane)) {
-        this->sendWantedSettings();
+        if (this->wantedSettings.hasChanged) {
+            ESP_LOGD(TAG, "checkPendingWantedSettings - wanted settings have changed, sending them to the heatpump...");
+            this->sendWantedSettings();
+        } else {
+            ESP_LOGI(TAG, "checkPendingWantedSettings - detected a change from IR Remote Control, update the wanted settings...");
+            // if not wantedSettings.hasChanged this is because we've had a change from IR Remote Control
+            this->wantedSettings = this->currentSettings;
+        }
+
     }
+
 }
 
 //#region climate
@@ -59,14 +68,16 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 
 
     if (updated) {
+        this->wantedSettings.hasChanged = true;
         // we don't call sendWantedSettings() anymore because it will be called by the loop() method
         // just because we changed something doesn't mean we want to send it to the heatpump right away
         //ESP_LOGD(TAG, "User changed something, sending change to heatpump...");
-        //this->sendWantedSettings();
+        //this->sendWantedSettings();        
     }
 
-    // send the update back to esphome:
-    this->publish_state();
+    // send the update back to esphome: this will update the UI
+    // this is not necessary because state will be published after the response and the call off settingsChanged() in the updateSuccess() method
+    // this->publish_state();
 }
 void CN105Climate::controlSwing() {
     switch (this->swing_mode) {

@@ -127,7 +127,7 @@ protected:
     void processDataPacket();
     void getDataFromResponsePacket();
     void programUpdateInterval();
-
+    void updateSuccess();
     void processCommand();
     bool checkSum();
     byte checkSum(byte bytes[], int len);
@@ -168,7 +168,7 @@ private:
     void createPacket(byte* packet, heatpumpSettings settings);
     void createInfoPacket(byte* packet, byte packetType);
     heatpumpSettings currentSettings{};
-    heatpumpSettings wantedSettings{};
+    wantedHeatpumpSettings wantedSettings{};
 
 
     unsigned long lastResponseMs;

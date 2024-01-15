@@ -109,6 +109,56 @@ struct heatpumpSettings {
     const char* wideVane; //horizontal vane, left/right
     bool iSee;   //iSee sensor, at the moment can only detect it, not set it
     bool connected;
+
+    heatpumpSettings& operator=(const heatpumpSettings& other) {
+        if (this != &other) { // protection contre l'auto-affectation
+            power = other.power;
+            mode = other.mode;
+            temperature = other.temperature;
+            fan = other.fan;
+            vane = other.vane;
+            wideVane = other.wideVane;
+            iSee = other.iSee;
+            connected = other.connected;
+        }
+        return *this;
+    }
+
+
+    bool operator==(const heatpumpSettings& other) const {
+        return power == other.power &&
+            mode == other.mode &&
+            temperature == other.temperature &&
+            fan == other.fan &&
+            vane == other.vane &&
+            wideVane == other.wideVane &&
+            iSee == other.iSee;
+    }
+
+    bool operator!=(const heatpumpSettings& other) {
+        return !(this->operator==(other));
+    }
+
+};
+
+struct wantedHeatpumpSettings : heatpumpSettings {
+    bool hasChanged;
+    wantedHeatpumpSettings& operator=(const wantedHeatpumpSettings& other) {
+        if (this != &other) { // protection contre l'auto-affectation
+            heatpumpSettings::operator=(other); // Appel à l'opérateur d'affectation de la classe de base
+            hasChanged = other.hasChanged;
+        }
+        return *this;
+    }
+    wantedHeatpumpSettings& operator=(const heatpumpSettings& other) {
+        if (this != &other) { // protection contre l'auto-affectation
+            heatpumpSettings::operator=(other); // Copie des membres de base
+            // `hasBeenUpdated` peut être réglé selon la logique de votre application
+            // Par exemple, le mettre à true pour indiquer que l'objet a été mis à jour
+            hasChanged = true;
+        }
+        return *this;
+    }
 };
 
 struct heatpumpTimers {
@@ -117,7 +167,32 @@ struct heatpumpTimers {
     int onMinutesRemaining;
     int offMinutesSet;
     int offMinutesRemaining;
+
+    heatpumpTimers& operator=(const heatpumpTimers& other) {
+        if (this != &other) { // protection contre l'auto-affectation
+            mode = other.mode;
+            onMinutesSet = other.onMinutesSet;
+            onMinutesRemaining = other.onMinutesRemaining;
+            offMinutesSet = other.offMinutesSet;
+            offMinutesRemaining = other.offMinutesRemaining;
+        }
+        return *this;
+    }
+    bool operator==(const heatpumpTimers& other) {
+        return
+            mode == other.mode &&
+            onMinutesSet == other.onMinutesSet &&
+            onMinutesRemaining == other.onMinutesRemaining &&
+            offMinutesSet == other.offMinutesSet &&
+            offMinutesRemaining == other.offMinutesRemaining;
+    }
+
+
+    bool operator!=(const heatpumpTimers& other) {
+        return !(this->operator==(other));
+    }
 };
+
 
 struct heatpumpStatus {
     float roomTemperature;

@@ -126,9 +126,7 @@ void CN105Climate::getDataFromResponsePacket() {
     heatpumpStatus receivedStatus{};
     heatpumpSettings receivedSettings{};
 
-    //receivedSettings.temperature = -1;              // -1 means not set
-    receivedStatus.roomTemperature = -1;            // -1 means not set
-    //receivedStatus.compressorFrequency = -1;        // -1 means not set
+
 
     bool statusDidChange = false;
 
@@ -149,7 +147,7 @@ void CN105Climate::getDataFromResponsePacket() {
             int temp = data[11];
             temp -= 128;
             receivedSettings.temperature = (float)temp / 2;
-            tempMode = true;
+            this->tempMode = true;
             ESP_LOGD("Decoder", "tempMode is true");
         } else {
             receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5]);
@@ -203,6 +201,10 @@ void CN105Climate::getDataFromResponsePacket() {
         }
         ESP_LOGD("Decoder", "[Room °C: %f]", receivedStatus.roomTemperature);
 
+        // no change with this packet to currentStatus for operating and compressorFrequency
+        receivedStatus.operating = currentStatus.operating;
+        receivedStatus.compressorFrequency = currentStatus.compressorFrequency;
+
         statusDidChange = true;
 
     }
@@ -227,19 +229,14 @@ void CN105Climate::getDataFromResponsePacket() {
 
         // reset counter (because a reply indicates it is connected)
         this->nonResponseCounter = 0;
-
-
         receivedStatus.operating = data[4];
         receivedStatus.compressorFrequency = data[3];
-        currentStatus.operating = receivedStatus.operating;
-        currentStatus.compressorFrequency = receivedStatus.compressorFrequency;
 
-        this->compressor_frequency_sensor->publish_state(currentStatus.compressorFrequency);
+        // no change with this packet to roomTemperature
+        receivedStatus.roomTemperature = currentStatus.roomTemperature;
+
+
         statusDidChange = true;
-
-        ESP_LOGD("Decoder", "[Operating: %d]", currentStatus.operating);
-        ESP_LOGD("Decoder", "[Compressor Freq: %d]", currentStatus.compressorFrequency);
-
         // RCVD_PKT_STATUS;
     }
              break;
@@ -273,40 +270,43 @@ void CN105Climate::getDataFromResponsePacket() {
     }
 
     if (statusDidChange) {
-        this->debugStatus("received", receivedStatus);
-        this->debugStatus("current", currentStatus);
         this->statusChanged(receivedStatus);
     }
 }
+
+void CN105Climate::updateSuccess() {
+    ESP_LOGI(TAG, "Last heatpump data update successful!");
+    //this->last_received_packet_sensor->publish_state("0x61: update success");
+    // as the update was successful, we can set currentSettings to wantedSettings        
+    // even if the next settings request will do the same.
+    this->wantedSettings.hasChanged = false;
+    this->settingsChanged(this->wantedSettings);
+
+    /*this->currentSettings.power = this->wantedSettings.power;
+    this->currentSettings.mode = this->wantedSettings.mode;
+    this->currentSettings.fan = this->wantedSettings.fan;
+    this->currentSettings.vane = this->wantedSettings.vane;
+    //this->currentSettings.wideVane = this->wantedSettings.wideVane;
+    this->currentSettings.temperature = this->wantedSettings.temperature;*/
+
+    if (!this->autoUpdate) {
+        this->buildAndSendRequestsInfoPackets();
+    }
+}
+
 void CN105Climate::processCommand() {
     switch (this->command) {
     case 0x61:  /* last update was successful */
-        ESP_LOGI(TAG, "Last heatpump data update successfull!");
-        //this->last_received_packet_sensor->publish_state("0x61: update success");
-        // as the updat was successfull, we can set currentSettings to wantedSettings        
-        // even if the next settings request will do the same.
-        this->currentSettings.power = this->wantedSettings.power;
-        this->currentSettings.mode = this->wantedSettings.mode;
-        this->currentSettings.fan = this->wantedSettings.fan;
-        this->currentSettings.vane = this->wantedSettings.vane;
-        //this->currentSettings.wideVane = this->wantedSettings.wideVane;
-        this->currentSettings.temperature = this->wantedSettings.temperature;
-
-        if (!this->autoUpdate) {
-            this->buildAndSendRequestsInfoPackets();
-        }
-
+        this->updateSuccess();
         break;
 
     case 0x62:  /* packet contains data (room °C, settings, timer, status, or functions...)*/
         this->getDataFromResponsePacket();
-
         break;
     case 0x7a:
         ESP_LOGI(TAG, "--> Heatpump did reply: connection success! <--");
         this->isHeatpumpConnected_ = true;
         //this->last_received_packet_sensor->publish_state("0x7A: Connection success");
-
         programUpdateInterval();        // we know a check in this method is done on autoupdate value        
         break;
     default:
@@ -316,11 +316,17 @@ void CN105Climate::processCommand() {
 
 
 void CN105Climate::statusChanged(heatpumpStatus status) {
-    if (status.roomTemperature != -1) {
-        currentStatus.roomTemperature = status.roomTemperature;
-        this->current_temperature = currentStatus.roomTemperature;
-    }
+
+    this->debugStatus("received", status);
+    this->debugStatus("current", currentStatus);
+
+    currentStatus.operating = status.operating;
+    currentStatus.compressorFrequency = status.compressorFrequency;
+    currentStatus.roomTemperature = status.roomTemperature;
+    this->current_temperature = currentStatus.roomTemperature;
+
     this->publish_state();
+    this->compressor_frequency_sensor->publish_state(currentStatus.compressorFrequency);
 }
 
 
