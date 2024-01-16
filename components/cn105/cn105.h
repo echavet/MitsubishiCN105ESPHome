@@ -5,14 +5,6 @@
 using namespace esphome;
 
 
-
-bool operator==(const heatpumpTimers& lhs, const heatpumpTimers& rhs);
-bool operator!=(const heatpumpTimers& lhs, const heatpumpTimers& rhs);
-
-
-bool operator==(const heatpumpSettings& lhs, const heatpumpSettings& rhs);
-bool operator!=(const heatpumpSettings& lhs, const heatpumpSettings& rhs);
-
 class VaneOrientationSelect;  // Déclaration anticipée, définie dans extraComponents
 
 
@@ -163,6 +155,7 @@ private:
     void hpPacketDebug(byte* packet, unsigned int length, const char* packetDirection);
 
     void debugSettings(const char* settingName, heatpumpSettings settings);
+    void debugSettings(const char* settingName, wantedHeatpumpSettings settings);
     void debugStatus(const char* statusName, heatpumpStatus status);
     void debugSettingsAndStatus(const char* settingName, heatpumpSettings settings, heatpumpStatus status);
     void createPacket(byte* packet, heatpumpSettings settings);

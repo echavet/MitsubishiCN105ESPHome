@@ -69,6 +69,8 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 
     if (updated) {
         this->wantedSettings.hasChanged = true;
+        this->debugSettings("control (wantedSettings)", this->wantedSettings);
+
         // we don't call sendWantedSettings() anymore because it will be called by the loop() method
         // just because we changed something doesn't mean we want to send it to the heatpump right away
         //ESP_LOGD(TAG, "User changed something, sending change to heatpump...");

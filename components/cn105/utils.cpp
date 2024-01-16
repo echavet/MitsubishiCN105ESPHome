@@ -1,8 +1,7 @@
 #include "cn105.h"
 #include "Globals.h"
 
-static const char* LOG_SETTINGS_TAG = "SETTINGS"; // Logging tag
-static const char* LOG_STATUS_TAG = "STATUS"; // Logging tag
+
 
 bool CN105Climate::hasChanged(const char* before, const char* now, const char* field, bool checkNotNull) {
     if (now == NULL) {
@@ -43,8 +42,19 @@ const char* getIfNotNull(const char* what, const char* defaultValue) {
     return what;
 }
 
-void CN105Climate::debugSettings(const char* settingName, heatpumpSettings settings) {
+void CN105Climate::debugSettings(const char* settingName, wantedHeatpumpSettings settings) {
+    ESP_LOGI(LOG_SETTINGS_TAG, "[%-*s]-> [power: %-*s, target °C: %2f, mode: %-*s, fan: %-*s, vane: %-*s, hasChanged ? -> %s]",
+        15, getIfNotNull(settingName, "unnamed"),
+        3, getIfNotNull(settings.power, "-"),
+        settings.temperature,
+        6, getIfNotNull(settings.mode, "-"),
+        6, getIfNotNull(settings.fan, "-"),
+        6, getIfNotNull(settings.vane, "-"),
+        settings.hasChanged ? "YES" : " NO"
+    );
+}
 
+void CN105Climate::debugSettings(const char* settingName, heatpumpSettings settings) {
     ESP_LOGI(LOG_SETTINGS_TAG, "[%-*s]-> [power: %-*s, target °C: %2f, mode: %-*s, fan: %-*s, vane: %-*s]",
         15, getIfNotNull(settingName, "unnamed"),
         3, getIfNotNull(settings.power, "-"),

@@ -175,12 +175,14 @@ void CN105Climate::getDataFromResponsePacket() {
 
         if (this->firstRun) {
             wantedSettings = receivedSettings;
+            wantedSettings.hasChanged = false;
             firstRun = false;
         }
         this->iSee_sensor->publish_state(receivedSettings.iSee);
 
         this->debugSettings("received", receivedSettings);
         this->debugSettings("current", currentSettings);
+        this->debugSettings("wanted", wantedSettings);
         this->settingsChanged(receivedSettings);
 
     }
@@ -338,7 +340,16 @@ void CN105Climate::settingsChanged(heatpumpSettings settings) {
         ESP_LOGW(TAG, "Waiting for HeatPump to read the settings the first time.");
         return;
     }*/
+    heatpumpSettings& wanted = wantedSettings;  // for casting purpose
 
+    if (wanted == settings) {
+
+        if (wantedSettings.hasChanged) {
+            ESP_LOGD(LOG_SETTINGS_TAG, "receivedSettings match wanted ones, but wantedSettings.hasChanged is true, setting it to false in settingsChanged method");
+        }
+
+        wantedSettings.hasChanged = false;
+    }
 
     checkPowerAndModeSettings(settings);
 

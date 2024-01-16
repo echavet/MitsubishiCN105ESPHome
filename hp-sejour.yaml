@@ -20,22 +20,23 @@ mqtt:
 # Enable logging
 logger:  
   hardware_uart: UART1
-  level: INFO
+  level: DEBUG
   logs:
     WIFI : INFO
     MQTT : INFO
-    #SETTINGS : INFO
-    #STATUS : INFO
-    #CN105Climate: WARN
-    #CN105: DEBUG
-    #climate: WARN
-    #sensor: WARN
-    #chkSum : INFO
-    #WRITE : WARN
-    #READ : WARN
-    #Header: INFO
-    #Decoder : WARN
-    #CONTROL_WANTED_SETTINGS: DEBUG
+    WRITE_SETTINGS : DEBUG
+    SETTINGS : DEBUG
+    STATUS : INFO
+    CN105Climate: WARN
+    CN105: INFO
+    climate: WARN
+    sensor: WARN
+    chkSum : INFO
+    WRITE : WARN
+    READ : WARN
+    Header: INFO
+    Decoder : WARN
+    CONTROL_WANTED_SETTINGS: INFO
 
 # Enable Home Assistant API
 api:

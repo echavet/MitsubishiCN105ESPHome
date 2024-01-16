@@ -153,40 +153,43 @@ void CN105Climate::createPacket(byte* packet, heatpumpSettings settings) {
 
     ESP_LOGD(TAG, "checking differences bw asked settings and current ones...");
 
-    if (this->hasChanged(currentSettings.power, settings.power, "power (wantedSettings)")) {
-        //if (settings.power != currentSettings.power) {
-        ESP_LOGD(TAG, "power changed -> %s", settings.power);
-        packet[8] = POWER[lookupByteMapIndex(POWER_MAP, 2, settings.power)];
-        packet[6] += CONTROL_PACKET_1[0];
-    }
-    if (this->hasChanged(currentSettings.mode, settings.mode, "mode (wantedSettings)")) {
-        //if (settings.mode != currentSettings.mode) {
-        ESP_LOGD(TAG, "heatpump mode changed -> %s", settings.mode);
-        packet[9] = MODE[lookupByteMapIndex(MODE_MAP, 5, settings.mode)];
-        packet[6] += CONTROL_PACKET_1[1];
-    }
-    if (!tempMode && settings.temperature != currentSettings.temperature) {
+
+
+    //if (this->hasChanged(currentSettings.power, settings.power, "power (wantedSettings)")) {
+    ESP_LOGD(TAG, "power is always set -> %s", settings.power);
+    packet[8] = POWER[lookupByteMapIndex(POWER_MAP, 2, settings.power)];
+    packet[6] += CONTROL_PACKET_1[0];
+    //}
+
+    //if (this->hasChanged(currentSettings.mode, settings.mode, "mode (wantedSettings)")) {
+    ESP_LOGD(TAG, "heatpump mode changed -> %s", settings.mode);
+    packet[9] = MODE[lookupByteMapIndex(MODE_MAP, 5, settings.mode)];
+    packet[6] += CONTROL_PACKET_1[1];
+    //}
+    //if (!tempMode && settings.temperature != currentSettings.temperature) {
+    if (!tempMode) {
         ESP_LOGD(TAG, "temperature changed (tempmode is false) -> %f", settings.temperature);
         packet[10] = TEMP[lookupByteMapIndex(TEMP_MAP, 16, settings.temperature)];
         packet[6] += CONTROL_PACKET_1[2];
-    } else if (tempMode && settings.temperature != currentSettings.temperature) {
+        //} else if (tempMode && settings.temperature != currentSettings.temperature) {
+    } else {
         ESP_LOGD(TAG, "temperature changed (tempmode is true) -> %f", settings.temperature);
         float temp = (settings.temperature * 2) + 128;
         packet[19] = (int)temp;
         packet[6] += CONTROL_PACKET_1[2];
     }
 
-    if (this->hasChanged(currentSettings.fan, settings.fan, "fan (wantedSettings)")) {
-        ESP_LOGD(TAG, "heatpump fan changed -> %s", settings.fan);
-        packet[11] = FAN[lookupByteMapIndex(FAN_MAP, 6, settings.fan)];
-        packet[6] += CONTROL_PACKET_1[3];
-    }
+    //if (this->hasChanged(currentSettings.fan, settings.fan, "fan (wantedSettings)")) {
+    ESP_LOGD(TAG, "heatpump fan changed -> %s", settings.fan);
+    packet[11] = FAN[lookupByteMapIndex(FAN_MAP, 6, settings.fan)];
+    packet[6] += CONTROL_PACKET_1[3];
+    //}
 
-    if (this->hasChanged(currentSettings.vane, settings.vane, "vane (wantedSettings)")) {
-        ESP_LOGD(TAG, "heatpump vane changed -> %s", settings.vane);
-        packet[12] = VANE[lookupByteMapIndex(VANE_MAP, 7, settings.vane)];
-        packet[6] += CONTROL_PACKET_1[4];
-    }
+    //if (this->hasChanged(currentSettings.vane, settings.vane, "vane (wantedSettings)")) {
+    ESP_LOGD(TAG, "heatpump vane changed -> %s", settings.vane);
+    packet[12] = VANE[lookupByteMapIndex(VANE_MAP, 7, settings.vane)];
+    packet[6] += CONTROL_PACKET_1[4];
+    //}
 
     // add the checksum
     byte chkSum = checkSum(packet, 21);
@@ -224,7 +227,7 @@ void CN105Climate::sendWantedSettings() {
             byte packet[PACKET_LEN] = {};
             this->createPacket(packet, wantedSettings);
             this->writePacket(packet, PACKET_LEN);
-
+            this->hpPacketDebug(packet, 22, "WRITE_SETTINGS");
 
             // here we know the update packet has been sent but we don't know if it has been received
             // so we have to program a check to be sure we will get a response

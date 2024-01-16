@@ -7,6 +7,8 @@
 #define MAX_DELAY_RESPONSE_FACTOR 3    // 30 seconds max without response
 
 static const char* TAG = "CN105"; // Logging tag
+static const char* LOG_SETTINGS_TAG = "SETTINGS"; // Logging tag
+static const char* LOG_STATUS_TAG = "STATUS"; // Logging tag
 
 static const char* SHEDULER_INTERVAL_SYNC_NAME = "hp->sync"; // name of the scheduler to prpgram hp updates
 static const char* DEFER_SHEDULER_INTERVAL_SYNC_NAME = "hp->sync_defer"; // name of the scheduler to prpgram hp updates

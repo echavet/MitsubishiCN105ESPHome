@@ -70,8 +70,7 @@ void CN105Climate::loop() {
 void CN105Climate::programUpdateInterval() {
     if (autoUpdate) {
         ESP_LOGD(TAG, "Autoupdate is ON --> creating a loop for reccurent updates...");
-
-        ESP_LOGI(TAG, "Programming update interval : %d", this->get_update_interval());
+        ESP_LOGD(TAG, "Programming update interval : %d", this->get_update_interval());
 
         this->cancel_timeout(SHEDULER_INTERVAL_SYNC_NAME);     // in case a loop is already programmed
 
