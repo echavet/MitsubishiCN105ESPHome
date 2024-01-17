@@ -6,29 +6,25 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
 
- 
-esp8266:
-  board: esp01_1m
-  
-mqtt:  
-  broker: homeassistant.local
-  username: heatpumpSejour
-  password: !secret mqtt_password
-  discovery: true
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: arduino     # required for ESP32 not tu get error: 'byte' does not name a type
+
+# mqtt:  
+#   broker: 10.1.101.172
+#   username: heatpumpSejour
+#   password: !secret mqtt_password
+#   discovery: true
   
 
 # Enable logging
 logger:  
-  hardware_uart: UART1
-  level: DEBUG
+  hardware_uart: UART0
+  level: INFO
   logs:
-    WIFI : INFO
-    MQTT : INFO
-    WRITE_SETTINGS : DEBUG
-    SETTINGS : DEBUG
-    STATUS : INFO
     CN105Climate: WARN
-    CN105: INFO
+    CN105: WARN
     climate: WARN
     sensor: WARN
     chkSum : INFO
@@ -36,7 +32,7 @@ logger:
     READ : WARN
     Header: INFO
     Decoder : WARN
-    CONTROL_WANTED_SETTINGS: INFO
+    
 
 # Enable Home Assistant API
 api:
@@ -66,10 +62,10 @@ wifi:
   #password: !secret wifi_password
   
   networks:
-  - ssid : !secret wifi_ssid
+  - ssid : !secret wifi_ssid3
+    password: !secret wifi_password3
+  - ssid: !secret wifi_ssid
     password: !secret wifi_password
-  - ssid: !secret wifi_ssid2
-    password: !secret wifi_password2
   #- ssid: !secret wifi_ssid2
   #  password: !secret wifi_password2
 
@@ -89,16 +85,16 @@ time:
     id: homeassistant_time
 
 # this setting is for local component (code is not on github)
-external_components:
- - source:
-     type: local
-     path: components 
-
-
-# this setting is for github component 
 # external_components:
-#  - source: github://echavet/MitsubishiCN105ESPHome
-#    refresh: 0s
+#  - source:
+#      type: local
+#      path: components 
+
+
+#this setting is for github component 
+external_components:
+ - source: github://echavet/MitsubishiCN105ESPHome
+   refresh: 0s
 
 
         # Text sensors with general information.
@@ -147,7 +143,7 @@ climate:
     name: ${friendly_name}
     id: "clim_sejour"
     baud_rate: 2400
-    hardware_uart: UART0
+    hardware_uart: UART1
     update_interval: 10s         # shouldn't be less than 4 seconds
     # Ajoute d'autres paramètres spécifiques à ton matériel et tes besoins
 
