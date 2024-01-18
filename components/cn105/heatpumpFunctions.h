@@ -2,6 +2,7 @@
 #include "Globals.h"
 
 
+
 #define MAX_FUNCTION_CODE_COUNT 30
 
 struct heatpumpFunctionCodes {
@@ -14,12 +15,12 @@ struct heatpumpFunctionCodes {
 
 class heatpumpFunctions {
 private:
-    byte raw[MAX_FUNCTION_CODE_COUNT];
+    uint8_t raw[MAX_FUNCTION_CODE_COUNT];
     bool _isValid1;
     bool _isValid2;
 
-    int getCode(byte b);
-    int getValue(byte b);
+    int getCode(uint8_t b);
+    int getValue(uint8_t b);
 
 public:
     heatpumpFunctions();
@@ -27,10 +28,10 @@ public:
     bool isValid() const;
 
     // data must be 15 bytes
-    void setData1(byte* data);
-    void setData2(byte* data);
-    void getData1(byte* data) const;
-    void getData2(byte* data) const;
+    void setData1(uint8_t* data);
+    void setData2(uint8_t* data);
+    void getData1(uint8_t* data) const;
+    void getData2(uint8_t* data) const;
 
     void clear();
 

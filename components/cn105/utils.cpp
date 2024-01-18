@@ -84,7 +84,7 @@ void CN105Climate::debugSettingsAndStatus(const char* settingName, heatpumpSetti
 
 
 
-void CN105Climate::hpPacketDebug(byte* packet, unsigned int length, const char* packetDirection) {
+void CN105Climate::hpPacketDebug(uint8_t* packet, unsigned int length, const char* packetDirection) {
     char buffer[4]; // Petit tampon pour stocker chaque octet sous forme de texte
     char outputBuffer[length * 4 + 1]; // Tampon pour stocker l'ensemble des octets sous forme de texte
 
@@ -128,7 +128,7 @@ int CN105Climate::lookupByteMapIndex(const char* valuesMap[], int len, const cha
     esphome::delay(200);
     return -1;
 }
-const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const byte byteMap[], int len, byte byteValue) {
+const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue) {
     for (int i = 0; i < len; i++) {
         if (byteMap[i] == byteValue) {
             return valuesMap[i];
@@ -137,7 +137,7 @@ const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const byte
     ESP_LOGW("lookup", "Attention valeur %d non trouvée, on retourne la valeur au rang 0", byteValue);
     return valuesMap[0];
 }
-int CN105Climate::lookupByteMapValue(const int valuesMap[], const byte byteMap[], int len, byte byteValue) {
+int CN105Climate::lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue) {
     for (int i = 0; i < len; i++) {
         if (byteMap[i] == byteValue) {
             return valuesMap[i];

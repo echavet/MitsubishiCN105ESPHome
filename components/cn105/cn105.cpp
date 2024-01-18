@@ -137,6 +137,12 @@ void CN105Climate::disconnectUART() {
     }
 }
 
+void CN105Climate::reconnectUART() {
+    ESP_LOGD(TAG, "reconnectUART()");
+    this->disconnectUART();
+    this->setupUART();
+    this->sendFirstConnectionPacket();
+}
 
 bool CN105Climate::isHeatpumpConnectionActive() {
     long lrTimeMs = CUSTOM_MILLIS - this->lastResponseMs;

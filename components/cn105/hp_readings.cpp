@@ -61,8 +61,8 @@ void CN105Climate::parse(byte inputData) {
 bool CN105Climate::checkSum() {
     // TODO: use the CN105Climate::checkSum(byte bytes[], int len) function
 
-    byte packetCheckSum = storedInputData[this->bytesRead];
-    byte processedCS = 0;
+    uint8_t packetCheckSum = storedInputData[this->bytesRead];
+    uint8_t processedCS = 0;
 
     ESP_LOGV("chkSum", "controling chkSum should be: %02X ", packetCheckSum);
 
@@ -174,16 +174,15 @@ void CN105Climate::getDataFromResponsePacket() {
         //currentSettings = receivedSettings;
 
         if (this->firstRun) {
-            wantedSettings = receivedSettings;
-            wantedSettings.hasChanged = false;
+            this->wantedSettings = receivedSettings;
+            this->wantedSettings.hasChanged = false;
+            this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
+
             firstRun = false;
         }
         this->iSee_sensor->publish_state(receivedSettings.iSee);
 
-        this->debugSettings("received", receivedSettings);
-        this->debugSettings("current", currentSettings);
-        this->debugSettings("wanted", wantedSettings);
-        this->settingsChanged(receivedSettings);
+        this->settingsChanged(receivedSettings, "heatpump");
 
     }
 
@@ -281,9 +280,19 @@ void CN105Climate::updateSuccess() {
     //this->last_received_packet_sensor->publish_state("0x61: update success");
     // as the update was successful, we can set currentSettings to wantedSettings        
     // even if the next settings request will do the same.
-    this->wantedSettings.hasChanged = false;
-    this->settingsChanged(this->wantedSettings);
+    if (this->wantedSettings.hasChanged) {
+        ESP_LOGI(TAG, "And it was a wantedSetting ACK!");
+        this->wantedSettings.hasChanged = false;
+        this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
+        this->settingsChanged(this->wantedSettings, "updateWantedSuccess");
+    } else {
+        ESP_LOGI(TAG, "And it was a setExternalTemperature() ACK!");
+        // here sending this->wantedSettings is non sense because it has not changed
+        // sendind the remoteTemperature would have more sense but we don't know it
+        // the hp will sent if later
+        this->settingsChanged(this->wantedSettings, "updateExtTempSuccess");
 
+    }
     /*this->currentSettings.power = this->wantedSettings.power;
     this->currentSettings.mode = this->wantedSettings.mode;
     this->currentSettings.fan = this->wantedSettings.fan;
@@ -320,7 +329,10 @@ void CN105Climate::processCommand() {
 void CN105Climate::statusChanged(heatpumpStatus status) {
 
     this->debugStatus("received", status);
-    this->debugStatus("current", currentStatus);
+
+    if (status != currentStatus) {
+        this->debugStatus("current", currentStatus);
+    }
 
     currentStatus.operating = status.operating;
     currentStatus.compressorFrequency = status.compressorFrequency;
@@ -333,7 +345,7 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
 
 
 
-void CN105Climate::settingsChanged(heatpumpSettings settings) {
+void CN105Climate::settingsChanged(heatpumpSettings settings, const char* source) {
 
     /*if (settings.power == NULL) {
         // should never happen because settingsChanged is only called from getDataFromResponsePacket()
@@ -342,13 +354,24 @@ void CN105Climate::settingsChanged(heatpumpSettings settings) {
     }*/
     heatpumpSettings& wanted = wantedSettings;  // for casting purpose
 
-    if (wanted == settings) {
+    if (wanted == settings) {       // TODO: CONTROLER ICI si cette condition n'est pas toujours vraie
 
         if (wantedSettings.hasChanged) {
             ESP_LOGD(LOG_SETTINGS_TAG, "receivedSettings match wanted ones, but wantedSettings.hasChanged is true, setting it to false in settingsChanged method");
+            wantedSettings.hasChanged = false;
+            this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
         }
+    } else {
+        if (strcmp(source, "updateWantedSuccess") == 0) {
+            this->debugSettings("wantedSettings from an updatesuccess", settings);
+        } else if (strcmp(source, "updateExtTempSuccess") == 0) {
 
-        wantedSettings.hasChanged = false;
+        } else {    // source=="heatpump" as it's a received packet
+            this->debugSettings("wanted", wantedSettings);
+            this->debugSettings("received from a hp", settings);
+        }
+        this->debugSettings("current", currentSettings);
+
     }
 
     checkPowerAndModeSettings(settings);

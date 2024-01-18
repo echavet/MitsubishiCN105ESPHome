@@ -36,7 +36,7 @@ logger:
     READ : WARN
     Header: INFO
     Decoder : WARN
-    CONTROL_WANTED_SETTINGS: INFO
+    CONTROL_WANTED_SETTINGS: DEBUG
 
 # Enable Home Assistant API
 api:

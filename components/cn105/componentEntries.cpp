@@ -53,9 +53,9 @@ void CN105Climate::setup() {
 }*/
 
 /**
- * Main component loop: used exclusively to process the input from the heatpump
- * No write to the heatpump is done here
-*/
+ * @brief Executes the main loop for the CN105Climate component.
+ * This function is called repeatedly in the main program loop.
+ */
 void CN105Climate::loop() {
     if (!this->processInput()) {
         this->checkPendingWantedSettings();

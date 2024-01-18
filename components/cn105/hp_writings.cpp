@@ -2,8 +2,8 @@
 
 
 
-byte CN105Climate::checkSum(byte bytes[], int len) {
-    byte sum = 0;
+byte CN105Climate::checkSum(uint8_t bytes[], int len) {
+    uint8_t sum = 0;
     for (int i = 0; i < len; i++) {
         sum += bytes[i];
     }
@@ -16,7 +16,7 @@ void CN105Climate::sendFirstConnectionPacket() {
         this->isHeatpumpConnected_ = false;
 
         ESP_LOGD(TAG, "Envoi du packet de connexion...");
-        byte packet[CONNECT_LEN];
+        uint8_t packet[CONNECT_LEN];
         memcpy(packet, CONNECT, CONNECT_LEN);
         //for(int count = 0; count < 2; count++) {
 
@@ -102,26 +102,26 @@ void CN105Climate::updateAction() {
 
 
 
-void CN105Climate::prepareInfoPacket(byte* packet, int length) {
+void CN105Climate::prepareInfoPacket(uint8_t* packet, int length) {
     ESP_LOGV(TAG, "preparing info packet...");
 
-    memset(packet, 0, length * sizeof(byte));
+    memset(packet, 0, length * sizeof(uint8_t));
 
     for (int i = 0; i < INFOHEADER_LEN && i < length; i++) {
         packet[i] = INFOHEADER[i];
     }
 }
 
-void CN105Climate::prepareSetPacket(byte* packet, int length) {
+void CN105Climate::prepareSetPacket(uint8_t* packet, int length) {
     ESP_LOGV(TAG, "preparing Set packet...");
-    memset(packet, 0, length * sizeof(byte));
+    memset(packet, 0, length * sizeof(uint8_t));
 
     for (int i = 0; i < HEADER_LEN && i < length; i++) {
         packet[i] = HEADER[i];
     }
 }
 
-void CN105Climate::writePacket(byte* packet, int length, bool checkIsActive) {
+void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) {
 
     if ((this->isConnected_) &&
         (this->isHeatpumpConnectionActive() || (!checkIsActive))) {
@@ -192,7 +192,7 @@ void CN105Climate::createPacket(byte* packet, heatpumpSettings settings) {
     //}
 
     // add the checksum
-    byte chkSum = checkSum(packet, 21);
+    uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
     //ESP_LOGD(TAG, "debug before write packet:");
     //this->hpPacketDebug(packet, 22, "WRITE");
@@ -297,7 +297,7 @@ void CN105Climate::programResponseCheck(int packetType) {
 
 }
 void CN105Climate::buildAndSendRequestPacket(int packetType) {
-    byte packet[PACKET_LEN] = {};
+    uint8_t packet[PACKET_LEN] = {};
     createInfoPacket(packet, packetType);
     this->writePacket(packet, PACKET_LEN);
 }
@@ -309,31 +309,54 @@ void CN105Climate::buildAndSendRequestPacket(int packetType) {
 */
 void CN105Climate::buildAndSendRequestsInfoPackets() {
 
-    if (this->isHeatpumpConnected_) {
+    ESP_LOGD("CONTROL_WANTED_SETTINGS", "buildAndSendRequestsInfoPackets() wantedSettings.hasChanged is %s", wantedSettings.hasChanged ? "true" : "false");
 
-        uint32_t interval = 300;
-        if (this->update_interval_ > 0) {
-            // we get the max interval of update_interval_ / 4 or interval (300)
-            interval = (this->update_interval_ / 4) > interval ? interval : (this->update_interval_ / 4);
-        }
+    if (!wantedSettings.hasChanged) {       // we don't want to interfere with the update settings process, this is a user command
 
-        ESP_LOGD(TAG, "buildAndSendRequestsInfoPackets: sending 3 request packet at interval: %d", interval);
+        if (this->isHeatpumpConnected_) {
 
-        ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
-        this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
-        this->set_timeout("2ndPacket", interval, [this, interval]() {
-            ESP_LOGD(TAG, "sending a request room temp packet (0x03)");
-            this->buildAndSendRequestPacket(RQST_PKT_ROOM_TEMP);
-            this->set_timeout("3rdPacket", interval, [this]() {
-                ESP_LOGD(TAG, "sending a request status paquet (0x06)");
-                this->buildAndSendRequestPacket(RQST_PKT_STATUS);
+            uint32_t interval = 300;
+            if (this->update_interval_ > 0) {
+                // we get the max interval of update_interval_ / 4 or interval (300)
+                interval = (this->update_interval_ / 4) > interval ? interval : (this->update_interval_ / 4);
+            }
+
+            ESP_LOGD(TAG, "buildAndSendRequestsInfoPackets: sending 3 request packet at interval: %d", interval);
+
+            ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
+            this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
+            this->set_timeout("2ndPacket", interval, [this, interval]() {
+                ESP_LOGD(TAG, "sending a request room temp packet (0x03)");
+                this->buildAndSendRequestPacket(RQST_PKT_ROOM_TEMP);
+                this->set_timeout("3rdPacket", interval, [this]() {
+                    ESP_LOGD(TAG, "sending a request status paquet (0x06)");
+                    this->buildAndSendRequestPacket(RQST_PKT_STATUS);
+                    });
                 });
-            });
 
+        } else {
+            ESP_LOGE(TAG, "sync impossible: heatpump not connected");
+            //this->setupUART();
+            //this->sendFirstConnectionPacket();
+        }
     } else {
-        ESP_LOGE(TAG, "sync impossible: heatpump not connected");
-        //this->setupUART();
-        //this->sendFirstConnectionPacket();
+        // here we want to manage a case that might happen:
+        // "updateSuccess response (ACK)  was never received"
+        // in this case: as we don't call buildAndSendRequestPacket()  wantedSettings.hasChanged will never be set to false
+        // But actually, if this happens, wantedSettings.hasChanged keeps being true, and we keep sending the same settings
+        // over and over again.
+        // In this case with have to set a limit to the number of deffered requests here
+
+        ESP_LOGD("CONTROL_WANTED_SETTINGS", "deffering requestInfo because wantedSettings.hasChanged is true");
+
+        wantedSettings.nb_deffered_requests++;
+
+        if (wantedSettings.nb_deffered_requests > 10) {
+            ESP_LOGW(TAG, "update success ACK was never received or never sent");
+            ESP_LOGW(TAG, "we're probably not connected to heatpump anymore");
+            wantedSettings.nb_deffered_requests = 0;
+            this->reconnectUART();
+        }
     }
     this->programUpdateInterval();
 }
@@ -341,7 +364,7 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
 
 
 
-void CN105Climate::createInfoPacket(byte* packet, byte packetType) {
+void CN105Climate::createInfoPacket(uint8_t* packet, uint8_t packetType) {
     ESP_LOGD(TAG, "creating Info packet");
     // add the header to the packet
     for (int i = 0; i < INFOHEADER_LEN; i++) {
@@ -367,11 +390,11 @@ void CN105Climate::createInfoPacket(byte* packet, byte packetType) {
     }
 
     // add the checksum
-    byte chkSum = checkSum(packet, 21);
+    uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
 }
 void CN105Climate::set_remote_temperature(float setting) {
-    byte packet[PACKET_LEN] = {};
+    uint8_t packet[PACKET_LEN] = {};
 
     prepareSetPacket(packet, PACKET_LEN);
 
@@ -390,7 +413,7 @@ void CN105Climate::set_remote_temperature(float setting) {
         packet[8] = 0x80; //MHK1 send 80, even though it could be 00, since ControlByte is 00
     }
     // add the checksum
-    byte chkSum = checkSum(packet, 21);
+    uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
     ESP_LOGD(TAG, "sending remote temperature packet...");
     writePacket(packet, PACKET_LEN);
