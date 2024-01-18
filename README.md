@@ -111,6 +111,8 @@ climate:
     hardware_uart: UART0
     update_interval: 4s
 ```
+Note that the update_interval is set to 4s. It can seem long, but my advice is to use interval not shorter than 1s. This is because the underlying process does cut the interval in 3 and sends 3 different types of request to the heatpump. 
+
 
 On ESP8266 you'll need to disable logging to serial because it conflicts with
 the heatpump UART:
