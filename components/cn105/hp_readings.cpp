@@ -182,7 +182,8 @@ void CN105Climate::getDataFromResponsePacket() {
         }
         this->iSee_sensor->publish_state(receivedSettings.iSee);
 
-        this->settingsChanged(receivedSettings, "heatpump");
+        //this->settingsChanged(receivedSettings, "heatpumpUpdate");
+        this->heatpumpUpdate(receivedSettings);
 
     }
 
@@ -284,13 +285,14 @@ void CN105Climate::updateSuccess() {
         ESP_LOGI(TAG, "And it was a wantedSetting ACK!");
         this->wantedSettings.hasChanged = false;
         this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
-        this->settingsChanged(this->wantedSettings, "updateWantedSuccess");
+        //this->settingsChanged(this->wantedSettings, "WantedSettingsUpdateSuccess");
+        this->wantedSettingsUpdateSuccess(this->wantedSettings);
     } else {
         ESP_LOGI(TAG, "And it was a setExternalTemperature() ACK!");
-        // here sending this->wantedSettings is non sense because it has not changed
         // sendind the remoteTemperature would have more sense but we don't know it
         // the hp will sent if later
-        this->settingsChanged(this->wantedSettings, "updateExtTempSuccess");
+        //this->settingsChanged(this->currentSettings, "ExtTempUpdateSuccess");
+        this->extTempUpdateSuccess();
 
     }
     /*this->currentSettings.power = this->wantedSettings.power;
@@ -344,60 +346,125 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
 }
 
 
-
-void CN105Climate::settingsChanged(heatpumpSettings settings, const char* source) {
-
-    /*if (settings.power == NULL) {
-        // should never happen because settingsChanged is only called from getDataFromResponsePacket()
-        ESP_LOGW(TAG, "Waiting for HeatPump to read the settings the first time.");
-        return;
-    }*/
-    heatpumpSettings& wanted = wantedSettings;  // for casting purpose
-
-    if (wanted == settings) {       // TODO: CONTROLER ICI si cette condition n'est pas toujours vraie
-
-        if (wantedSettings.hasChanged) {
-            ESP_LOGD(LOG_SETTINGS_TAG, "receivedSettings match wanted ones, but wantedSettings.hasChanged is true, setting it to false in settingsChanged method");
-            wantedSettings.hasChanged = false;
-            this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
-        }
-    } else {
-        if (strcmp(source, "updateWantedSuccess") == 0) {
-            this->debugSettings("wantedSettings from an updatesuccess", settings);
-        } else if (strcmp(source, "updateExtTempSuccess") == 0) {
-
-        } else {    // source=="heatpump" as it's a received packet
-            this->debugSettings("wanted", wantedSettings);
-            this->debugSettings("received from a hp", settings);
-        }
-        this->debugSettings("current", currentSettings);
-
-    }
-
+void CN105Climate::publishStateToHA(heatpumpSettings settings) {
     checkPowerAndModeSettings(settings);
-
     this->updateAction();
-
     checkFanSettings(settings);
-
     checkVaneSettings(settings);
+    this->target_temperature = settings.temperature;
+    this->currentSettings.connected = true;
 
-
-    this->currentSettings.iSee = settings.iSee;
-    this->currentSettings.connected = settings.connected;
-
-    /*
-     * ******** HANDLE TARGET TEMPERATURE CHANGES ********
-     */
-    this->currentSettings.temperature = settings.temperature;
-    this->target_temperature = currentSettings.temperature;
-    ESP_LOGD(TAG, "Target temp is: %f", this->target_temperature);
-    /*
-     * ******** Publish state back to ESPHome. ********
-     */
     this->publish_state();
 
 }
+
+
+void CN105Climate::wantedSettingsUpdateSuccess(heatpumpSettings settings) {
+    // settings correponds to fresh wanted settings
+    ESP_LOGD(LOG_ACTION_EVT_TAG, "WantedSettings update success");
+    // update HA states thanks to wantedSettings
+    this->publishStateToHA(settings);
+
+    // as wantedSettings has been received with ACK by the heatpump
+    // we can update the surrentSettings
+    this->currentSettings = this->wantedSettings;
+    this->debugSettings("current", currentSettings);
+}
+
+void CN105Climate::extTempUpdateSuccess() {
+    ESP_LOGD(LOG_ACTION_EVT_TAG, "External C° update success");
+    // can retreive room °C from currentStatus.roomTemperature because 
+    // set_remote_temperature() is optimistic and has recorded it 
+    this->current_temperature = currentStatus.roomTemperature;
+}
+
+void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
+    // settings correponds to current settings 
+    ESP_LOGD(LOG_ACTION_EVT_TAG, "Settings received");
+
+    heatpumpSettings& wanted = wantedSettings;  // for casting purpose
+    if (wanted == settings) {
+        // settings correponds to fresh received settings
+        if (wantedSettings.hasChanged) {
+            ESP_LOGW(LOG_SETTINGS_TAG, "receivedSettings match wanted ones, but wantedSettings.hasChanged is true, setting it to false in settingsChanged method");
+        }
+
+        // no difference wt wantedSettings and received ones
+        // by security tag wantedSettings hasChanged to false
+        wantedSettings.hasChanged = false;
+        this->wantedSettings.nb_deffered_requests = 0;
+    } else {
+        // here wantedSettings and currentSettings are different
+        // we want to know why
+        if (wantedSettings.hasChanged) {
+            // it's because user did ask a change throuth HA
+            // we have nothing to do, because this change will trigger a packet send from 
+            // the loop() method
+            ESP_LOGW(LOG_ACTION_EVT_TAG, "wantedSettings is true, and we received an info packet");
+        } else {
+            // it's because of an IR remote control update
+            this->publishStateToHA(settings);
+            this->debugSettings("receivedIR", settings);
+        }
+    }
+}
+
+/*
+void CN105Climate::settingsChanged(heatpumpSettings settings, const char* source) {
+
+
+    if (strcmp(source, "WantedSettingsUpdateSuccess") == 0) {
+        // settings correponds to fresh wanted settings
+        ESP_LOGD(LOG_ACTION_EVT_TAG, "WantedSettings update success");
+        // update HA states thanks to wantedSettings
+        this->publishStateToHA(settings);
+
+        // as wantedSettings has been received with ACK by the heatpump
+        // we can update the surrentSettings
+        this->currentSettings = this->wantedSettings;
+        this->debugSettings("current", currentSettings);
+    }
+
+    if (strcmp(source, "ExtTempUpdateSuccess")) {
+        // settings correponds to current settings but that's not important
+        ESP_LOGD(LOG_ACTION_EVT_TAG, "External C° update success");
+        // can retreive room °C from currentStatus.roomTemperature because
+        // set_remote_temperature() is optimistic and has recorded it
+        this->current_temperature = currentStatus.roomTemperature;
+    }
+
+    if (strcmp(source, "heatpumpUpdate")) {
+        // settings correponds to current settings
+        ESP_LOGD(LOG_ACTION_EVT_TAG, "Settings received");
+
+        heatpumpSettings& wanted = wantedSettings;  // for casting purpose
+        if (wanted == settings) {
+            // settings correponds to fresh received settings
+            if (wantedSettings.hasChanged) {
+                ESP_LOGW(LOG_SETTINGS_TAG, "receivedSettings match wanted ones, but wantedSettings.hasChanged is true, setting it to false in settingsChanged method");
+            }
+
+            // no difference wt wantedSettings and received ones
+            // by security tag wantedSettings hasChanged to false
+            wantedSettings.hasChanged = false;
+            this->wantedSettings.nb_deffered_requests = 0;
+        } else {
+            // here wantedSettings and currentSettings are different
+            // we want to know why
+            if (wantedSettings.hasChanged) {
+                // it's because user did ask a change throuth HA
+                // we have nothing to do, because this change will trigger a packet send from
+                // the loop() method
+                ESP_LOGW(LOG_ACTION_EVT_TAG, "wantedSettings is true, and we received an info packet");
+            } else {
+                // it's because of an IR remote control update
+                this->publishStateToHA(settings);
+                this->debugSettings("receivedIR", settings);
+            }
+        }
+    }
+}*/
+
 void CN105Climate::checkVaneSettings(heatpumpSettings& settings) {
     /* ******** HANDLE MITSUBISHI VANE CHANGES ********
          * const char* VANE_MAP[7]        = {"AUTO", "1", "2", "3", "4", "5", "SWING"};

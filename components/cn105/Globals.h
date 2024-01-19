@@ -13,6 +13,7 @@
 #define MAX_DELAY_RESPONSE_FACTOR 3    // 30 seconds max without response
 
 
+static const char* LOG_ACTION_EVT_TAG = "EVT";
 static const char* TAG = "CN105"; // Logging tag
 static const char* LOG_SETTINGS_TAG = "SETTINGS"; // Logging tag
 static const char* LOG_STATUS_TAG = "STATUS"; // Logging tag

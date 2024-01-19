@@ -21,7 +21,7 @@ void CN105Climate::checkPendingWantedSettings() {
         } else {
             ESP_LOGI(TAG, "checkPendingWantedSettings - detected a change from IR Remote Control, update the wanted settings...");
             // if not wantedSettings.hasChanged this is because we've had a change from IR Remote Control
-            this->wantedSettings = this->currentSettings;
+            // this->wantedSettings = this->currentSettings;
         }
 
     }
@@ -68,6 +68,7 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 
 
     if (updated) {
+        ESP_LOGD(LOG_ACTION_EVT_TAG, "clim.control() -> User changed something...");
         this->wantedSettings.hasChanged = true;
         this->debugSettings("control (wantedSettings)", this->wantedSettings);
 

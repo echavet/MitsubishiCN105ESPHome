@@ -9,12 +9,12 @@ public:
 
     void control(const std::string& value) override {
 
-        ESP_LOGD("VAN_CTRL", "Demande un chgt de réglage de la vane: %s", value.c_str());
+        ESP_LOGD("EVT", "vane.control() -> Demande un chgt de réglage de la vane: %s", value.c_str());
 
         parent_->setVaneSetting(value.c_str()); // should be enough to trigger a sendWantedSettings
         parent_->wantedSettings.hasChanged = true;
 
-        // TODO: update thanks to new sendWantedSettings policy 
+        // now updated thanks to new sendWantedSettings policy 
         // parent_->sendWantedSettings();
 
     }

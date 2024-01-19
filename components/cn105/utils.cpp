@@ -43,7 +43,7 @@ const char* getIfNotNull(const char* what, const char* defaultValue) {
 }
 
 void CN105Climate::debugSettings(const char* settingName, wantedHeatpumpSettings settings) {
-    ESP_LOGI(LOG_SETTINGS_TAG, "[%-*s]-> [power: %-*s, target °C: %2f, mode: %-*s, fan: %-*s, vane: %-*s, hasChanged ? -> %s]",
+    ESP_LOGI(LOG_ACTION_EVT_TAG, "[%-*s]-> [power: %-*s, target °C: %2f, mode: %-*s, fan: %-*s, vane: %-*s, hasChanged ? -> %s]",
         15, getIfNotNull(settingName, "unnamed"),
         3, getIfNotNull(settings.power, "-"),
         settings.temperature,

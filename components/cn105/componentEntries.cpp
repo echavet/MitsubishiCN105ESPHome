@@ -9,7 +9,7 @@
  * setupUART will handle the
 */
 void CN105Climate::setup() {
-    // Votre code ici
+
     ESP_LOGD(TAG, "Initialisation du composant: appel de setup()");
     this->current_temperature = NAN;
     this->target_temperature = NAN;

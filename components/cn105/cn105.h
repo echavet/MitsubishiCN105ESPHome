@@ -140,8 +140,14 @@ private:
     void prepareInfoPacket(uint8_t* packet, int length);
     void prepareSetPacket(uint8_t* packet, int length);
 
+    void publishStateToHA(heatpumpSettings settings);
 
-    void settingsChanged(heatpumpSettings settings, const char* source);
+    //void settingsChanged(heatpumpSettings settings, const char* source);
+
+    void wantedSettingsUpdateSuccess(heatpumpSettings settings);
+    void extTempUpdateSuccess();
+    void heatpumpUpdate(heatpumpSettings settings);
+
     void statusChanged(heatpumpStatus status);
 
     void checkPendingWantedSettings();

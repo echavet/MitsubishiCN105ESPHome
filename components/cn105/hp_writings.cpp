@@ -417,4 +417,6 @@ void CN105Climate::set_remote_temperature(float setting) {
     packet[21] = chkSum;
     ESP_LOGD(TAG, "sending remote temperature packet...");
     writePacket(packet, PACKET_LEN);
+    // optimistic
+    this->currentStatus.roomTemperature = setting;
 }

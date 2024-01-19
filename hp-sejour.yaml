@@ -22,6 +22,7 @@ logger:
   hardware_uart: UART1
   level: DEBUG
   logs:
+    EVT : DEBUG
     WIFI : INFO
     MQTT : INFO
     WRITE_SETTINGS : DEBUG
