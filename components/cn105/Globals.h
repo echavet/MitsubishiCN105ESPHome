@@ -140,9 +140,9 @@ struct heatpumpSettings {
             mode == other.mode &&
             temperature == other.temperature &&
             fan == other.fan &&
-            vane == other.vane &&
-            wideVane == other.wideVane &&
-            iSee == other.iSee;
+            vane == other.vane;
+        // && wideVane == other.wideVane &&
+        //iSee == other.iSee;
     }
 
     bool operator!=(const heatpumpSettings& other) {

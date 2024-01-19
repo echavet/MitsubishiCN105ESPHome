@@ -392,7 +392,7 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
     ESP_LOGD(LOG_ACTION_EVT_TAG, "Settings received");
 
     heatpumpSettings& wanted = wantedSettings;  // for casting purpose
-    if (wanted == settings) {
+    if (settings == wanted) {
         // settings correponds to fresh received settings
         if (wantedSettings.hasChanged) {
             ESP_LOGW(LOG_SETTINGS_TAG, "receivedSettings match wanted ones, but wantedSettings.hasChanged is true, setting it to false in settingsChanged method");
