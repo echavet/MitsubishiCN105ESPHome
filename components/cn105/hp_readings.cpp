@@ -343,6 +343,8 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
     currentStatus.roomTemperature = status.roomTemperature;
     this->current_temperature = currentStatus.roomTemperature;
 
+    this->updateAction();       // update action info on HA climate component
+
     this->publish_state();
     this->compressor_frequency_sensor->publish_state(currentStatus.compressorFrequency);
 }
@@ -350,7 +352,7 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
 
 void CN105Climate::publishStateToHA(heatpumpSettings settings) {
     checkPowerAndModeSettings(settings);
-    this->updateAction();
+    this->updateAction();       // update action info on HA climate component
     checkFanSettings(settings);
     checkVaneSettings(settings);
     // HA Temp

@@ -195,6 +195,51 @@ void CN105Climate::controlMode() {
 }
 
 
+void CN105Climate::setActionIfOperatingTo(climate::ClimateAction action) {
+    if (currentStatus.operating) {
+        this->action = action;
+    } else {
+        this->action = climate::CLIMATE_ACTION_IDLE;
+    }
+    ESP_LOGD(TAG, "setting action to -> %d", this->action);
+}
+
+void CN105Climate::setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateAction action) {
+    if (currentStatus.compressorFrequency <= 0) {
+        this->action = climate::CLIMATE_ACTION_IDLE;
+    } else {
+        this->setActionIfOperatingTo(action);
+    }
+}
+
+void CN105Climate::updateAction() {
+    ESP_LOGV(TAG, "updating action back to espHome...");
+    switch (this->mode) {
+    case climate::CLIMATE_MODE_HEAT:
+        this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_HEATING);
+        break;
+    case climate::CLIMATE_MODE_COOL:
+        this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_COOLING);
+        break;
+    case climate::CLIMATE_MODE_HEAT_COOL:
+        this->setActionIfOperatingAndCompressorIsActiveTo(
+            (this->current_temperature > this->target_temperature ?
+                climate::CLIMATE_ACTION_COOLING :
+                climate::CLIMATE_ACTION_HEATING));
+        break;
+    case climate::CLIMATE_MODE_DRY:
+        this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_DRYING);
+        break;
+    case climate::CLIMATE_MODE_FAN_ONLY:
+        this->action = climate::CLIMATE_ACTION_FAN;
+        break;
+    default:
+        this->action = climate::CLIMATE_ACTION_OFF;
+    }
+
+    ESP_LOGD(TAG, "Climate mode is: %i", this->mode);
+    ESP_LOGD(TAG, "Climate action is: %i", this->action);
+}
 
 climate::ClimateTraits CN105Climate::traits() {
     // Définir les caractéristiques de ton climatiseur ici
