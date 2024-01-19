@@ -50,7 +50,8 @@ void CN105Climate::debugSettings(const char* settingName, wantedHeatpumpSettings
         6, getIfNotNull(settings.mode, "-"),
         6, getIfNotNull(settings.fan, "-"),
         6, getIfNotNull(settings.vane, "-"),
-        settings.hasChanged ? "YES" : " NO"
+        settings.hasChanged ? "YES" : " NO",
+        settings.hasBeenSent ? "YES" : " NO"
     );
 }
 

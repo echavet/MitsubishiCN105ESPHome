@@ -397,14 +397,19 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
         this->wantedSettings.hasBeenSent = false;
         this->wantedSettings.nb_deffered_requests = 0;
     } else {
+        this->debugSettings("current", this->currentSettings);
+        this->debugSettings("wanted", wantedSettings);
+
         // here wantedSettings and currentSettings are different
         // we want to know why
         if (wantedSettings.hasChanged) {
+            this->debugSettings("received", settings);
             // it's because user did ask a change throuth HA
             // we have nothing to do, because this change will trigger a packet send from 
             // the loop() method
             ESP_LOGW(LOG_ACTION_EVT_TAG, "wantedSettings is true, and we received an info packet");
         } else {
+
             // it's because of an IR remote control update
             this->publishStateToHA(settings);
             this->debugSettings("receivedIR", settings);
