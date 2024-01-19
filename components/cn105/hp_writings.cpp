@@ -207,8 +207,9 @@ void CN105Climate::createPacket(byte* packet, heatpumpSettings settings) {
 void CN105Climate::sendWantedSettings() {
 
     if (this->isHeatpumpConnectionActive() && this->isConnected_) {
-        if (CUSTOM_MILLIS - this->lastSend > 4000) {        // we don't want to send too many packets
+        if (CUSTOM_MILLIS - this->lastSend > 500) {        // we don't want to send too many packets
 
+            this->wantedSettings.hasBeenSent = true;
             this->lastSend = CUSTOM_MILLIS;
             ESP_LOGI(TAG, "sending wantedSettings..");
 
@@ -245,9 +246,7 @@ void CN105Climate::sendWantedSettings() {
                 });
 
         } else {
-            if (((CUSTOM_MILLIS - this->lastSend) / 1000) % 2 != 0) {  // we don't want to log too many times so we only log every 2s                                             
-                ESP_LOGD(TAG, "will sendWantedSettings later because we've sent one too recently...");
-            }
+            ESP_LOGD(TAG, "will sendWantedSettings later because we've sent one too recently...");
         }
     }
 

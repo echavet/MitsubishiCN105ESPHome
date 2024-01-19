@@ -153,20 +153,20 @@ struct heatpumpSettings {
 
 struct wantedHeatpumpSettings : heatpumpSettings {
     bool hasChanged;
+    bool hasBeenSent;
     uint8_t nb_deffered_requests;
     wantedHeatpumpSettings& operator=(const wantedHeatpumpSettings& other) {
         if (this != &other) { // protection contre l'auto-affectation
             heatpumpSettings::operator=(other); // Appel à l'opérateur d'affectation de la classe de base
             hasChanged = other.hasChanged;
+            hasBeenSent = other.hasBeenSent;
         }
         return *this;
     }
+
     wantedHeatpumpSettings& operator=(const heatpumpSettings& other) {
         if (this != &other) { // protection contre l'auto-affectation
-            heatpumpSettings::operator=(other); // Copie des membres de base
-            // `hasBeenUpdated` peut être réglé selon la logique de votre application
-            // Par exemple, le mettre à true pour indiquer que l'objet a été mis à jour
-            hasChanged = true;
+            heatpumpSettings::operator=(other); // Copie des membres de base                        
         }
         return *this;
     }

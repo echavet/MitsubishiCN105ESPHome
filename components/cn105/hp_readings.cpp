@@ -176,6 +176,7 @@ void CN105Climate::getDataFromResponsePacket() {
         if (this->firstRun) {
             this->wantedSettings = receivedSettings;
             this->wantedSettings.hasChanged = false;
+            this->wantedSettings.hasBeenSent = false;
             this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
 
             firstRun = false;
@@ -284,6 +285,7 @@ void CN105Climate::updateSuccess() {
     if (this->wantedSettings.hasChanged) {
         ESP_LOGI(TAG, "And it was a wantedSetting ACK!");
         this->wantedSettings.hasChanged = false;
+        this->wantedSettings.hasBeenSent = false;
         this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
         //this->settingsChanged(this->wantedSettings, "WantedSettingsUpdateSuccess");
         this->wantedSettingsUpdateSuccess(this->wantedSettings);
@@ -392,6 +394,7 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
         // no difference wt wantedSettings and received ones
         // by security tag wantedSettings hasChanged to false
         wantedSettings.hasChanged = false;
+        this->wantedSettings.hasBeenSent = false;
         this->wantedSettings.nb_deffered_requests = 0;
     } else {
         // here wantedSettings and currentSettings are different

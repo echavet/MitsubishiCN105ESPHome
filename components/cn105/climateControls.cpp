@@ -16,12 +16,19 @@ void CN105Climate::checkPendingWantedSettings() {
         (this->wantedSettings.temperature != this->currentSettings.temperature) ||
         (this->wantedSettings.vane != this->currentSettings.vane)) {
         if (this->wantedSettings.hasChanged) {
-            ESP_LOGD(TAG, "checkPendingWantedSettings - wanted settings have changed, sending them to the heatpump...");
-            this->sendWantedSettings();
+            if (!this->wantedSettings.hasBeenSent) {
+                ESP_LOGD(TAG, "checkPendingWantedSettings - wanted settings have changed, sending them to the heatpump...");
+                this->sendWantedSettings();
+                this->set_timeout("checkWantedSettings", 1000, [this]() { this->wantedSettings.hasBeenSent = false; });
+            }
         } else {
-            ESP_LOGI(TAG, "checkPendingWantedSettings - detected a change from IR Remote Control, update the wanted settings...");
+            ESP_LOGI(TAG, "checkPendingWantedSettings - detected a change from IR Remote Control");
             // if not wantedSettings.hasChanged this is because we've had a change from IR Remote Control
-            this->wantedSettings = this->currentSettings;
+
+            // TODO: this shouldn't be done here
+            //this->wantedSettings = this->currentSettings;
+            //this->wantedSettings.hasChanged = false;
+            //this->wantedSettings.hasBeenSent = false;
         }
 
     }
@@ -70,6 +77,7 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
     if (updated) {
         ESP_LOGD(LOG_ACTION_EVT_TAG, "clim.control() -> User changed something...");
         this->wantedSettings.hasChanged = true;
+        this->wantedSettings.hasBeenSent = false;
         this->debugSettings("control (wantedSettings)", this->wantedSettings);
 
         // we don't call sendWantedSettings() anymore because it will be called by the loop() method
