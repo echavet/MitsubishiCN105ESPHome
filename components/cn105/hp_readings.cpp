@@ -353,9 +353,15 @@ void CN105Climate::publishStateToHA(heatpumpSettings settings) {
     this->updateAction();
     checkFanSettings(settings);
     checkVaneSettings(settings);
+    // HA Temp
     this->target_temperature = settings.temperature;
+
+    // CurrentSettings update
+    this->currentSettings.temperature = settings.temperature;
+    this->currentSettings.iSee = settings.iSee;
     this->currentSettings.connected = true;
 
+    // publish to HA
     this->publish_state();
 
 }
@@ -378,6 +384,7 @@ void CN105Climate::extTempUpdateSuccess() {
     // can retreive room °C from currentStatus.roomTemperature because 
     // set_remote_temperature() is optimistic and has recorded it 
     this->current_temperature = currentStatus.roomTemperature;
+    this->publish_state();
 }
 
 void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
@@ -398,7 +405,7 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
         this->wantedSettings.nb_deffered_requests = 0;
     } else {
         this->debugSettings("current", this->currentSettings);
-        this->debugSettings("wanted", wantedSettings);
+        this->debugSettings("wanted", this->wantedSettings);
 
         // here wantedSettings and currentSettings are different
         // we want to know why
