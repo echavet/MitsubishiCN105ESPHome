@@ -26,9 +26,9 @@ void CN105Climate::checkPendingWantedSettings() {
             // if not wantedSettings.hasChanged this is because we've had a change from IR Remote Control
 
             // TODO: this shouldn't be done here
-            //this->wantedSettings = this->currentSettings;
-            //this->wantedSettings.hasChanged = false;
-            //this->wantedSettings.hasBeenSent = false;
+            this->wantedSettings = this->currentSettings;
+            this->wantedSettings.hasChanged = false;
+            this->wantedSettings.hasBeenSent = false;
         }
 
     }
