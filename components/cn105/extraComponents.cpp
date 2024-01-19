@@ -13,7 +13,7 @@ public:
 
         parent_->setVaneSetting(value.c_str()); // should be enough to trigger a sendWantedSettings
         parent_->wantedSettings.hasChanged = true;
-        parent->wantedSettings.hasBeenSent = false;
+        parent_->wantedSettings.hasBeenSent = false;
         // now updated thanks to new sendWantedSettings policy 
         // parent_->sendWantedSettings();
 
