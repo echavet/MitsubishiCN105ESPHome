@@ -64,6 +64,13 @@ void CN105Climate::set_baud_rate(int baud) {
     ESP_LOGD(TAG, "baud: %d", baud);
 }
 
+void CN105Climate::set_tx_rx_pins(uint8_t tx_pin, uint8_t rx_pin) {
+    this->tx_pin_ = tx_pin;
+    this->rx_pin_ = rx_pin;
+    ESP_LOGD(TAG, "set_tx_rx_pins()");
+    ESP_LOGD(TAG, "tx_pin: %d", tx_pin);
+    ESP_LOGD(TAG, "rx_pin: %d", rx_pin);
+}
 
 
 void CN105Climate::check_logger_conflict_() {
@@ -111,7 +118,18 @@ void CN105Climate::setupUART() {
 
     if (this->get_hw_serial_() != NULL) {
         ESP_LOGD(TAG, "Serial->begin...");
-        this->get_hw_serial_()->begin(this->baud_, SERIAL_8E1);
+
+        if (this->tx_pin_ != -1 && this->rx_pin_ != -1) {
+            // Initialisation de l'UART avec les broches spécifiées
+            ESP_LOGI(TAG, "Initialisation de l'UART avec les broches %d et %d...", this->tx_pin_, this->rx_pin_);
+            this->get_hw_serial_()->begin(this->baud_, SERIAL_8E1);
+            this->get_hw_serial_()->pins(this->tx_pin_, this->rx_pin_);
+        } else {
+            // Initialisation de l'UART avec les broches par défaut
+            ESP_LOGI(TAG, "Initialisation de l'UART avec les broches par défaut");
+            this->get_hw_serial_()->begin(this->baud_, SERIAL_8E1);
+        }
+
         this->isConnected_ = true;
         this->initBytePointer();
     } else {

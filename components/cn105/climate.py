@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import climate
+from esphome.components import climate, uart
 from esphome.components import select
 from esphome.components.logger import HARDWARE_UART_TO_SERIAL
 
@@ -22,6 +22,10 @@ DEFAULT_CLIMATE_MODES = ["HEAT_COOL", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "QUIET", "LOW", "MEDIUM", "HIGH"]
 DEFAULT_SWING_MODES = ["OFF", "VERTICAL", "HORIZONTAL", "BOTH"]
 
+# Déclaration des constantes pour TX et RX pin
+CONF_TX_PIN = "tx_pin"
+CONF_RX_PIN = "rx_pin"
+
 CN105Climate = cg.global_ns.class_("CN105Climate", climate.Climate, cg.PollingComponent)
 
 
@@ -41,6 +45,8 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
         cv.GenerateID(): cv.declare_id(CN105Climate),
         cv.Optional(CONF_HARDWARE_UART, default="UART0"): valid_uart,
         cv.Optional(CONF_BAUD_RATE): cv.positive_int,
+        cv.Optional(CONF_TX_PIN): cv.positive_int,
+        cv.Optional(CONF_RX_PIN): cv.positive_int,
         cv.Optional(CONF_UPDATE_INTERVAL, default="0ms"): cv.All(cv.update_interval),
         # Optionally override the supported ClimateTraits.
         cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
@@ -67,6 +73,12 @@ def to_code(config):
 
     if CONF_BAUD_RATE in config:
         cg.add(var.set_baud_rate(config[CONF_BAUD_RATE]))
+
+    # Traitement des configurations de broches TX et RX
+    if CONF_TX_PIN in config and CONF_RX_PIN in config:
+        tx_pin = config[CONF_TX_PIN]
+        rx_pin = config[CONF_RX_PIN]
+        cg.add(var.set_tx_rx_pins(tx_pin, rx_pin))
 
     supports = config[CONF_SUPPORTS]
     traits = var.config_traits()

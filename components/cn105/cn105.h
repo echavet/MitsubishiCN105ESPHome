@@ -43,6 +43,7 @@ public:
     void setup() override;
     void loop() override;
     void set_baud_rate(int baud_rate);
+    void set_tx_rx_pins(uint8_t tx_pin, uint8_t rx_pin);
     //void set_wifi_connected_state(bool state);
     void setupUART();
     void disconnectUART();
@@ -176,6 +177,8 @@ private:
 
     HardwareSerial* hw_serial_;
     int baud_ = 0;
+    uint8_t tx_pin_ = 0;
+    uint8_t rx_pin_ = 0;
 
     bool init_delay_completed_ = false;
     bool init_delay_initiated_ = false;

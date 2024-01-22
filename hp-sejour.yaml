@@ -149,7 +149,9 @@ climate:
     id: "clim_sejour"
     baud_rate: 2400
     hardware_uart: UART0
-    update_interval: 10s         # shouldn't be less than 4 seconds
+    #tx_pin: 1
+    #rx_pin: 3
+    update_interval: 10s         # shouldn't be less than 1 second
     # Ajoute d'autres paramètres spécifiques à ton matériel et tes besoins
 
 
