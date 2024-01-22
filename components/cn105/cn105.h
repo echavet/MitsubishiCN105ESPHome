@@ -177,8 +177,8 @@ private:
 
     HardwareSerial* hw_serial_;
     int baud_ = 0;
-    uint8_t tx_pin_ = 0;
-    uint8_t rx_pin_ = 0;
+    int tx_pin_ = -1;
+    int rx_pin_ = -1;
 
     bool init_delay_completed_ = false;
     bool init_delay_initiated_ = false;

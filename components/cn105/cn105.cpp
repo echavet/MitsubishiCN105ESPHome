@@ -50,6 +50,8 @@ CN105Climate::CN105Climate(HardwareSerial* hw_serial)
     this->infoMode = 0;
     this->currentStatus.operating = false;
     this->currentStatus.compressorFrequency = -1;
+    this->tx_pin_ = -1;
+    this->rx_pin_ = -1;
 
     generateExtraComponents();
 
@@ -60,16 +62,14 @@ CN105Climate::CN105Climate(HardwareSerial* hw_serial)
 
 void CN105Climate::set_baud_rate(int baud) {
     this->baud_ = baud;
-    ESP_LOGD(TAG, "set_baud_rate()");
-    ESP_LOGD(TAG, "baud: %d", baud);
+    ESP_LOGI(TAG, "setting baud rate to: %d", baud);
 }
 
 void CN105Climate::set_tx_rx_pins(uint8_t tx_pin, uint8_t rx_pin) {
     this->tx_pin_ = tx_pin;
     this->rx_pin_ = rx_pin;
-    ESP_LOGD(TAG, "set_tx_rx_pins()");
-    ESP_LOGD(TAG, "tx_pin: %d", tx_pin);
-    ESP_LOGD(TAG, "rx_pin: %d", rx_pin);
+    ESP_LOGI(TAG, "setting tx_pin: %d rx_pin: %d", tx_pin, rx_pin);
+
 }
 
 
