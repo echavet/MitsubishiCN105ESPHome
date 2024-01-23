@@ -122,8 +122,15 @@ void CN105Climate::setupUART() {
         if (this->tx_pin_ != -1 && this->rx_pin_ != -1) {
             // Initialisation de l'UART avec les broches spécifiées
             ESP_LOGI(TAG, "Initialisation de l'UART avec les broches %d et %d...", this->tx_pin_, this->rx_pin_);
+
+#ifdef ESP8266
             this->get_hw_serial_()->begin(this->baud_, SERIAL_8E1);
             this->get_hw_serial_()->pins(this->tx_pin_, this->rx_pin_);
+#elif defined(ESP32)
+            // Code spécifique à l'ESP32
+            // (Configuration appropriée pour l'ESP32)
+            this->get_hw_serial_()->begin(this->baud_, SERIAL_8E1, this->tx_pin_, this->rx_pin_);
+#endif
         } else {
             // Initialisation de l'UART avec les broches par défaut
             ESP_LOGI(TAG, "Initialisation de l'UART avec les broches par défaut");
