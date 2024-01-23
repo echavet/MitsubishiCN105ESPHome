@@ -129,7 +129,7 @@ void CN105Climate::setupUART() {
 #elif defined(ESP32)
             // Code spécifique à l'ESP32
             // (Configuration appropriée pour l'ESP32)
-            this->get_hw_serial_()->begin(this->baud_, SERIAL_8E1, this->tx_pin_, this->rx_pin_);
+            this->get_hw_serial_()->begin(this->baud_, SERIAL_8E1, this->rx_pin_, this->tx_pin_);
 #endif
         } else {
             // Initialisation de l'UART avec les broches par défaut
