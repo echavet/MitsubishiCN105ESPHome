@@ -125,9 +125,8 @@ climate:
 For more configuration options, see the provided hp-debug.yaml and hp-sejour.yaml examples or refer to the original project.
 
 ## Other Implementations:
-- [gysmo38/mitsubishi2MQTT](https://github.com/gysmo38/mitsubishi2MQTT) - Direct MQTT controls, robust but
-
- with a less stable WiFi stack.
+- [esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump) - The original esphome project from which this one is forked. 
+- [gysmo38/mitsubishi2MQTT](https://github.com/gysmo38/mitsubishi2MQTT) - Direct MQTT controls, robust but with a less stable WiFi stack.
 - ESPHome's built-in [Mitsubishi](https://github.com/esphome/esphome/blob/dev/esphome/components/mitsubishi/mitsubishi.h) climate component - Uses IR Remote commands, lacks bi-directional communication.
 
 ## Reference Documentation:
