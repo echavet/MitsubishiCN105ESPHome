@@ -23,7 +23,7 @@ void CN105Climate::initBytePointer() {
  * Taille totale = 5 (header) + Longueur des données + 1 (checksum)
  * La taille totale dépend de la longueur spécifique des données pour chaque trame individuelle.
  */
-void CN105Climate::parse(byte inputData) {
+void CN105Climate::parse(uint8_t inputData) {
 
     ESP_LOGV("Decoder", "--> %02X [nb: %d]", inputData, this->bytesRead);
 
@@ -83,7 +83,7 @@ bool CN105Climate::checkSum() {
 }
 
 
-void CN105Climate::checkHeader(byte inputData) {
+void CN105Climate::checkHeader(uint8_t inputData) {
     if (this->bytesRead == 4) {
         if (storedInputData[2] == HEADER[2] && storedInputData[3] == HEADER[3]) {
             ESP_LOGV("Header", "header matches HEADER");

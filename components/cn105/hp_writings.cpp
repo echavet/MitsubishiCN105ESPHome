@@ -2,7 +2,7 @@
 
 
 
-byte CN105Climate::checkSum(uint8_t bytes[], int len) {
+uint8_t CN105Climate::checkSum(uint8_t bytes[], int len) {
     uint8_t sum = 0;
     for (int i = 0; i < len; i++) {
         sum += bytes[i];
@@ -100,7 +100,7 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
     }
 }
 
-void CN105Climate::createPacket(byte* packet, heatpumpSettings settings) {
+void CN105Climate::createPacket(uint8_t* packet, heatpumpSettings settings) {
     prepareSetPacket(packet, PACKET_LEN);
 
     ESP_LOGD(TAG, "checking differences bw asked settings and current ones...");
@@ -177,7 +177,7 @@ void CN105Climate::sendWantedSettings() {
             }
 
             // and then we send the update packet
-            byte packet[PACKET_LEN] = {};
+            uint8_t packet[PACKET_LEN] = {};
             this->createPacket(packet, wantedSettings);
             this->writePacket(packet, PACKET_LEN);
             this->hpPacketDebug(packet, 22, "WRITE_SETTINGS");

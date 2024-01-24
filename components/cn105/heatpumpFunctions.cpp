@@ -8,8 +8,8 @@ heatpumpFunctions CN105Climate::getFunctions() {
 
     functions.clear();
 
-    byte packet1[PACKET_LEN] = {};
-    byte packet2[PACKET_LEN] = {};
+    uint8_t packet1[PACKET_LEN] = {};
+    uint8_t packet2[PACKET_LEN] = {};
 
     prepareInfoPacket(packet1, PACKET_LEN);
     packet1[5] = FUNCTIONS_GET_PART1;
@@ -50,8 +50,8 @@ bool CN105Climate::setFunctions(heatpumpFunctions const& functions) {
         return false;
     }
 
-    byte packet1[PACKET_LEN] = {};
-    byte packet2[PACKET_LEN] = {};
+    uint8_t packet1[PACKET_LEN] = {};
+    uint8_t packet2[PACKET_LEN] = {};
 
     prepareSetPacket(packet1, PACKET_LEN);
     packet1[5] = FUNCTIONS_SET_PART1;
@@ -103,21 +103,21 @@ bool heatpumpFunctions::isValid() const {
     return _isValid1 && _isValid2;
 }
 
-void heatpumpFunctions::setData1(byte* data) {
+void heatpumpFunctions::setData1(uint8_t* data) {
     memcpy(raw, data, 15);
     _isValid1 = true;
 }
 
-void heatpumpFunctions::setData2(byte* data) {
+void heatpumpFunctions::setData2(uint8_t* data) {
     memcpy(raw + 15, data, 15);
     _isValid2 = true;
 }
 
-void heatpumpFunctions::getData1(byte* data) const {
+void heatpumpFunctions::getData1(uint8_t* data) const {
     memcpy(data, raw, 15);
 }
 
-void heatpumpFunctions::getData2(byte* data) const {
+void heatpumpFunctions::getData2(uint8_t* data) const {
     memcpy(data, raw + 15, 15);
 }
 
@@ -127,11 +127,11 @@ void heatpumpFunctions::clear() {
     _isValid2 = false;
 }
 
-int heatpumpFunctions::getCode(byte b) {
+int heatpumpFunctions::getCode(uint8_t b) {
     return ((b >> 2) & 0xff) + 100;
 }
 
-int heatpumpFunctions::getValue(byte b) {
+int heatpumpFunctions::getValue(uint8_t b) {
     return b & 3;
 }
 
