@@ -9,8 +9,8 @@ esphome:
 esp32:
   board: esp32doit-devkit-v1
   framework:
-    type: arduino     # required for ESP32 not tu get error: 'byte' does not name a type
-
+    type: esp-idf     
+    #type: arduino
 # mqtt:  
 #   broker: 10.1.101.172
 #   username: heatpumpSejour
@@ -85,16 +85,16 @@ time:
     id: homeassistant_time
 
 # this setting is for local component (code is not on github)
-# external_components:
-#  - source:
-#      type: local
-#      path: components 
+external_components:
+ - source:
+     type: local
+     path: components 
 
 
 #this setting is for github component 
-external_components:
- - source: github://echavet/MitsubishiCN105ESPHome
-   refresh: 0s
+# external_components:
+#  - source: github://echavet/MitsubishiCN105ESPHome
+#    refresh: 0s
 
 
         # Text sensors with general information.
