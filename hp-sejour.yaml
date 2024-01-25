@@ -9,13 +9,20 @@ esphome:
  
 esp8266:
   board: esp01_1m
-  
+
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: 1
+  rx_pin: 3
+
 mqtt:  
   broker: homeassistant.local
   username: heatpumpSejour
   password: !secret mqtt_password
   discovery: true
-  
+
+
 
 # Enable logging
 logger:  
@@ -127,67 +134,12 @@ sensor:
     name: ${name} WiFi Signal
     update_interval: 60s
   
-  # Etat de l'attribut operating décodé dans les trames de réponse du clim
-  # - platform: template
-  #   name: Operating (Clim)
-  #   update_interval: 10s
-  #   lambda: |-
-  #     return(id(clim_sejour).is_operating());
-  
-  # Etat de l'attribut compressor°frequency décodé dans les trames de réponse du clim
-  # généré dynamiquement dans le code de la clim
-  # - platform: template
-  #   name: Compressor Frequency (Clim)
-  #   update_interval: 10s
-  #   lambda: |-
-  #     return(id(clim_sejour).get_compressor_frequency());
 
 # Configuration pour l'objet 'climate'
 climate:
   - platform: cn105  # remplis avec la plateforme de ton choix
     name: ${friendly_name}
-    id: "clim_sejour"
-    baud_rate: 2400
-    hardware_uart: UART0
-    #tx_pin: 1
-    #rx_pin: 3
+    id: "clim_sejour"    
     update_interval: 10s         # shouldn't be less than 1 second
     # Ajoute d'autres paramètres spécifiques à ton matériel et tes besoins
 
-
-# Configuration pour l'objet 'switch' (bouton)
-# switch:
-#   - platform: template
-#     name: ${name} UART Setup Switch
-#     id: uart_setup_switch
-#     entity_category: DIAGNOSTIC
-#     #setup_priority : -100.0 ## late
-#     optimistic: true
-#     turn_on_action:
-#       - lambda: |-
-#           // Appelle la méthode 'setupUART' quand le switch est activé
-#           id(clim_sejour).setupUART();
-#     turn_off_action:
-#       - lambda: |-
-#           // Appelle la méthode 'setupUART' quand le switch est activé
-#           id(clim_sejour).disconnectUART();
-
-#   - platform: template
-#     name: Send 1st packet to ${name}
-#     id: send_packet_switch
-#     entity_category: DIAGNOSTIC
-#     #setup_priority : -100.0 ## late
-#     optimistic: true
-#     turn_on_action:
-#       - lambda: |-          
-#           id(clim_sejour).sendFirstConnectionPacket();    
-  
-#   - platform: template
-#     name: Requests ${name} Synchro
-#     id: build_and_send_requests_info_packets
-#     entity_category: DIAGNOSTIC
-#     #setup_priority : -100.0 ## late
-#     optimistic: true    
-#     turn_on_action:
-#       - lambda: |-          
-#           id(clim_sejour).buildAndSendRequestsInfoPackets(); 

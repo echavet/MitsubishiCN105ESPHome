@@ -11,6 +11,16 @@ esp32:
   framework:
     type: esp-idf     
     #type: arduino
+
+
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: 0
+  rx_pin: 3
+  
+    
+
 # mqtt:  
 #   broker: 10.1.101.172
 #   username: heatpumpSejour
@@ -36,12 +46,7 @@ logger:
 
 # Enable Home Assistant API
 api:
-  services:
-    - service: reboot
-      then:
-        - logger.log: "Redémarrage en cours..."
-        - lambda: |-
-            ESP.restart();
+  services:    
     - service: set_remote_temperature
       variables:
         temperature: float
@@ -143,7 +148,7 @@ climate:
     name: ${friendly_name}
     id: "clim_sejour"
     baud_rate: 2400
-    hardware_uart: UART1
+    #hardware_uart: UART1
     update_interval: 10s         # shouldn't be less than 4 seconds
     # Ajoute d'autres paramètres spécifiques à ton matériel et tes besoins
 

@@ -99,8 +99,11 @@ bool CN105Climate::processInput(void) {
     bool processed = false;
     while (this->get_hw_serial_()->available()) {
         processed = true;
-        int inputData = this->get_hw_serial_()->read();
-        parse(inputData);
+        u_int8_t inputData;
+        if (this->get_hw_serial_()->read_byte(&inputData)) {
+            parse(inputData);
+        }
+
     }
     return processed;
 }

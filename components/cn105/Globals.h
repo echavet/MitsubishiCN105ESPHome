@@ -1,6 +1,6 @@
 #pragma once
 #include <esphome.h>
-#include <esphome/core/preferences.h>
+#include "esphome/components/uart/uart.h"
 
 #if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"

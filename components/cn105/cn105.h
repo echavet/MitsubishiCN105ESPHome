@@ -4,18 +4,17 @@
 
 using namespace esphome;
 
-
 class VaneOrientationSelect;  // Déclaration anticipée, définie dans extraComponents
 
 
 
-class CN105Climate : public climate::Climate, public Component {
+class CN105Climate : public climate::Climate, public Component, public uart::UARTDevice {
 
     friend class VaneOrientationSelect;
 
 public:
 
-
+    CN105Climate(uart::UARTComponent* hw_serial);
 
     sensor::Sensor* compressor_frequency_sensor;
     binary_sensor::BinarySensor* iSee_sensor;
@@ -36,7 +35,7 @@ public:
     }
 
 
-    CN105Climate(HardwareSerial* hw_serial);
+
 
     void generateExtraComponents();
 
@@ -106,13 +105,9 @@ protected:
 
     climate::ClimateTraits traits_;
     //Accessor method for the HardwareSerial pointer
-    HardwareSerial* get_hw_serial_() {
-        return this->hw_serial_;
+    uart::UARTComponent* get_hw_serial_() {
+        return this->parent_;
     }
-
-    //Print a warning message if we're using the sole hardware UART on an
-        //ESP8266 or UART0 on ESP32
-    void check_logger_conflict_();
 
     bool processInput(void);
     void parse(uint8_t inputData);
@@ -175,7 +170,6 @@ private:
     unsigned long lastResponseMs;
 
 
-    HardwareSerial* hw_serial_;
     int baud_ = 0;
     int tx_pin_ = -1;
     int rx_pin_ = -1;
