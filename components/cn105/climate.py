@@ -56,6 +56,12 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(CN105Climate),
         cv.GenerateID(CONF_UART_ID): cv.use_id(uart.UARTComponent),
+        cv.Optional("baud_rate"): cv.invalid(
+            "baud_rate' option is not supported anymore. Please add a separate UART component with baud_rate configured."
+        ),
+        cv.Optional("hardware_uart"): cv.invalid(
+            "'hardware_uart' options is not supported anymore. Please add a separate UART component with the correct rx and tx pin."
+        ),
         # cv.Optional(CONF_HARDWARE_UART, default="UART0"): valid_uart,
         cv.Optional(CONF_UPDATE_INTERVAL, default="0ms"): cv.All(cv.update_interval),
         # Optionally override the supported ClimateTraits.
@@ -106,8 +112,9 @@ def to_code(config):
     yield cg.register_component(var, config)
     yield climate.register_climate(var, config)
 
-    ## cg.add_library(
-    ##    name="HeatPump",
-    ##    repository="https://github.com/SwiCago/HeatPump",
-    ##    version="cea90c5ed48d24a904835f8918bd88cbc84cb1be",
-    ## )
+
+## cg.add_library(
+##    name="HeatPump",
+##    repository="https://github.com/SwiCago/HeatPump",
+##    version="cea90c5ed48d24a904835f8918bd88cbc84cb1be",
+## )
