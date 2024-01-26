@@ -140,9 +140,9 @@ sensor:
 uart:
   id: HP_UART
   baud_rate: 2400
-  tx_pin: 0
+  tx_pin: 1
   rx_pin: 3
-  
+
 # Configuration pour l'objet 'climate'
 climate:
   - platform: cn105  # remplis avec la plateforme de ton choix
