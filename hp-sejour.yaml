@@ -8,13 +8,9 @@ esphome:
 
  
 esp8266:
-  board: esp01_1m
+  board: d1_mini
 
-uart:
-  id: HP_UART
-  baud_rate: 2400
-  tx_pin: 1
-  rx_pin: 3
+
 
 mqtt:  
   broker: homeassistant.local
@@ -134,7 +130,12 @@ sensor:
     name: ${name} WiFi Signal
     update_interval: 60s
   
-
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: 1
+  rx_pin: 3
+  
 # Configuration pour l'objet 'climate'
 climate:
   - platform: cn105  # remplis avec la plateforme de ton choix
