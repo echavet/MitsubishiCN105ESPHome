@@ -153,7 +153,7 @@ uart:
   rx_pin: 3
 
 climate:
-  - platform: cn105 # remplis avec la plateforme de ton choix
+  - platform: cn105 
     name: ${friendly_name}
     id: "clim_id"
 
@@ -183,6 +183,3 @@ Refer to these for further understanding:
 - [ESPHome's Climate Component Source](https://github.com/esphome/esphome/tree/master/esphome/components/climate)
 
 ---
-
-This enhanced README.md should help in making your project more attractive and easier to understand for potential users.
-No No I did write all this alone. Without chatGPT.
