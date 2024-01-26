@@ -26,8 +26,8 @@ This project maintains all functionalities of the original geoffdavis project, i
 ## Supported Microcontrollers:
 - WeMos D1 Mini (ESP8266): tested
 - M5Stack ATOM Lite : tested
-- Generic ESP32 Dev Kit (ESP32): tested
-
+- Generic ESP32 Dev Kit (ESP32): Compile ok but Not tested
+- Generic ESP-01S board (ESP8266): Not tested
 
 ## Supported Mitsubishi Climate Units:
 Primarily, units with a `CN105` header are compatible. Refer to the [HeatPump wiki](https://github.com/SwiCago/HeatPump/wiki/Supported-models) for a comprehensive list. 
@@ -50,19 +50,12 @@ external_components:
 ```
 
 ### Step 4: Configuring the Heatpump
-
-In your ESPHome config, configure an uart and add a `cn105` component:
+In your ESPHome config, add a `mitsubishi_heatpump` component:
 ```yaml
-
-uart:
-  id: HP_UART
-  baud_rate: 2400
-  tx_pin: 1
-  rx_pin: 3
-
 climate:
   - platform: cn105 # Choose your platform
-    name: "My Heat Pump"    
+    name: "My Heat Pump"
+    hardware_uart: UART0
     update_interval: 4s
 ```
 Note: The `update_interval` is set here to 4s for debugging purposes. However, it is recommended to use a interval longer or equal to 1s because the underlying process divides this interval into three separate requests.
@@ -91,7 +84,7 @@ esphome:
   friendly_name: ${friendly_name}
 
 esp8266:
-  board: d1_mini
+  board: esp01_1m
 
 # Enable logging
 logger:
@@ -115,22 +108,17 @@ ota:
 external_components:
   - source: github://echavet/MitsubishiCN105ESPHome
 
-uart:
-  id: HP_UART
-  baud_rate: 2400
-  tx_pin: 1
-  rx_pin: 3
-
 climate:
   - platform: cn105 # remplis avec la plateforme de ton choix
     name: ${friendly_name}
-    id: "clim_id"    
-    
+    id: "clim_id"
+    baud_rate: 0
+    hardware_uart: UART0
+
     # this update interval is not the same as the original geoffdavis parameter
     # this one activates the autoupdate feature (or not is set to 0)
     # the underlying component is not a PollingComponent so the component just uses
-    # the espHome scheduler to program the heatpump requests at the given interval.
-    # 3 requests are sent each update_interval with an interval of update_interval/4 or 300ms.
+    # the espHome scheduler to program the heatpump requests at the given interval.    
     update_interval: 4s
 ```
 
