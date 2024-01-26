@@ -4,8 +4,9 @@
 using namespace esphome;
 
 
-CN105Climate::CN105Climate(HardwareSerial* hw_serial)
-    : hw_serial_(hw_serial) {
+CN105Climate::CN105Climate(uart::UARTComponent* uart) :
+    UARTDevice(uart) {
+
     this->traits_.set_supports_action(true);
     this->traits_.set_supports_current_temperature(true);
     this->traits_.set_supports_two_point_target_temperature(false);
@@ -51,9 +52,10 @@ CN105Climate::CN105Climate(HardwareSerial* hw_serial)
     this->tx_pin_ = -1;
     this->rx_pin_ = -1;
 
-    generateExtraComponents();
+    this->generateExtraComponents();
 
 }
+
 
 
 
@@ -70,22 +72,6 @@ void CN105Climate::set_tx_rx_pins(uint8_t tx_pin, uint8_t rx_pin) {
 
 }
 
-
-void CN105Climate::check_logger_conflict_() {
-#ifdef USE_LOGGER
-    if (this->get_hw_serial_() == logger::global_logger->get_hw_serial()) {
-        ESP_LOGW(TAG, "  You're using the same serial port for logging"
-            " and the MitsubishiHeatPump component. Please disable"
-            " logging over the serial port by setting"
-            " logger:baud_rate to 0.");
-
-        //this->mark_failed();
-        // we don't want to mark the object as failed because we want to be able to reconfigure it at runtime
-
-    }
-#endif
-}
-
 int CN105Climate::get_compressor_frequency() {
     return currentStatus.compressorFrequency;
 }
@@ -94,54 +80,27 @@ bool CN105Climate::is_operating() {
 }
 
 
-
+// SERIAL_8E1
 void CN105Climate::setupUART() {
-    // Votre code ici
-    ESP_LOGI(TAG, "setupUART() with baudrate %d", this->baud_);
+
+    ESP_LOGI(TAG, "setupUART() with baudrate %d", this->parent_->get_baud_rate());
 
     this->isHeatpumpConnected_ = false;
     this->isConnected_ = false;
 
-    ESP_LOGI(
-        TAG,
-        "hw_serial(%p) is &Serial(%p)? %s",
-        this->get_hw_serial_(),
-        &Serial,
-        YESNO(this->get_hw_serial_() == &Serial)
-    );
-
-    this->check_logger_conflict_();
-
+    // just for debugging purpose, a way to use a button i, yaml to trigger a reconnect
     this->uart_setup_switch = true;
 
-    if (this->get_hw_serial_() != NULL) {
-        ESP_LOGD(TAG, "Serial->begin...");
-
-        if (this->tx_pin_ != -1 && this->rx_pin_ != -1) {
-            // Initialisation de l'UART avec les broches spécifiées
-            ESP_LOGI(TAG, "Initialisation de l'UART avec les broches %d et %d...", this->tx_pin_, this->rx_pin_);
-
-#ifdef ESP8266
-            this->get_hw_serial_()->begin(this->baud_, SERIAL_8E1);
-            this->get_hw_serial_()->pins(this->tx_pin_, this->rx_pin_);
-#elif defined(ESP32)
-            // Code spécifique à l'ESP32
-            // (Configuration appropriée pour l'ESP32)
-            this->get_hw_serial_()->begin(this->baud_, SERIAL_8E1, this->rx_pin_, this->tx_pin_);
-#endif
-        } else {
-            // Initialisation de l'UART avec les broches par défaut
-            ESP_LOGI(TAG, "Initialisation de l'UART avec les broches par défaut");
-            this->get_hw_serial_()->begin(this->baud_, SERIAL_8E1);
-        }
-
+    if (this->parent_->get_data_bits() == 8 &&
+        this->parent_->get_parity() == uart::UART_CONFIG_PARITY_EVEN &&
+        this->parent_->get_stop_bits() == 1) {
+        ESP_LOGD("CustomComponent", "UART est configuré en SERIAL_8E1");
         this->isConnected_ = true;
         this->initBytePointer();
     } else {
-        ESP_LOGE(TAG, "L'UART doit être défini.");
+        ESP_LOGW("CustomComponent", "UART n'est pas configuré en SERIAL_8E1");
     }
 
-    //this->publish_state();
 }
 
 
@@ -153,11 +112,7 @@ void CN105Climate::disconnectUART() {
     this->isConnected_ = false;
     this->cancel_timeout(SHEDULER_INTERVAL_SYNC_NAME);
     this->publish_state();
-    if (this->get_hw_serial_() != NULL) {
-        this->get_hw_serial_()->end();
-    } else {
-        ESP_LOGE(TAG, "L'UART doit être défini.");
-    }
+
 }
 
 void CN105Climate::reconnectUART() {
@@ -171,7 +126,7 @@ bool CN105Climate::isHeatpumpConnectionActive() {
     long lrTimeMs = CUSTOM_MILLIS - this->lastResponseMs;
 
     if (lrTimeMs > MAX_DELAY_RESPONSE_FACTOR * this->update_interval_) {
-        ESP_LOGW(TAG, "Heatpump has not replied for %d s", lrTimeMs / 1000);
+        ESP_LOGW(TAG, "Heatpump has not replied for %ld s", lrTimeMs / 1000);
         ESP_LOGI(TAG, "We think Heatpump is not connected anymore..");
     }
 

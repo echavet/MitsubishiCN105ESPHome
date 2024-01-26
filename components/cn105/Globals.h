@@ -1,6 +1,6 @@
 #pragma once
 #include <esphome.h>
-#include <esphome/core/preferences.h>
+#include "esphome/components/uart/uart.h"
 
 #if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
@@ -138,8 +138,8 @@ struct heatpumpSettings {
             mode == other.mode &&
             temperature == other.temperature &&
             fan == other.fan &&
-            vane == other.vane;
-        // && wideVane == other.wideVane &&
+            vane == other.vane &&
+            wideVane == other.wideVane;
         //iSee == other.iSee;
     }
 

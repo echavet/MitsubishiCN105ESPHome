@@ -78,17 +78,13 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
     if ((this->isConnected_) &&
         (this->isHeatpumpConnectionActive() || (!checkIsActive))) {
 
-        if (this->get_hw_serial_()->availableForWrite() >= length) {
-            ESP_LOGD(TAG, "writing packet...");
-            this->hpPacketDebug(packet, length, "WRITE");
+        ESP_LOGD(TAG, "writing packet...");
+        this->hpPacketDebug(packet, length, "WRITE");
 
-            for (int i = 0; i < length; i++) {
-                this->get_hw_serial_()->write((uint8_t)packet[i]);
-            }
-        } else {
-            ESP_LOGW(TAG, "delaying packet writing because serial buffer is not ready...");
-            this->set_timeout("write", 200, [this, packet, length]() { this->writePacket(packet, length); });
+        for (int i = 0; i < length; i++) {
+            this->get_hw_serial_()->write_byte((uint8_t)packet[i]);
         }
+
     } else {
         ESP_LOGW(TAG, "could not write as asked, because UART is not connected");
         this->disconnectUART();

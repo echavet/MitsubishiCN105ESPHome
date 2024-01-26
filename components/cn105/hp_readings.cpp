@@ -67,7 +67,7 @@ bool CN105Climate::checkSum() {
     ESP_LOGV("chkSum", "controling chkSum should be: %02X ", packetCheckSum);
 
     for (int i = 0;i < this->dataLength + 5;i++) {
-        ESP_LOGV("chkSum", "adding %02X to %02X --> ", this->storedInputData[i], processedCS, processedCS + this->storedInputData[i]);
+        ESP_LOGV("chkSum", "adding %02X to %03X --> %X", this->storedInputData[i], processedCS, processedCS + this->storedInputData[i]);
         processedCS += this->storedInputData[i];
     }
 
@@ -99,8 +99,11 @@ bool CN105Climate::processInput(void) {
     bool processed = false;
     while (this->get_hw_serial_()->available()) {
         processed = true;
-        int inputData = this->get_hw_serial_()->read();
-        parse(inputData);
+        u_int8_t inputData;
+        if (this->get_hw_serial_()->read_byte(&inputData)) {
+            parse(inputData);
+        }
+
     }
     return processed;
 }
@@ -483,17 +486,34 @@ void CN105Climate::settingsChanged(heatpumpSettings settings, const char* source
 }*/
 
 void CN105Climate::checkVaneSettings(heatpumpSettings& settings) {
+
     /* ******** HANDLE MITSUBISHI VANE CHANGES ********
-         * const char* VANE_MAP[7]        = {"AUTO", "1", "2", "3", "4", "5", "SWING"};
-         */
-    if (this->hasChanged(currentSettings.vane, settings.vane, "vane")) { // vane setting change ?
-        ESP_LOGI(TAG, "vane setting changed");
+     * VANE_MAP[7]        = {"AUTO", "1", "2", "3", "4", "5", "SWING"};
+     * WIDEVANE_MAP[7]    = { "<<", "<",  "|",  ">",  ">>", "<>", "SWING" }
+     */
+
+    if (this->hasChanged(currentSettings.vane, settings.vane, "vane") ||                // vane setting change ?
+        this->hasChanged(currentSettings.wideVane, settings.wideVane, "wideVane")) {    // widevane setting change ?
+        ESP_LOGI(TAG, "vane or widevane setting changed");
+
+        // here I hope that the vane and widevane are always sent together
+
         currentSettings.vane = settings.vane;
+        currentSettings.wideVane = settings.wideVane;
 
         if (strcmp(currentSettings.vane, "SWING") == 0) {
-            this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+            if (strcmp(currentSettings.wideVane, "SWING") == 0) {
+                this->swing_mode = climate::CLIMATE_SWING_BOTH;
+            } else {
+                this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+            }
+
         } else {
-            this->swing_mode = climate::CLIMATE_SWING_OFF;
+            if (strcmp(currentSettings.wideVane, "SWING") == 0) {
+                this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+            } else {
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
+            }
         }
         ESP_LOGD(TAG, "Swing mode is: %i", this->swing_mode);
     }
@@ -527,7 +547,11 @@ void CN105Climate::checkFanSettings(heatpumpSettings& settings) {
         } else { //case "AUTO" or default:
             this->fan_mode = climate::CLIMATE_FAN_AUTO;
         }
-        ESP_LOGD(TAG, "Fan mode is: %i", this->fan_mode);
+        if (this->fan_mode.has_value()) {
+            ESP_LOGD(TAG, "Fan mode is: %i", static_cast<int>(this->fan_mode.value()));
+        } else {
+            ESP_LOGD(TAG, "Fan mode is not set");
+        }
     }
 }
 void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings) {

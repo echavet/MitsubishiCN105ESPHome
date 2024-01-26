@@ -43,38 +43,72 @@ const char* getIfNotNull(const char* what, const char* defaultValue) {
 }
 
 void CN105Climate::debugSettings(const char* settingName, wantedHeatpumpSettings settings) {
-    ESP_LOGI(LOG_ACTION_EVT_TAG, "[%-*s]-> [power: %-*s, target °C: %2f, mode: %-*s, fan: %-*s, vane: %-*s, hasChanged ? -> %s]",
+#ifdef USE_ESP32
+    ESP_LOGI(LOG_ACTION_EVT_TAG, "[%s]-> [power: %s, target °C: %2f, mode: %s, fan: %s, vane: %s, wvane: %s, hasChanged ? -> %s, hasBeenSent ? -> %s]",
+        getIfNotNull(settingName, "unnamed"),
+        getIfNotNull(settings.power, "-"),
+        settings.temperature,
+        getIfNotNull(settings.mode, "-"),
+        getIfNotNull(settings.fan, "-"),
+        getIfNotNull(settings.vane, "-"),
+        getIfNotNull(settings.wideVane, "-"),
+        settings.hasChanged ? "YES" : " NO",
+        settings.hasBeenSent ? "YES" : " NO"
+    );
+#else
+    ESP_LOGI(LOG_ACTION_EVT_TAG, "[%-*s]-> [power: %-*s, target °C: %2f, mode: %-*s, fan: %-*s, vane: %-*s, wvane: %-*s, hasChanged ? -> %s, hasBeenSent ? -> %s]",
         15, getIfNotNull(settingName, "unnamed"),
         3, getIfNotNull(settings.power, "-"),
         settings.temperature,
         6, getIfNotNull(settings.mode, "-"),
         6, getIfNotNull(settings.fan, "-"),
         6, getIfNotNull(settings.vane, "-"),
+        6, getIfNotNull(settings.wideVane, "-"),
         settings.hasChanged ? "YES" : " NO",
         settings.hasBeenSent ? "YES" : " NO"
     );
+#endif
 }
 
 void CN105Climate::debugSettings(const char* settingName, heatpumpSettings settings) {
-    ESP_LOGI(LOG_SETTINGS_TAG, "[%-*s]-> [power: %-*s, target °C: %2f, mode: %-*s, fan: %-*s, vane: %-*s]",
+#ifdef USE_ESP32
+    ESP_LOGI(LOG_SETTINGS_TAG, "[%s]-> [power: %s, target °C: %2f, mode: %s, fan: %s, vane: %s, wvane: %s]",
+        getIfNotNull(settingName, "unnamed"),
+        getIfNotNull(settings.power, "-"),
+        settings.temperature,
+        getIfNotNull(settings.mode, "-"),
+        getIfNotNull(settings.fan, "-"),
+        getIfNotNull(settings.vane, "-"),
+        getIfNotNull(settings.wideVane, "-")
+    );
+#else
+    ESP_LOGI(LOG_SETTINGS_TAG, "[%-*s]-> [power: %-*s, target °C: %2f, mode: %-*s, fan: %-*s, vane: %-*s, wvane: %-*s]",
         15, getIfNotNull(settingName, "unnamed"),
         3, getIfNotNull(settings.power, "-"),
         settings.temperature,
         6, getIfNotNull(settings.mode, "-"),
         6, getIfNotNull(settings.fan, "-"),
-        6, getIfNotNull(settings.vane, "-")
+        6, getIfNotNull(settings.vane, "-"),
+        6, getIfNotNull(settings.wideVane, "-")
     );
+#endif
 }
 
 
 void CN105Climate::debugStatus(const char* statusName, heatpumpStatus status) {
-
+#ifdef USE_ESP32
+    ESP_LOGI(LOG_STATUS_TAG, "[%s]-> [room C°: %.1f, operating: %s, compressor freq: %2d Hz]",
+        statusName,
+        status.roomTemperature,
+        status.operating ? "YES" : "NO ",
+        status.compressorFrequency);
+#else
     ESP_LOGI(LOG_STATUS_TAG, "[%-*s]-> [room C°: %.1f, operating: %-*s, compressor freq: %2d Hz]",
         15, statusName,
         status.roomTemperature,
         3, status.operating ? "YES" : "NO ",
         status.compressorFrequency);
-
+#endif
 }
 
 

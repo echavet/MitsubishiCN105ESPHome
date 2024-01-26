@@ -11,6 +11,11 @@ esp32:
   framework:
     type: esp-idf     
     #type: arduino
+
+
+  
+    
+
 # mqtt:  
 #   broker: 10.1.101.172
 #   username: heatpumpSejour
@@ -21,27 +26,22 @@ esp32:
 # Enable logging
 logger:  
   hardware_uart: UART0
-  level: INFO
-  logs:
-    CN105Climate: WARN
-    CN105: WARN
-    climate: WARN
-    sensor: WARN
-    chkSum : INFO
-    WRITE : WARN
-    READ : WARN
-    Header: INFO
-    Decoder : WARN
+  level: VERBOSE
+  # logs:
+  #   CN105Climate: WARN
+  #   CN105: WARN
+  #   climate: WARN
+  #   sensor: WARN
+  #   chkSum : INFO
+  #   WRITE : WARN
+  #   READ : WARN
+  #   Header: INFO
+  #   Decoder : WARN
     
 
 # Enable Home Assistant API
 api:
-  services:
-    - service: reboot
-      then:
-        - logger.log: "Redémarrage en cours..."
-        - lambda: |-
-            ESP.restart();
+  services:    
     - service: set_remote_temperature
       variables:
         temperature: float
@@ -137,13 +137,19 @@ sensor:
   #   lambda: |-
   #     return(id(clim_sejour).get_compressor_frequency());
 
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: 1
+  rx_pin: 3
+
 # Configuration pour l'objet 'climate'
 climate:
   - platform: cn105  # remplis avec la plateforme de ton choix
     name: ${friendly_name}
     id: "clim_sejour"
-    baud_rate: 2400
-    hardware_uart: UART1
+    # baud_rate: 2400
+    # hardware_uart: UART1
     update_interval: 10s         # shouldn't be less than 4 seconds
     # Ajoute d'autres paramètres spécifiques à ton matériel et tes besoins
 
