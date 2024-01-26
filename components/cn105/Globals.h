@@ -138,8 +138,8 @@ struct heatpumpSettings {
             mode == other.mode &&
             temperature == other.temperature &&
             fan == other.fan &&
-            vane == other.vane;
-        // && wideVane == other.wideVane &&
+            vane == other.vane &&
+            wideVane == other.wideVane;
         //iSee == other.iSee;
     }
 

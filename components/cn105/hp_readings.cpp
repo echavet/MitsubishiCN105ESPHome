@@ -486,17 +486,34 @@ void CN105Climate::settingsChanged(heatpumpSettings settings, const char* source
 }*/
 
 void CN105Climate::checkVaneSettings(heatpumpSettings& settings) {
+
     /* ******** HANDLE MITSUBISHI VANE CHANGES ********
-         * const char* VANE_MAP[7]        = {"AUTO", "1", "2", "3", "4", "5", "SWING"};
-         */
-    if (this->hasChanged(currentSettings.vane, settings.vane, "vane")) { // vane setting change ?
-        ESP_LOGI(TAG, "vane setting changed");
+     * VANE_MAP[7]        = {"AUTO", "1", "2", "3", "4", "5", "SWING"};
+     * WIDEVANE_MAP[7]    = { "<<", "<",  "|",  ">",  ">>", "<>", "SWING" }
+     */
+
+    if (this->hasChanged(currentSettings.vane, settings.vane, "vane") ||                // vane setting change ?
+        this->hasChanged(currentSettings.wideVane, settings.wideVane, "wideVane")) {    // widevane setting change ?
+        ESP_LOGI(TAG, "vane or widevane setting changed");
+
+        // here I hope that the vane and widevane are always sent together
+
         currentSettings.vane = settings.vane;
+        currentSettings.wideVane = settings.wideVane;
 
         if (strcmp(currentSettings.vane, "SWING") == 0) {
-            this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+            if (strcmp(currentSettings.wideVane, "SWING") == 0) {
+                this->swing_mode = climate::CLIMATE_SWING_BOTH;
+            } else {
+                this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
+            }
+
         } else {
-            this->swing_mode = climate::CLIMATE_SWING_OFF;
+            if (strcmp(currentSettings.wideVane, "SWING") == 0) {
+                this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
+            } else {
+                this->swing_mode = climate::CLIMATE_SWING_OFF;
+            }
         }
         ESP_LOGD(TAG, "Swing mode is: %i", this->swing_mode);
     }
