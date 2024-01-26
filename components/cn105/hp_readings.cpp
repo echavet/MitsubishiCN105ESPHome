@@ -67,7 +67,7 @@ bool CN105Climate::checkSum() {
     ESP_LOGV("chkSum", "controling chkSum should be: %02X ", packetCheckSum);
 
     for (int i = 0;i < this->dataLength + 5;i++) {
-        ESP_LOGV("chkSum", "adding %02X to %02X --> ", this->storedInputData[i], processedCS, processedCS + this->storedInputData[i]);
+        ESP_LOGV("chkSum", "adding %02X to %03X --> %X", this->storedInputData[i], processedCS, processedCS + this->storedInputData[i]);
         processedCS += this->storedInputData[i];
     }
 
@@ -530,7 +530,11 @@ void CN105Climate::checkFanSettings(heatpumpSettings& settings) {
         } else { //case "AUTO" or default:
             this->fan_mode = climate::CLIMATE_FAN_AUTO;
         }
-        ESP_LOGD(TAG, "Fan mode is: %i", this->fan_mode);
+        if (this->fan_mode.has_value()) {
+            ESP_LOGD(TAG, "Fan mode is: %i", static_cast<int>(this->fan_mode.value()));
+        } else {
+            ESP_LOGD(TAG, "Fan mode is not set");
+        }
     }
 }
 void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings) {

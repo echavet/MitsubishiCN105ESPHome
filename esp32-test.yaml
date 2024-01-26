@@ -13,11 +13,6 @@ esp32:
     #type: arduino
 
 
-uart:
-  id: HP_UART
-  baud_rate: 2400
-  tx_pin: 0
-  rx_pin: 3
   
     
 
@@ -31,17 +26,17 @@ uart:
 # Enable logging
 logger:  
   hardware_uart: UART0
-  level: INFO
-  logs:
-    CN105Climate: WARN
-    CN105: WARN
-    climate: WARN
-    sensor: WARN
-    chkSum : INFO
-    WRITE : WARN
-    READ : WARN
-    Header: INFO
-    Decoder : WARN
+  level: VERBOSE
+  # logs:
+  #   CN105Climate: WARN
+  #   CN105: WARN
+  #   climate: WARN
+  #   sensor: WARN
+  #   chkSum : INFO
+  #   WRITE : WARN
+  #   READ : WARN
+  #   Header: INFO
+  #   Decoder : WARN
     
 
 # Enable Home Assistant API
@@ -142,13 +137,19 @@ sensor:
   #   lambda: |-
   #     return(id(clim_sejour).get_compressor_frequency());
 
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: 0
+  rx_pin: 3
+  
 # Configuration pour l'objet 'climate'
 climate:
   - platform: cn105  # remplis avec la plateforme de ton choix
     name: ${friendly_name}
     id: "clim_sejour"
-    baud_rate: 2400
-    #hardware_uart: UART1
+    # baud_rate: 2400
+    # hardware_uart: UART1
     update_interval: 10s         # shouldn't be less than 4 seconds
     # Ajoute d'autres paramètres spécifiques à ton matériel et tes besoins
 
