@@ -106,8 +106,6 @@ logger:
   hardware_uart: UART1
 ```
 
-For ESP32, change `hardware_uart` to `UART1` or `UART2` to keep logging enabled on the main serial port.
-
 ## Example Configuration:
 
 Below is a sample configuration including wireless strength indicators and OTA updates. You'll need a `secrets.yaml` file with the necessary credentials.
@@ -163,6 +161,87 @@ climate:
     # the espHome scheduler to program the heatpump requests at the given interval.
     # 3 requests are sent each update_interval with an interval of update_interval/4 or 300ms.
     update_interval: 4s
+```
+
+
+## External temperature
+
+This example uses a homeassistant sensor to update the room temperature and uses esp32 with esp-idf framework which allows to keep logging enabled on the main serial port while another UART is configured for the heatpump connection.
+
+```yaml
+substitutions:
+  name: "esp32-hp"
+  friendly_name: Clim Sejour
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:    
+  level: INFO
+  logs:
+    EVT_SETS : INFO
+    WIFI : INFO
+    MQTT : INFO
+    WRITE_SETTINGS : INFO
+    SETTINGS : INFO
+    STATUS : INFO
+    CN105Climate: WARN
+    CN105: INFO
+    climate: WARN
+    sensor: WARN
+    chkSum : INFO
+    WRITE : WARN
+    READ : WARN
+    Header: INFO
+    Decoder : INFO
+    CONTROL_WANTED_SETTINGS: INFO
+
+api:
+  services:    
+    - service: set_remote_temperature
+      variables:
+        temperature: float
+      then:
+        - lambda: 'id(esp32_clim).set_remote_temperature(temperature);'
+
+    - service: use_internal_temperature
+      then:
+        - lambda: 'id(esp32_clim).set_remote_temperature(0);'
+  encryption:
+    key: !secret encryption_key
+
+ota:  
+  password: !secret ota_pwd
+sensor:
+  - platform: homeassistant
+    id: ha_cdeg_sejour_et_cuisine
+    entity_id: sensor.cdeg_sejour_et_cuisine
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            id(esp32_clim).set_remote_temperature(x);
+
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+
+climate:
+  - platform: cn105  
+    name: ${friendly_name}
+    id: "esp32_clim"
+    compressor_frequency_sensor:
+      name: Compressor frequency (clim Sejour)    
+    update_interval: 10s         # shouldn't be less than 1 second
 ```
 
 For more configuration options, see the provided hp-debug.yaml and hp-sejour.yaml examples or refer to the original project.
