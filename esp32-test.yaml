@@ -1,6 +1,6 @@
 substitutions:
-  name: "hpsejour"
-  friendly_name: Climatisation Séjour
+  name: "esp32-hp"
+  friendly_name: ESP32 Climatisation
 
 esphome:
   name: ${name}
@@ -13,30 +13,33 @@ esp32:
     #type: arduino
 
 
-  
-    
-
-# mqtt:  
-#   broker: 10.1.101.172
-#   username: heatpumpSejour
-#   password: !secret mqtt_password
-#   discovery: true
+mqtt:  
+  broker: homeassistant.local
+  username: heatpumpSejour
+  password: !secret mqtt_password
+  discovery: true
   
 
 # Enable logging
-logger:  
-  hardware_uart: UART0
-  level: VERBOSE
-  # logs:
-  #   CN105Climate: WARN
-  #   CN105: WARN
-  #   climate: WARN
-  #   sensor: WARN
-  #   chkSum : INFO
-  #   WRITE : WARN
-  #   READ : WARN
-  #   Header: INFO
-  #   Decoder : WARN
+logger:    
+  level: INFO
+  logs:
+    EVT_SETS : INFO
+    WIFI : INFO
+    MQTT : INFO
+    WRITE_SETTINGS : INFO
+    SETTINGS : INFO
+    STATUS : INFO
+    CN105Climate: WARN
+    CN105: INFO
+    climate: WARN
+    sensor: WARN
+    chkSum : INFO
+    WRITE : WARN
+    READ : WARN
+    Header: INFO
+    Decoder : INFO
+    CONTROL_WANTED_SETTINGS: INFO
     
 
 # Enable Home Assistant API
@@ -46,11 +49,11 @@ api:
       variables:
         temperature: float
       then:
-        - lambda: 'id(clim_sejour).set_remote_temperature(temperature);'
+        - lambda: 'id(esp32_clim).set_remote_temperature(temperature);'
 
     - service: use_internal_temperature
       then:
-        - lambda: 'id(clim_sejour).set_remote_temperature(0);'
+        - lambda: 'id(esp32_clim).set_remote_temperature(0);'
   encryption:
     key: !secret encryption_key
 
@@ -127,7 +130,7 @@ sensor:
   #   name: Operating (Clim)
   #   update_interval: 10s
   #   lambda: |-
-  #     return(id(clim_sejour).is_operating());
+  #     return(id(esp32_clim).is_operating());
   
   # Etat de l'attribut compressor°frequency décodé dans les trames de réponse du clim
   # généré dynamiquement dans le code de la clim
@@ -135,19 +138,19 @@ sensor:
   #   name: Compressor Frequency (Clim)
   #   update_interval: 10s
   #   lambda: |-
-  #     return(id(clim_sejour).get_compressor_frequency());
+  #     return(id(esp32_clim).get_compressor_frequency());
 
 uart:
   id: HP_UART
   baud_rate: 2400
-  tx_pin: 1
-  rx_pin: 3
+  tx_pin: GPIO17
+  rx_pin: GPIO16
 
 # Configuration pour l'objet 'climate'
 climate:
   - platform: cn105  # remplis avec la plateforme de ton choix
     name: ${friendly_name}
-    id: "clim_sejour"
+    id: "esp32_clim"
     # baud_rate: 2400
     # hardware_uart: UART1
     update_interval: 10s         # shouldn't be less than 4 seconds
@@ -165,11 +168,11 @@ climate:
 #     turn_on_action:
 #       - lambda: |-
 #           // Appelle la méthode 'setupUART' quand le switch est activé
-#           id(clim_sejour).setupUART();
+#           id(esp32_clim).setupUART();
 #     turn_off_action:
 #       - lambda: |-
 #           // Appelle la méthode 'setupUART' quand le switch est activé
-#           id(clim_sejour).disconnectUART();
+#           id(esp32_clim).disconnectUART();
 
 #   - platform: template
 #     name: Send 1st packet to ${name}
@@ -179,7 +182,7 @@ climate:
 #     optimistic: true
 #     turn_on_action:
 #       - lambda: |-          
-#           id(clim_sejour).sendFirstConnectionPacket();    
+#           id(esp32_clim).sendFirstConnectionPacket();    
   
 #   - platform: template
 #     name: Requests ${name} Synchro
@@ -189,4 +192,4 @@ climate:
 #     optimistic: true    
 #     turn_on_action:
 #       - lambda: |-          
-#           id(clim_sejour).buildAndSendRequestsInfoPackets(); 
+#           id(esp32_clim).buildAndSendRequestsInfoPackets(); 

@@ -99,9 +99,8 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
 void CN105Climate::createPacket(uint8_t* packet, heatpumpSettings settings) {
     prepareSetPacket(packet, PACKET_LEN);
 
-    ESP_LOGD(TAG, "checking differences bw asked settings and current ones...");
-
-
+    //ESP_LOGD(TAG, "checking differences bw asked settings and current ones...");
+    ESP_LOGD(TAG, "building packet for writing...");
 
     //if (this->hasChanged(currentSettings.power, settings.power, "power (wantedSettings)")) {
     ESP_LOGD(TAG, "power is always set -> %s", settings.power);
@@ -110,34 +109,39 @@ void CN105Climate::createPacket(uint8_t* packet, heatpumpSettings settings) {
     //}
 
     //if (this->hasChanged(currentSettings.mode, settings.mode, "mode (wantedSettings)")) {
-    ESP_LOGD(TAG, "heatpump mode changed -> %s", settings.mode);
+    ESP_LOGD(TAG, "heatpump mode -> %s", settings.mode);
     packet[9] = MODE[lookupByteMapIndex(MODE_MAP, 5, settings.mode)];
     packet[6] += CONTROL_PACKET_1[1];
     //}
     //if (!tempMode && settings.temperature != currentSettings.temperature) {
     if (!tempMode) {
-        ESP_LOGD(TAG, "temperature changed (tempmode is false) -> %f", settings.temperature);
+        ESP_LOGD(TAG, "temperature (tempmode is false) -> %f", settings.temperature);
         packet[10] = TEMP[lookupByteMapIndex(TEMP_MAP, 16, settings.temperature)];
         packet[6] += CONTROL_PACKET_1[2];
         //} else if (tempMode && settings.temperature != currentSettings.temperature) {
     } else {
-        ESP_LOGD(TAG, "temperature changed (tempmode is true) -> %f", settings.temperature);
+        ESP_LOGD(TAG, "temperature (tempmode is true) -> %f", settings.temperature);
         float temp = (settings.temperature * 2) + 128;
         packet[19] = (int)temp;
         packet[6] += CONTROL_PACKET_1[2];
     }
 
     //if (this->hasChanged(currentSettings.fan, settings.fan, "fan (wantedSettings)")) {
-    ESP_LOGD(TAG, "heatpump fan changed -> %s", settings.fan);
+    ESP_LOGD(TAG, "heatpump fan -> %s", settings.fan);
     packet[11] = FAN[lookupByteMapIndex(FAN_MAP, 6, settings.fan)];
     packet[6] += CONTROL_PACKET_1[3];
     //}
 
     //if (this->hasChanged(currentSettings.vane, settings.vane, "vane (wantedSettings)")) {
-    ESP_LOGD(TAG, "heatpump vane changed -> %s", settings.vane);
+    ESP_LOGD(TAG, "heatpump vane -> %s", settings.vane);
     packet[12] = VANE[lookupByteMapIndex(VANE_MAP, 7, settings.vane)];
     packet[6] += CONTROL_PACKET_1[4];
     //}
+
+    ESP_LOGD(TAG, "heatpump widevane -> %s", settings.wideVane);
+    packet[18] = WIDEVANE[lookupByteMapIndex(WIDEVANE_MAP, 7, settings.wideVane)] | (wideVaneAdj ? 0x80 : 0x00);
+    packet[7] += CONTROL_PACKET_2[0];
+
 
     // add the checksum
     uint8_t chkSum = checkSum(packet, 21);
@@ -262,20 +266,21 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
 
         if (this->isHeatpumpConnected_) {
 
-            uint32_t interval = 300;
+            uint32_t interval_max = 600;
             if (this->update_interval_ > 0) {
-                // we get the max interval of update_interval_ / 4 or interval (300)
-                interval = (this->update_interval_ / 4) > interval ? interval : (this->update_interval_ / 4);
+                // we get the max interval of update_interval_ / 4 or interval (600)
+                interval_max = (this->update_interval_ / 4) > interval_max ? interval_max : (this->update_interval_ / 4);
+
             }
 
-            ESP_LOGD(TAG, "buildAndSendRequestsInfoPackets: sending 3 request packet at interval: %d", interval);
+            ESP_LOGD(TAG, "buildAndSendRequestsInfoPackets: sending 3 request packet at interval: %d", interval_max);
 
             ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
             this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
-            this->set_timeout("2ndPacket", interval, [this, interval]() {
+            this->set_timeout("2ndPacket", interval_max, [this, interval_max]() {
                 ESP_LOGD(TAG, "sending a request room temp packet (0x03)");
                 this->buildAndSendRequestPacket(RQST_PKT_ROOM_TEMP);
-                this->set_timeout("3rdPacket", interval, [this]() {
+                this->set_timeout("3rdPacket", interval_max, [this]() {
                     ESP_LOGD(TAG, "sending a request status paquet (0x06)");
                     this->buildAndSendRequestPacket(RQST_PKT_STATUS);
                     });

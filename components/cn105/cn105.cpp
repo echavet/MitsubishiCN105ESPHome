@@ -52,6 +52,10 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->tx_pin_ = -1;
     this->rx_pin_ = -1;
 
+    this->horizontal_vane_select_ = nullptr;
+    this->vertical_vane_select_ = nullptr;
+    this->compressor_frequency_sensor_ = nullptr;
+
     this->generateExtraComponents();
 
 }
@@ -110,6 +114,7 @@ void CN105Climate::disconnectUART() {
 
     this->isHeatpumpConnected_ = false;
     this->isConnected_ = false;
+    this->firstRun = true;
     this->cancel_timeout(SHEDULER_INTERVAL_SYNC_NAME);
     this->publish_state();
 

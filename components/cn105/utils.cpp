@@ -35,7 +35,7 @@ bool CN105Climate::isWantedSettingApplied(const char* wantedSettingProp, const c
 }
 
 
-const char* getIfNotNull(const char* what, const char* defaultValue) {
+const char* CN105Climate::getIfNotNull(const char* what, const char* defaultValue) {
     if (what == NULL) {
         return defaultValue;
     }

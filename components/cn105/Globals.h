@@ -7,8 +7,8 @@
 #endif
 
 #define CUSTOM_MILLIS ::millis()
-#define MAX_DATA_BYTES     64       // max number of data bytes in incoming messages
-#define MAX_DELAY_RESPONSE_FACTOR 3    // 30 seconds max without response
+#define MAX_DATA_BYTES     64         // max number of data bytes in incoming messages
+#define MAX_DELAY_RESPONSE_FACTOR 10  // update_interval*10 seconds max without response
 
 
 static const char* LOG_ACTION_EVT_TAG = "EVT_SETS";
@@ -212,7 +212,7 @@ struct heatpumpStatus {
     bool operator==(const heatpumpStatus& other) const {
         return roomTemperature == other.roomTemperature &&
             operating == other.operating &&
-            timers == other.timers &&  // Assurez-vous que l'opérateur == est également défini pour heatpumpTimers
+            //timers == other.timers &&  // Assurez-vous que l'opérateur == est également défini pour heatpumpTimers
             compressorFrequency == other.compressorFrequency;
     }
 
