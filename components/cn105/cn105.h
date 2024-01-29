@@ -76,6 +76,11 @@ public:
     // set_remote_temp(0) to switch back to the internal sensor.
     void set_remote_temperature(float);
 
+    void set_remote_temp_timeout(uint32_t timeout);
+
+    // this is the ping or heartbeat of the setRemotetemperature for timeout management
+    void setExternalTemperatureCheckout();
+
     uint32_t get_update_interval() const;
     void set_update_interval(uint32_t update_interval);
 
@@ -194,6 +199,7 @@ private:
 
     unsigned long lastResponseMs;
 
+    uint32_t remote_temp_timeout_;
 
     int baud_ = 0;
     int tx_pin_ = -1;

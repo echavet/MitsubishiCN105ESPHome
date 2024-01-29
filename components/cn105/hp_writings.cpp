@@ -371,4 +371,7 @@ void CN105Climate::set_remote_temperature(float setting) {
     writePacket(packet, PACKET_LEN);
     // optimistic
     this->currentStatus.roomTemperature = setting;
+
+    // this resets the timeout
+    this->setExternalTemperatureCheckout();
 }

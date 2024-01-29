@@ -18,6 +18,7 @@ static const char* LOG_STATUS_TAG = "STATUS"; // Logging tag
 
 static const char* SHEDULER_INTERVAL_SYNC_NAME = "hp->sync"; // name of the scheduler to prpgram hp updates
 static const char* DEFER_SHEDULER_INTERVAL_SYNC_NAME = "hp->sync_defer"; // name of the scheduler to prpgram hp updates
+static const char* SHEDULER_REMOTE_TEMP_TIMEOUT = "->remote_temp_timeout";
 
 static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 500;
 static const int PACKET_LEN = 22;

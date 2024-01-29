@@ -28,12 +28,9 @@ DEFAULT_FAN_MODES = ["AUTO", "QUIET", "LOW", "MEDIUM", "HIGH"]
 DEFAULT_SWING_MODES = ["OFF", "VERTICAL", "HORIZONTAL", "BOTH"]
 
 
-# Déclaration des constantes pour TX et RX pin
-CONF_TX_PIN = "tx_pin"
-CONF_RX_PIN = "rx_pin"
-
 CN105Climate = cg.global_ns.class_("CN105Climate", climate.Climate, cg.Component)
 
+CONF_REMOTE_TEMP_TIMEOUT = "remote_temperature_timeout"
 
 VaneOrientationSelect = cg.global_ns.class_(
     "VaneOrientationSelect", select.Select, cg.Component
@@ -79,6 +76,7 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
         cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
         cv.Optional(CONF_VERTICAL_SWING_SELECT): SELECT_SCHEMA,
         cv.Optional(CONF_COMPRESSOR_FREQUENCY_SENSOR): SENSOR_SCHEMA,
+        cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.update_interval,
         # Optionally override the supported ClimateTraits.
         cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
             {
@@ -123,6 +121,9 @@ def to_code(config):
 
     for mode in supports[CONF_SWING_MODE]:
         cg.add(traits.add_supported_swing_mode(climate.CLIMATE_SWING_MODES[mode]))
+
+    if CONF_REMOTE_TEMP_TIMEOUT in config:
+        var.set_remote_temp_timeout(config[CONF_REMOTE_TEMP_TIMEOUT])
 
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf = config[CONF_HORIZONTAL_SWING_SELECT]
