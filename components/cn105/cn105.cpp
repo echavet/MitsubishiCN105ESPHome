@@ -52,6 +52,12 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->tx_pin_ = -1;
     this->rx_pin_ = -1;
 
+    this->horizontal_vane_select_ = nullptr;
+    this->vertical_vane_select_ = nullptr;
+    this->compressor_frequency_sensor_ = nullptr;
+
+    this->remote_temp_timeout_ = 4294967295;    // uint32_t max
+
     this->generateExtraComponents();
 
 }
@@ -70,6 +76,23 @@ void CN105Climate::set_tx_rx_pins(uint8_t tx_pin, uint8_t rx_pin) {
     this->rx_pin_ = rx_pin;
     ESP_LOGI(TAG, "setting tx_pin: %d rx_pin: %d", tx_pin, rx_pin);
 
+}
+
+void CN105Climate::setExternalTemperatureCheckout() {
+    this->set_timeout(SHEDULER_REMOTE_TEMP_TIMEOUT, this->remote_temp_timeout_, [this]() {
+        ESP_LOGW(LOG_ACTION_EVT_TAG, "Remote temperature timeout occured, fall back to internal temperature!");
+        this->set_remote_temperature(0);
+        });
+}
+
+void CN105Climate::set_remote_temp_timeout(uint32_t timeout) {
+    this->remote_temp_timeout_ = timeout;
+    if (timeout == 4294967295) {
+        ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to never.");
+    } else {
+        ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to %d", timeout);
+        this->setExternalTemperatureCheckout();
+    }
 }
 
 int CN105Climate::get_compressor_frequency() {
@@ -110,6 +133,7 @@ void CN105Climate::disconnectUART() {
 
     this->isHeatpumpConnected_ = false;
     this->isConnected_ = false;
+    this->firstRun = true;
     this->cancel_timeout(SHEDULER_INTERVAL_SYNC_NAME);
     this->publish_state();
 

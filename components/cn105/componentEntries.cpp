@@ -16,20 +16,7 @@ void CN105Climate::setup() {
     this->fan_mode = climate::CLIMATE_FAN_OFF;
     this->swing_mode = climate::CLIMATE_SWING_OFF;
     this->initBytePointer();
-
-    /* ESP_LOGI(
-         TAG,
-         "hw_serial(%p) is &Serial(%p)? %s",
-         this->get_hw_serial_(),
-         &Serial,
-         YESNO(this->get_hw_serial_() == &Serial)
-     );*/
-
-    ESP_LOGI(TAG, "bauds: %d", this->baud_);
-
-    //check_logger_conflict_ is called from the UART abstraction
-    //this->check_logger_conflict_();
-
+    this->lastResponseMs = CUSTOM_MILLIS;
     this->setupUART();
     this->sendFirstConnectionPacket();
 }

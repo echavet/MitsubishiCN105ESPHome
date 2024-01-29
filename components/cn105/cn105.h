@@ -1,24 +1,42 @@
 #pragma once
 #include "Globals.h"
 #include "heatpumpFunctions.h"
+#include "van_orientation_select.h"
 
 using namespace esphome;
 
-class VaneOrientationSelect;  // Déclaration anticipée, définie dans extraComponents
+//class VaneOrientationSelect;  // Déclaration anticipée, définie dans extraComponents
 
 
 
 class CN105Climate : public climate::Climate, public Component, public uart::UARTDevice {
 
-    friend class VaneOrientationSelect;
+    //friend class VaneOrientationSelect;
 
 public:
 
     CN105Climate(uart::UARTComponent* hw_serial);
 
-    sensor::Sensor* compressor_frequency_sensor;
+
+    void set_vertical_vane_select(VaneOrientationSelect* vertical_vane_select);
+    void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select);
+    void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);
+
+    //sensor::Sensor* compressor_frequency_sensor;
     binary_sensor::BinarySensor* iSee_sensor;
-    select::Select* van_orientation;
+    //select::Select* van_orientation;
+
+
+    VaneOrientationSelect* vertical_vane_select_ =
+        nullptr;  // Select to store manual position of vertical swing
+    VaneOrientationSelect* horizontal_vane_select_ =
+        nullptr;  // Select to store manual position of horizontal swing
+    sensor::Sensor* compressor_frequency_sensor_ =
+        nullptr;  // Sensor to store compressor frequency
+
+    // When received command to change the vane positions
+    void on_horizontal_swing_change(const std::string& swing);
+    void on_vertical_swing_change(const std::string& swing);
 
     //text_sensor::TextSensor* last_sent_packet_sensor;
     //text_sensor::TextSensor* last_received_packet_sensor;
@@ -57,6 +75,11 @@ public:
     // Use the temperature from an external sensor. Use
     // set_remote_temp(0) to switch back to the internal sensor.
     void set_remote_temperature(float);
+
+    void set_remote_temp_timeout(uint32_t timeout);
+
+    // this is the ping or heartbeat of the setRemotetemperature for timeout management
+    void setExternalTemperatureCheckout();
 
     uint32_t get_update_interval() const;
     void set_update_interval(uint32_t update_interval);
@@ -98,6 +121,8 @@ public:
         return (int)(temp + 0.5);
     }
 
+    const char* getIfNotNull(const char* what, const char* defaultValue);
+
 protected:
     // HeatPump object using the underlying Arduino library.
     // same as PolingComponent
@@ -115,6 +140,10 @@ protected:
     void initBytePointer();
     void processDataPacket();
     void getDataFromResponsePacket();
+    void getSettingsFromResponsePacket();
+    void getRoomTemperatureFromResponsePacket();
+    void getOperatingAndCompressorFreqFromResponsePacket();
+
     void programUpdateInterval();
     void updateSuccess();
     void processCommand();
@@ -150,6 +179,7 @@ private:
     void checkPowerAndModeSettings(heatpumpSettings& settings);
     void checkFanSettings(heatpumpSettings& settings);
     void checkVaneSettings(heatpumpSettings& settings);
+    void updateExtraSelectComponents(heatpumpSettings& settings);
 
     void statusChanged();
     void updateAction();
@@ -169,6 +199,7 @@ private:
 
     unsigned long lastResponseMs;
 
+    uint32_t remote_temp_timeout_;
 
     int baud_ = 0;
     int tx_pin_ = -1;

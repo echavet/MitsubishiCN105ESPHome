@@ -124,97 +124,105 @@ void CN105Climate::processDataPacket() {
         processCommand();
     }
 }
-void CN105Climate::getDataFromResponsePacket() {
+
+void CN105Climate::getSettingsFromResponsePacket() {
+    heatpumpSettings receivedSettings{};
+    ESP_LOGD("Decoder", "[0x02 is settings]");
+    //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");        
+    receivedSettings.connected = true;      // we're here so we're connected (actually not used property)
+    receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3]);
+    receivedSettings.iSee = data[4] > 0x08 ? true : false;
+    receivedSettings.mode = lookupByteMapValue(MODE_MAP, MODE, 5, receivedSettings.iSee ? (data[4] - 0x08) : data[4]);
+
+    ESP_LOGD("Decoder", "[Power : %s]", receivedSettings.power);
+    ESP_LOGD("Decoder", "[iSee  : %d]", receivedSettings.iSee);
+    ESP_LOGD("Decoder", "[Mode  : %s]", receivedSettings.mode);
+
+    if (data[11] != 0x00) {
+        int temp = data[11];
+        temp -= 128;
+        receivedSettings.temperature = (float)temp / 2;
+        this->tempMode = true;
+        ESP_LOGD("Decoder", "tempMode is true");
+    } else {
+        receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5]);
+    }
+
+    ESP_LOGD("Decoder", "[Consigne °C: %f]", receivedSettings.temperature);
+
+    receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6]);
+    ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
+
+    receivedSettings.vane = lookupByteMapValue(VANE_MAP, VANE, 7, data[7]);
+    ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
+
+
+    receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F);
+
+
+
+    wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
+
+    ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, wideVaneAdj);
+
+    // moved to settingsChanged()
+    //currentSettings = receivedSettings;
+
+
+    this->iSee_sensor->publish_state(receivedSettings.iSee);
+
+    this->heatpumpUpdate(receivedSettings);
+
+}
+
+void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
     heatpumpStatus receivedStatus{};
-    heatpumpSettings receivedSettings{};
 
+    ESP_LOGD("Decoder", "[0x03 room temperature]");
+    //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");        
 
+    if (data[6] != 0x00) {
+        int temp = data[6];
+        temp -= 128;
+        receivedStatus.roomTemperature = (float)temp / 2;
+    } else {
+        receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
+    }
+    ESP_LOGD("Decoder", "[Room °C: %f]", receivedStatus.roomTemperature);
 
-    bool statusDidChange = false;
+    // no change with this packet to currentStatus for operating and compressorFrequency
+    receivedStatus.operating = currentStatus.operating;
+    receivedStatus.compressorFrequency = currentStatus.compressorFrequency;
+    this->statusChanged(receivedStatus);
+
+}
+void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
+    heatpumpStatus receivedStatus{};
+    ESP_LOGD("Decoder", "[0x06 is status]");
+    //this->last_received_packet_sensor->publish_state("0x62-> 0x06: Data -> Heatpump Status");
+
+    // reset counter (because a reply indicates it is connected)
+    this->nonResponseCounter = 0;
+    receivedStatus.operating = data[4];
+    receivedStatus.compressorFrequency = data[3];
+
+    // no change with this packet to roomTemperature
+    receivedStatus.roomTemperature = currentStatus.roomTemperature;
+    this->statusChanged(receivedStatus);
+}
+
+void CN105Climate::getDataFromResponsePacket() {
 
     switch (this->data[0]) {
-    case 0x02: {            /* setting information */
-        ESP_LOGD("Decoder", "[0x02 is settings]");
-        //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");        
-        receivedSettings.connected = true;      // we're here so we're connected (actually not used property)
-        receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3]);
-        receivedSettings.iSee = data[4] > 0x08 ? true : false;
-        receivedSettings.mode = lookupByteMapValue(MODE_MAP, MODE, 5, receivedSettings.iSee ? (data[4] - 0x08) : data[4]);
+    case 0x02:             /* setting information */
+        this->getSettingsFromResponsePacket();
+        break;
 
-        ESP_LOGD("Decoder", "[Power : %s]", receivedSettings.power);
-        ESP_LOGD("Decoder", "[iSee  : %d]", receivedSettings.iSee);
-        ESP_LOGD("Decoder", "[Mode  : %s]", receivedSettings.mode);
-
-        if (data[11] != 0x00) {
-            int temp = data[11];
-            temp -= 128;
-            receivedSettings.temperature = (float)temp / 2;
-            this->tempMode = true;
-            ESP_LOGD("Decoder", "tempMode is true");
-        } else {
-            receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5]);
-        }
-
-        ESP_LOGD("Decoder", "[Consigne °C: %f]", receivedSettings.temperature);
-
-        receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6]);
-        ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
-
-        receivedSettings.vane = lookupByteMapValue(VANE_MAP, VANE, 7, data[7]);
-        ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
-
-
-        receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F);
-
-
-
-        wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
-
-        ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, wideVaneAdj);
-
-        // moved to settingsChanged()
-        //currentSettings = receivedSettings;
-
-        if (this->firstRun) {
-            this->wantedSettings = receivedSettings;
-            this->wantedSettings.hasChanged = false;
-            this->wantedSettings.hasBeenSent = false;
-            this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
-
-            firstRun = false;
-        }
-        this->iSee_sensor->publish_state(receivedSettings.iSee);
-
-        //this->settingsChanged(receivedSettings, "heatpumpUpdate");
-        this->heatpumpUpdate(receivedSettings);
-
-    }
-
-
-             break;
-    case 0x03: {
+    case 0x03:
         /* room temperature reading */
-        ESP_LOGD("Decoder", "[0x03 room temperature]");
-        //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");        
-
-        if (data[6] != 0x00) {
-            int temp = data[6];
-            temp -= 128;
-            receivedStatus.roomTemperature = (float)temp / 2;
-        } else {
-            receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
-        }
-        ESP_LOGD("Decoder", "[Room °C: %f]", receivedStatus.roomTemperature);
-
-        // no change with this packet to currentStatus for operating and compressorFrequency
-        receivedStatus.operating = currentStatus.operating;
-        receivedStatus.compressorFrequency = currentStatus.compressorFrequency;
-
-        statusDidChange = true;
-
-    }
-             break;
+        this->getRoomTemperatureFromResponsePacket();
+        break;
 
     case 0x04:
         /* unknown */
@@ -228,24 +236,10 @@ void CN105Climate::getDataFromResponsePacket() {
         //this->last_received_packet_sensor->publish_state("0x62-> 0x05: Data -> Timer Packet");
         break;
 
-    case 0x06: {
+    case 0x06:
         /* status */
-        ESP_LOGD("Decoder", "[0x06 is status]");
-        //this->last_received_packet_sensor->publish_state("0x62-> 0x06: Data -> Heatpump Status");
-
-        // reset counter (because a reply indicates it is connected)
-        this->nonResponseCounter = 0;
-        receivedStatus.operating = data[4];
-        receivedStatus.compressorFrequency = data[3];
-
-        // no change with this packet to roomTemperature
-        receivedStatus.roomTemperature = currentStatus.roomTemperature;
-
-
-        statusDidChange = true;
-        // RCVD_PKT_STATUS;
-    }
-             break;
+        this->getOperatingAndCompressorFreqFromResponsePacket();
+        break;
 
     case 0x09:
         /* unknown */
@@ -263,7 +257,6 @@ void CN105Climate::getDataFromResponsePacket() {
                 functions.setData2(&data[1]);
             }
 
-            // RCVD_PKT_FUNCTIONS;
         }
 
     }
@@ -275,9 +268,6 @@ void CN105Climate::getDataFromResponsePacket() {
         break;
     }
 
-    if (statusDidChange) {
-        this->statusChanged(receivedStatus);
-    }
 }
 
 void CN105Climate::updateSuccess() {
@@ -335,21 +325,26 @@ void CN105Climate::processCommand() {
 
 void CN105Climate::statusChanged(heatpumpStatus status) {
 
-    this->debugStatus("received", status);
-
     if (status != currentStatus) {
+        this->debugStatus("received", status);
         this->debugStatus("current", currentStatus);
-    }
 
-    currentStatus.operating = status.operating;
-    currentStatus.compressorFrequency = status.compressorFrequency;
-    currentStatus.roomTemperature = status.roomTemperature;
-    this->current_temperature = currentStatus.roomTemperature;
 
-    this->updateAction();       // update action info on HA climate component
+        currentStatus.operating = status.operating;
+        currentStatus.compressorFrequency = status.compressorFrequency;
+        currentStatus.roomTemperature = status.roomTemperature;
+        this->current_temperature = currentStatus.roomTemperature;
 
-    this->publish_state();
-    this->compressor_frequency_sensor->publish_state(currentStatus.compressorFrequency);
+        this->updateAction();       // update action info on HA climate component
+
+        this->publish_state();
+
+        //this->compressor_frequency_sensor->publish_state(currentStatus.compressorFrequency);
+
+        if (this->compressor_frequency_sensor_ != nullptr) {
+            this->compressor_frequency_sensor_->publish_state(currentStatus.compressorFrequency);
+        }
+    } // else no change
 }
 
 
@@ -396,69 +391,23 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
     // settings correponds to current settings 
     ESP_LOGD(LOG_ACTION_EVT_TAG, "Settings received");
 
-    heatpumpSettings& wanted = wantedSettings;  // for casting purpose
-    if (settings == wanted) {
-        // settings correponds to fresh received settings
-        if (wantedSettings.hasChanged) {
-            ESP_LOGW(LOG_SETTINGS_TAG, "receivedSettings match wanted ones, but wantedSettings.hasChanged is true, setting it to false in settingsChanged method");
-        }
-
-        // no difference wt wantedSettings and received ones
-        // by security tag wantedSettings hasChanged to false
-        wantedSettings.hasChanged = false;
+    if (this->firstRun) {
+        ESP_LOGD(TAG, "first run detected, setting wantedSettings to receivedSettings");
+        this->wantedSettings = settings;
+        this->wantedSettings.hasChanged = false;
         this->wantedSettings.hasBeenSent = false;
-        this->wantedSettings.nb_deffered_requests = 0;
-    } else {
-        this->debugSettings("current", this->currentSettings);
-        this->debugSettings("wanted", this->wantedSettings);
+        this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
 
-        // here wantedSettings and currentSettings are different
-        // we want to know why
-        if (wantedSettings.hasChanged) {
-            this->debugSettings("received", settings);
-            // it's because user did ask a change throuth HA
-            // we have nothing to do, because this change will trigger a packet send from 
-            // the loop() method
-            ESP_LOGW(LOG_ACTION_EVT_TAG, "wantedSettings is true, and we received an info packet");
-        } else {
-
-            // it's because of an IR remote control update
-            this->publishStateToHA(settings);
-            this->debugSettings("receivedIR", settings);
-        }
-    }
-}
-
-/*
-void CN105Climate::settingsChanged(heatpumpSettings settings, const char* source) {
-
-
-    if (strcmp(source, "WantedSettingsUpdateSuccess") == 0) {
-        // settings correponds to fresh wanted settings
-        ESP_LOGD(LOG_ACTION_EVT_TAG, "WantedSettings update success");
-        // update HA states thanks to wantedSettings
+        this->firstRun = false;
+        this->debugSettings("received", settings);
+        this->debugSettings("wanted(==)", this->wantedSettings);
         this->publishStateToHA(settings);
+    } else {
 
-        // as wantedSettings has been received with ACK by the heatpump
-        // we can update the surrentSettings
-        this->currentSettings = this->wantedSettings;
-        this->debugSettings("current", currentSettings);
-    }
-
-    if (strcmp(source, "ExtTempUpdateSuccess")) {
-        // settings correponds to current settings but that's not important
-        ESP_LOGD(LOG_ACTION_EVT_TAG, "External C° update success");
-        // can retreive room °C from currentStatus.roomTemperature because
-        // set_remote_temperature() is optimistic and has recorded it
-        this->current_temperature = currentStatus.roomTemperature;
-    }
-
-    if (strcmp(source, "heatpumpUpdate")) {
-        // settings correponds to current settings
-        ESP_LOGD(LOG_ACTION_EVT_TAG, "Settings received");
 
         heatpumpSettings& wanted = wantedSettings;  // for casting purpose
-        if (wanted == settings) {
+        if (settings == wanted) {
+            ESP_LOGD(LOG_ACTION_EVT_TAG, "settings == wantedSettings");
             // settings correponds to fresh received settings
             if (wantedSettings.hasChanged) {
                 ESP_LOGW(LOG_SETTINGS_TAG, "receivedSettings match wanted ones, but wantedSettings.hasChanged is true, setting it to false in settingsChanged method");
@@ -467,23 +416,31 @@ void CN105Climate::settingsChanged(heatpumpSettings settings, const char* source
             // no difference wt wantedSettings and received ones
             // by security tag wantedSettings hasChanged to false
             wantedSettings.hasChanged = false;
+            this->wantedSettings.hasBeenSent = false;
             this->wantedSettings.nb_deffered_requests = 0;
         } else {
+            this->debugSettings("current", this->currentSettings);
+            this->debugSettings("wanted", this->wantedSettings);
+
             // here wantedSettings and currentSettings are different
             // we want to know why
             if (wantedSettings.hasChanged) {
+                this->debugSettings("received", settings);
                 // it's because user did ask a change throuth HA
-                // we have nothing to do, because this change will trigger a packet send from
+                // we have nothing to do, because this change will trigger a packet send from 
                 // the loop() method
                 ESP_LOGW(LOG_ACTION_EVT_TAG, "wantedSettings is true, and we received an info packet");
             } else {
+
                 // it's because of an IR remote control update
+                // or because the heatpump does not support one of the last wantedSetting order which causes rollback
                 this->publishStateToHA(settings);
                 this->debugSettings("receivedIR", settings);
             }
         }
     }
-}*/
+}
+
 
 void CN105Climate::checkVaneSettings(heatpumpSettings& settings) {
 
@@ -518,9 +475,25 @@ void CN105Climate::checkVaneSettings(heatpumpSettings& settings) {
         ESP_LOGD(TAG, "Swing mode is: %i", this->swing_mode);
     }
 
-    if (this->hasChanged(this->van_orientation->state.c_str(), settings.vane, "select vane")) {
+    /*if (this->hasChanged(this->van_orientation->state.c_str(), settings.vane, "select vane")) {
         ESP_LOGI(TAG, "vane setting (extra select component) changed");
         this->van_orientation->publish_state(currentSettings.vane);
+    }*/
+
+    updateExtraSelectComponents(settings);
+}
+void CN105Climate::updateExtraSelectComponents(heatpumpSettings& settings) {
+    if (this->vertical_vane_select_ != nullptr) {
+        if (this->hasChanged(this->vertical_vane_select_->state.c_str(), settings.vane, "select vane")) {
+            ESP_LOGI(TAG, "vane setting (extra select component) changed");
+            this->vertical_vane_select_->publish_state(currentSettings.vane);
+        }
+    }
+    if (this->horizontal_vane_select_ != nullptr) {
+        if (this->hasChanged(this->horizontal_vane_select_->state.c_str(), settings.vane, "select wideVane")) {
+            ESP_LOGI(TAG, "widevane setting (extra select component) changed");
+            this->horizontal_vane_select_->publish_state(currentSettings.wideVane);
+        }
     }
 }
 void CN105Climate::checkFanSettings(heatpumpSettings& settings) {

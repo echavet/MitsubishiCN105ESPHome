@@ -7,8 +7,8 @@
 #endif
 
 #define CUSTOM_MILLIS ::millis()
-#define MAX_DATA_BYTES     64       // max number of data bytes in incoming messages
-#define MAX_DELAY_RESPONSE_FACTOR 3    // 30 seconds max without response
+#define MAX_DATA_BYTES     64         // max number of data bytes in incoming messages
+#define MAX_DELAY_RESPONSE_FACTOR 10  // update_interval*10 seconds max without response
 
 
 static const char* LOG_ACTION_EVT_TAG = "EVT_SETS";
@@ -18,6 +18,7 @@ static const char* LOG_STATUS_TAG = "STATUS"; // Logging tag
 
 static const char* SHEDULER_INTERVAL_SYNC_NAME = "hp->sync"; // name of the scheduler to prpgram hp updates
 static const char* DEFER_SHEDULER_INTERVAL_SYNC_NAME = "hp->sync_defer"; // name of the scheduler to prpgram hp updates
+static const char* SHEDULER_REMOTE_TEMP_TIMEOUT = "->remote_temp_timeout";
 
 static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 500;
 static const int PACKET_LEN = 22;
@@ -212,7 +213,7 @@ struct heatpumpStatus {
     bool operator==(const heatpumpStatus& other) const {
         return roomTemperature == other.roomTemperature &&
             operating == other.operating &&
-            timers == other.timers &&  // Assurez-vous que l'opérateur == est également défini pour heatpumpTimers
+            //timers == other.timers &&  // Assurez-vous que l'opérateur == est également défini pour heatpumpTimers
             compressorFrequency == other.compressorFrequency;
     }
 

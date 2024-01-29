@@ -12,24 +12,24 @@ esp8266:
 
 
 
-mqtt:  
-  broker: homeassistant.local
-  username: heatpumpSejour
-  password: !secret mqtt_password
-  discovery: true
+# mqtt:  
+#   broker: homeassistant.local
+#   username: heatpumpSejour
+#   password: !secret mqtt_password
+#   discovery: true
 
 
 
 # Enable logging
 logger:  
   hardware_uart: UART1
-  level: DEBUG
+  level: INFO
   logs:
-    EVT_SETS : DEBUG
+    EVT_SETS : INFO
     WIFI : INFO
     MQTT : INFO
-    WRITE_SETTINGS : DEBUG
-    SETTINGS : DEBUG
+    WRITE_SETTINGS : INFO
+    SETTINGS : INFO
     STATUS : INFO
     CN105Climate: WARN
     CN105: INFO
@@ -39,8 +39,26 @@ logger:
     WRITE : WARN
     READ : WARN
     Header: INFO
-    Decoder : WARN
-    CONTROL_WANTED_SETTINGS: DEBUG
+    Decoder : INFO
+    CONTROL_WANTED_SETTINGS: INFO
+  # level: DEBUG
+  # logs:
+  #   EVT_SETS : DEBUG
+  #   WIFI : INFO
+  #   MQTT : INFO
+  #   WRITE_SETTINGS : DEBUG
+  #   SETTINGS : DEBUG
+  #   STATUS : INFO
+  #   CN105Climate: WARN
+  #   CN105: DEBUG
+  #   climate: WARN
+  #   sensor: WARN
+  #   chkSum : INFO
+  #   WRITE : WARN
+  #   READ : WARN
+  #   Header: INFO
+  #   Decoder : DEBUG
+  #   CONTROL_WANTED_SETTINGS: DEBUG
 
 # Enable Home Assistant API
 api:
@@ -141,6 +159,48 @@ climate:
   - platform: cn105  # remplis avec la plateforme de ton choix
     name: ${friendly_name}
     id: "clim_sejour"    
-    update_interval: 10s         # shouldn't be less than 1 second
-    # Ajoute d'autres paramètres spécifiques à ton matériel et tes besoins
+    update_interval: 2s         # shouldn't be less than 1 second
+    # horizontal_vane_select:
+    #   name: ${name} Horizontal Vane
+    #   id: "clim_sejour_horizontal_vane"
+    vertical_vane_select:
+      name: ${name} Vertical Vane
+      id: "clim_sejour_vertical_vane"
+    compressor_frequency_sensor:
+      name: ${name} Compressor Frequency
+      id: "clim_sejour_compressor_frequency"
+    
+    # Configuration pour l'objet 'switch' (bouton)
+switch:
+  - platform: template
+    name: ${name} UART Setup Switch
+    id: uart_setup_switch
+    #setup_priority : -100.0 ## late
+    optimistic: true
+    turn_on_action:
+      - lambda: |-
+          // Appelle la méthode 'setupUART' quand le switch est activé
+          id(clim_sejour).setupUART();
+    turn_off_action:
+      - lambda: |-
+          // Appelle la méthode 'setupUART' quand le switch est activé
+          id(clim_sejour).disconnectUART();
+
+  - platform: template
+    name: Send 1st packet to ${name}
+    id: send_packet_switch
+    #setup_priority : -100.0 ## late
+    optimistic: true
+    turn_on_action:
+      - lambda: |-          
+          id(clim_sejour).sendFirstConnectionPacket();    
+  
+  # - platform: template
+  #   name: Requests ${name} Synchro
+  #   id: build_and_send_requests_info_packets
+  #   #setup_priority : -100.0 ## late
+  #   optimistic: true    
+  #   turn_on_action:
+  #     - lambda: |-          
+  #         id(clim_sejour).buildAndSendRequestsInfoPackets(); 
 

@@ -1,7 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import climate, uart
-from esphome.components import select
+from esphome.components import climate, uart, select, sensor
+
 from esphome.components.logger import HARDWARE_UART_TO_SERIAL
 from esphome.components.uart import UARTParityOptions
 
@@ -18,27 +18,27 @@ from esphome.core import CORE, coroutine
 AUTO_LOAD = ["climate", "sensor", "select", "binary_sensor", "text_sensor", "uart"]
 
 CONF_SUPPORTS = "supports"
-DEFAULT_CLIMATE_MODES = ["HEAT_COOL", "COOL", "HEAT", "DRY", "FAN_ONLY"]
+# from https://github.com/wrouesnel/esphome-mitsubishiheatpump/blob/master/components/mitsubishi_heatpump/climate.py
+CONF_HORIZONTAL_SWING_SELECT = "horizontal_vane_select"
+CONF_VERTICAL_SWING_SELECT = "vertical_vane_select"
+CONF_COMPRESSOR_FREQUENCY_SENSOR = "compressor_frequency_sensor"
+
+DEFAULT_CLIMATE_MODES = ["COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "QUIET", "LOW", "MEDIUM", "HIGH"]
 DEFAULT_SWING_MODES = ["OFF", "VERTICAL", "HORIZONTAL", "BOTH"]
 
-# from https://github.com/wrouesnel/esphome-mitsubishiheatpump/blob/master/components/mitsubishi_heatpump/climate.py
-# HORIZONTAL_SWING_OPTIONS = [
-#     "AUTO",
-#     "SWING",
-#     "LEFT",
-#     "LEFT_CENTER",
-#     "CENTER",
-#     "RIGHT_CENTER",
-#     "RIGHT",
-# ]
-
-
-# Déclaration des constantes pour TX et RX pin
-CONF_TX_PIN = "tx_pin"
-CONF_RX_PIN = "rx_pin"
 
 CN105Climate = cg.global_ns.class_("CN105Climate", climate.Climate, cg.Component)
+
+CONF_REMOTE_TEMP_TIMEOUT = "remote_temperature_timeout"
+
+VaneOrientationSelect = cg.global_ns.class_(
+    "VaneOrientationSelect", select.Select, cg.Component
+)
+
+CompressorFrequencySensor = cg.global_ns.class_(
+    "CompressorFrequencySensor", sensor.Sensor, cg.Component
+)
 
 
 def valid_uart(uart):
@@ -52,6 +52,15 @@ def valid_uart(uart):
     return cv.one_of(*uarts, upper=True)(uart)
 
 
+SELECT_SCHEMA = select.SELECT_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(VaneOrientationSelect)}
+)
+
+SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(CompressorFrequencySensor)}
+)
+
+
 CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(CN105Climate),
@@ -63,7 +72,11 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
             "'hardware_uart' options is not supported anymore. Please add a separate UART component with the correct rx and tx pin."
         ),
         # cv.Optional(CONF_HARDWARE_UART, default="UART0"): valid_uart,
-        cv.Optional(CONF_UPDATE_INTERVAL, default="0ms"): cv.All(cv.update_interval),
+        cv.Optional(CONF_UPDATE_INTERVAL, default="4s"): cv.All(cv.update_interval),
+        cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
+        cv.Optional(CONF_VERTICAL_SWING_SELECT): SELECT_SCHEMA,
+        cv.Optional(CONF_COMPRESSOR_FREQUENCY_SENSOR): SENSOR_SCHEMA,
+        cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.update_interval,
         # Optionally override the supported ClimateTraits.
         cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
             {
@@ -108,6 +121,29 @@ def to_code(config):
 
     for mode in supports[CONF_SWING_MODE]:
         cg.add(traits.add_supported_swing_mode(climate.CLIMATE_SWING_MODES[mode]))
+
+    if CONF_REMOTE_TEMP_TIMEOUT in config:
+        var.set_remote_temp_timeout(config[CONF_REMOTE_TEMP_TIMEOUT])
+
+    if CONF_HORIZONTAL_SWING_SELECT in config:
+        conf = config[CONF_HORIZONTAL_SWING_SELECT]
+
+        swing_select = yield select.new_select(conf, options=[])
+        yield cg.register_component(swing_select, conf)
+        cg.add(var.set_horizontal_vane_select(swing_select))
+
+    if CONF_VERTICAL_SWING_SELECT in config:
+        conf = config[CONF_VERTICAL_SWING_SELECT]
+        swing_select = yield select.new_select(conf, options=[])
+        yield cg.register_component(swing_select, conf)
+        cg.add(var.set_vertical_vane_select(swing_select))
+
+    if CONF_COMPRESSOR_FREQUENCY_SENSOR in config:
+        conf = config[CONF_COMPRESSOR_FREQUENCY_SENSOR]
+        conf["force_update"] = False
+        sensor_ = yield sensor.new_sensor(conf)
+        yield cg.register_component(sensor_, conf)
+        cg.add(var.set_compressor_frequency_sensor(sensor_))
 
     yield cg.register_component(var, config)
     yield climate.register_climate(var, config)

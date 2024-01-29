@@ -1,4 +1,5 @@
 #include "cn105.h"
+#include "Globals.h"
 
 using namespace esphome;
 
@@ -27,6 +28,11 @@ void CN105Climate::checkPendingWantedSettings() {
             this->wantedSettings.hasBeenSent = false;
         }
 
+    } else {
+        if (this->wantedSettings.hasChanged) {
+            ESP_LOGW(TAG, "checkPendingWantedSettings- SHOULDN'T HAPPEN :  this->wantedSettings.hasChanged is true but this->currentSettings == this->wantedSettings,");
+            this->wantedSettings.hasChanged = false;
+        }
     }
 
 }
@@ -87,18 +93,17 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
     // this->publish_state();
 }
 void CN105Climate::controlSwing() {
-    switch (this->swing_mode) {
+    switch (this->swing_mode) {                 //setVaneSetting supports:  AUTO 1 2 3 4 5 and SWING
     case climate::CLIMATE_SWING_OFF:
         this->setVaneSetting("AUTO");
-        //setVaneSetting supports:  AUTO 1 2 3 4 5 and SWING
-        //this->setWideVaneSetting("|");
+        this->setWideVaneSetting("|");
         break;
     case climate::CLIMATE_SWING_VERTICAL:
         this->setVaneSetting("SWING");
-        //this->setWideVaneSetting("|");
+        this->setWideVaneSetting("|");
         break;
     case climate::CLIMATE_SWING_HORIZONTAL:
-        this->setVaneSetting("3");
+        this->setVaneSetting("AUTO");
         this->setWideVaneSetting("SWING");
         break;
     case climate::CLIMATE_SWING_BOTH:
@@ -327,6 +332,20 @@ void CN105Climate::setWideVaneSetting(const char* setting) {
     }
 }
 
+
+void CN105Climate::on_horizontal_swing_change(const std::string& swing) {
+    ESP_LOGD(TAG, "Setting vertical swing position: %s", swing.c_str());
+    //this->setWideVaneSetting(swing.c_str());
+    //this->wantedSettings.hasChanged = true;
+    //this->wantedSettings.hasBeenSent = false;
+}
+
+void CN105Climate::on_vertical_swing_change(const std::string& swing) {
+    ESP_LOGD(TAG, "Setting horizontal swing position: %s", swing.c_str());
+    //this->setVaneSetting(swing.c_str());
+    //this->wantedSettings.hasChanged = true;
+    //this->wantedSettings.hasBeenSent = false;
+}
 
 
 
