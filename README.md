@@ -219,6 +219,8 @@ api:
 
 ota:  
   password: !secret ota_pwd
+
+# external temperature
 sensor:
   - platform: homeassistant
     id: ha_cdeg_sejour_et_cuisine
@@ -242,6 +244,24 @@ climate:
     compressor_frequency_sensor:
       name: Compressor frequency (clim Sejour)    
     update_interval: 10s         # shouldn't be less than 1 second
+```
+
+Another example with a physical sensor and a throttle average filter:
+
+```yaml
+sensor:
+  - platform: pvvx_mithermometer
+    mac_address: "A4:C1:38:XX:XX:XX"
+    temperature:
+      name: Thermometer
+      id: temperature
+      device_class: temperature
+      state_class: measurement
+      filters:
+        throttle_average: 90s
+      on_value:
+        then:
+          - lambda: 'id(use_your_name).set_remote_temperature(x);'
 ```
 
 For more configuration options, see the provided hp-debug.yaml and hp-sejour.yaml examples or refer to the original project.
