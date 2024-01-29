@@ -121,7 +121,7 @@ climate:
     remote_temperature_timeout: 30min
     update_interval: 10s   
 ```
-Note: The `update_interval` is set here to 4s for debugging purposes. However, it is recommended to use a interval longer or equal to 1s because the underlying process divides this interval into three separate requests.
+Note: For the `update_interval` I recommended to use a interval longer or equal to 1s because the underlying process divides this interval into three separate requests.
 
 For ESP8266, disable logging to serial to avoid conflicts:
 
