@@ -4,7 +4,7 @@
 
 This is a major change in UART configuration. But not so scary!
 If you upgrade to the head of main you will have to change the way you configure the uart in your yaml files. Look at the step 4 in this document.
-The reason is #6. The old configuration did not allow to use ESP32 ESP-IDF framework.
+The reason is [issue #6](https://github.com/echavet/MitsubishiCN105ESPHome/issues/6). The old configuration did not allow to use ESP32 ESP-IDF framework.
 
 If you don't want this change you must configure your external_components to point to the [tagged v1.0.3] https://github.com/echavet/MitsubishiCN105ESPHome/tree/v1.0.3 this way:
 
