@@ -18,11 +18,17 @@ mqtt:
   username: heatpumpSejour
   password: !secret mqtt_password
   discovery: true
-  
+
+
+
+debug:
+  update_interval: 5s
+
+
 
 # Enable logging
 logger:    
-  level: INFO
+  level: DEBUG
   logs:
     EVT_SETS : INFO
     WIFI : INFO
@@ -45,6 +51,12 @@ logger:
 # Enable Home Assistant API
 api:
   services:    
+    - service: reboot
+      then:
+        - logger.log: "Redémarrage en cours..."
+        - lambda: |-
+            esp_restart();
+
     - service: set_remote_temperature
       variables:
         temperature: float
@@ -114,8 +126,28 @@ text_sensor:
     bssid:
       name: ${name} BSSID
 
+  - platform: debug
+    device:
+      name: "Device Info"
+    reset_reason:
+      name: "Reset Reason"
+
+
 # Sensors with general information.
 sensor:
+  - platform: debug
+    free:
+      name: "Heap Free"
+    # fragmentation:
+    #   name: "Heap Fragmentation"
+    # block:
+    #   name: "Heap Max Block"
+    # loop_time:
+    #   name: "Loop Time"
+    # psram:
+    #   name: "Free PSRAM"
+
+
   # Uptime sensor.
   - platform: uptime
     name: ${name} Uptime
@@ -148,6 +180,11 @@ climate:
     id: "esp32_clim"
     compressor_frequency_sensor:
       name: Compressor frequency (clim Sejour)    
+    vertical_vane_select:
+      name: Orientation de la Vane Verticale
+    horizontal_vane_select:
+      name: Orientation de la Vane Horizontale
+    
     update_interval: 10s         # shouldn't be less than 1 second
     
 
