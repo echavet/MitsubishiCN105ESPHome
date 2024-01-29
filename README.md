@@ -90,6 +90,37 @@ climate:
     update_interval: 4s
 ```
 
+
+Another example on esp32 with all optional attributes:
+
+```yaml
+...
+
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: esp-idf   
+
+...
+
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+
+climate:
+  - platform: cn105  
+    name: ${friendly_name}    
+    compressor_frequency_sensor:
+      name: Compressor frequency (clim Sejour)    
+    vertical_vane_select:
+      name: Vertical Vane Orientation
+    horizontal_vane_select:
+      name: Horizontal Vane Orientation
+    remote_temperature_timeout: 30min
+    update_interval: 10s   
+```
 Note: The `update_interval` is set here to 4s for debugging purposes. However, it is recommended to use a interval longer or equal to 1s because the underlying process divides this interval into three separate requests.
 
 For ESP8266, disable logging to serial to avoid conflicts:
