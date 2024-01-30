@@ -143,41 +143,41 @@ void CN105Climate::hpPacketDebug(uint8_t* packet, unsigned int length, const cha
 }
 
 
-int CN105Climate::lookupByteMapIndex(const int valuesMap[], int len, int lookupValue) {
+int CN105Climate::lookupByteMapIndex(const int valuesMap[], int len, int lookupValue, const char* debugInfo) {
     for (int i = 0; i < len; i++) {
         if (valuesMap[i] == lookupValue) {
             return i;
         }
     }
-    ESP_LOGW("lookup", "Attention valeur %d non trouvée, on retourne -1", lookupValue);
+    ESP_LOGW("lookup", "%s caution value %d not found, returning -1", debugInfo, lookupValue);
     esphome::delay(200);
     return -1;
 }
-int CN105Climate::lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue) {
+int CN105Climate::lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue, const char* debugInfo) {
     for (int i = 0; i < len; i++) {
         if (strcasecmp(valuesMap[i], lookupValue) == 0) {
             return i;
         }
     }
-    ESP_LOGW("lookup", "Attention valeur %s non trouvée, on retourne -1", lookupValue);
+    ESP_LOGW("lookup", "%s caution value %s not found, returning -1", debugInfo, lookupValue);
     esphome::delay(200);
     return -1;
 }
-const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue) {
+const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo) {
     for (int i = 0; i < len; i++) {
         if (byteMap[i] == byteValue) {
             return valuesMap[i];
         }
     }
-    ESP_LOGW("lookup", "Attention valeur %d non trouvée, on retourne la valeur au rang 0", byteValue);
+    ESP_LOGW("lookup", "%s caution: value %d not found, returning value at index 0", debugInfo, byteValue);
     return valuesMap[0];
 }
-int CN105Climate::lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue) {
+int CN105Climate::lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo) {
     for (int i = 0; i < len; i++) {
         if (byteMap[i] == byteValue) {
             return valuesMap[i];
         }
     }
-    ESP_LOGW("lookup", "Attention valeur %d non trouvée, on retourne la valeur au rang 0", byteValue);
+    ESP_LOGW("lookup", "%s caution: value %d not found, returning value at index 0", debugInfo, byteValue);
     return valuesMap[0];
 }

@@ -157,10 +157,11 @@ protected:
     void setFanSpeed(const char* setting);
 private:
 
-    const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue);
-    int lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue);
-    int lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue);
-    int lookupByteMapIndex(const int valuesMap[], int len, int lookupValue);
+    const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "");
+    int lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "");
+    int lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue, const char* debugInfo = "");
+    int lookupByteMapIndex(const int valuesMap[], int len, int lookupValue, const char* debugInfo = "");
+
     void writePacket(uint8_t* packet, int length, bool checkIsActive = true);
     void prepareInfoPacket(uint8_t* packet, int length);
     void prepareSetPacket(uint8_t* packet, int length);
