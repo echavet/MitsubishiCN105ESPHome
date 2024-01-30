@@ -1,6 +1,6 @@
 # MitsubishiCN105ESPHome
 
-## Warning: "main" branch has been merged with 'uart_config_change".
+## Warning: esp-idf framework support feature has been merged to main branch.
 
 This is a major change in UART configuration. But not so scary!
 If you upgrade to the head of main you will have to change the way you configure the uart in your yaml files. Look at the step 4 in this document.
