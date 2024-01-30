@@ -104,19 +104,19 @@ void CN105Climate::createPacket(uint8_t* packet, heatpumpSettings settings) {
 
     //if (this->hasChanged(currentSettings.power, settings.power, "power (wantedSettings)")) {
     ESP_LOGD(TAG, "power is always set -> %s", settings.power);
-    packet[8] = POWER[lookupByteMapIndex(POWER_MAP, 2, settings.power)];
+    packet[8] = POWER[lookupByteMapIndex(POWER_MAP, 2, settings.power, "power (write)")];
     packet[6] += CONTROL_PACKET_1[0];
     //}
 
     //if (this->hasChanged(currentSettings.mode, settings.mode, "mode (wantedSettings)")) {
     ESP_LOGD(TAG, "heatpump mode -> %s", settings.mode);
-    packet[9] = MODE[lookupByteMapIndex(MODE_MAP, 5, settings.mode)];
+    packet[9] = MODE[lookupByteMapIndex(MODE_MAP, 5, settings.mode, "mode (write)")];
     packet[6] += CONTROL_PACKET_1[1];
     //}
     //if (!tempMode && settings.temperature != currentSettings.temperature) {
     if (!tempMode) {
         ESP_LOGD(TAG, "temperature (tempmode is false) -> %f", settings.temperature);
-        packet[10] = TEMP[lookupByteMapIndex(TEMP_MAP, 16, settings.temperature)];
+        packet[10] = TEMP[lookupByteMapIndex(TEMP_MAP, 16, settings.temperature, "temperature (write)")];
         packet[6] += CONTROL_PACKET_1[2];
         //} else if (tempMode && settings.temperature != currentSettings.temperature) {
     } else {
@@ -128,18 +128,18 @@ void CN105Climate::createPacket(uint8_t* packet, heatpumpSettings settings) {
 
     //if (this->hasChanged(currentSettings.fan, settings.fan, "fan (wantedSettings)")) {
     ESP_LOGD(TAG, "heatpump fan -> %s", settings.fan);
-    packet[11] = FAN[lookupByteMapIndex(FAN_MAP, 6, settings.fan)];
+    packet[11] = FAN[lookupByteMapIndex(FAN_MAP, 6, settings.fan, "fan (write)")];
     packet[6] += CONTROL_PACKET_1[3];
     //}
 
     //if (this->hasChanged(currentSettings.vane, settings.vane, "vane (wantedSettings)")) {
     ESP_LOGD(TAG, "heatpump vane -> %s", settings.vane);
-    packet[12] = VANE[lookupByteMapIndex(VANE_MAP, 7, settings.vane)];
+    packet[12] = VANE[lookupByteMapIndex(VANE_MAP, 7, settings.vane, "vane (write)")];
     packet[6] += CONTROL_PACKET_1[4];
     //}
 
     ESP_LOGD(TAG, "heatpump widevane -> %s", settings.wideVane);
-    packet[18] = WIDEVANE[lookupByteMapIndex(WIDEVANE_MAP, 7, settings.wideVane)] | (wideVaneAdj ? 0x80 : 0x00);
+    packet[18] = WIDEVANE[lookupByteMapIndex(WIDEVANE_MAP, 7, settings.wideVane, "wideVane (write)")] | (wideVaneAdj ? 0x80 : 0x00);
     packet[7] += CONTROL_PACKET_2[0];
 
 

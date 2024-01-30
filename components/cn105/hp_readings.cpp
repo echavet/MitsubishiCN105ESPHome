@@ -130,9 +130,9 @@ void CN105Climate::getSettingsFromResponsePacket() {
     ESP_LOGD("Decoder", "[0x02 is settings]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");        
     receivedSettings.connected = true;      // we're here so we're connected (actually not used property)
-    receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3]);
+    receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3], "power reading");
     receivedSettings.iSee = data[4] > 0x08 ? true : false;
-    receivedSettings.mode = lookupByteMapValue(MODE_MAP, MODE, 5, receivedSettings.iSee ? (data[4] - 0x08) : data[4]);
+    receivedSettings.mode = lookupByteMapValue(MODE_MAP, MODE, 5, receivedSettings.iSee ? (data[4] - 0x08) : data[4], "mode reading");
 
     ESP_LOGD("Decoder", "[Power : %s]", receivedSettings.power);
     ESP_LOGD("Decoder", "[iSee  : %d]", receivedSettings.iSee);
@@ -145,24 +145,20 @@ void CN105Climate::getSettingsFromResponsePacket() {
         this->tempMode = true;
         ESP_LOGD("Decoder", "tempMode is true");
     } else {
-        receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5]);
+        receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
     }
 
     ESP_LOGD("Decoder", "[Consigne °C: %f]", receivedSettings.temperature);
 
-    receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6]);
+    receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6], "fan reading");
     ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
 
-    receivedSettings.vane = lookupByteMapValue(VANE_MAP, VANE, 7, data[7]);
+    receivedSettings.vane = lookupByteMapValue(VANE_MAP, VANE, 7, data[7], "vane reading");
     ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
 
 
-    receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F);
-
-
-
+    receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F, "wideVane reading");
     wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
-
     ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, wideVaneAdj);
 
     // moved to settingsChanged()
