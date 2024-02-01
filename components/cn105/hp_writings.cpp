@@ -138,9 +138,11 @@ void CN105Climate::createPacket(uint8_t* packet, heatpumpSettings settings) {
     packet[6] += CONTROL_PACKET_1[4];
     //}
 
-    ESP_LOGD(TAG, "heatpump widevane -> %s", settings.wideVane);
-    packet[18] = WIDEVANE[lookupByteMapIndex(WIDEVANE_MAP, 7, settings.wideVane, "wideVane (write)")] | (wideVaneAdj ? 0x80 : 0x00);
-    packet[7] += CONTROL_PACKET_2[0];
+    if (this->hasChanged(currentSettings.wideVane, settings.wideVane, "wideVane (wantedSettings)")) {
+        ESP_LOGD(TAG, "heatpump widevane -> %s", settings.wideVane);
+        packet[18] = WIDEVANE[lookupByteMapIndex(WIDEVANE_MAP, 7, settings.wideVane, "wideVane (write)")] | (wideVaneAdj ? 0x80 : 0x00);
+        packet[7] += CONTROL_PACKET_2[0];
+    }
 
 
     // add the checksum
