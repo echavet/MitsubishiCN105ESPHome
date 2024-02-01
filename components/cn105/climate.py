@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import climate, uart, select, sensor
+from esphome.components import climate, uart, select, sensor, binary_sensor
 
 from esphome.components.logger import HARDWARE_UART_TO_SERIAL
 from esphome.components.uart import UARTParityOptions
@@ -22,6 +22,7 @@ CONF_SUPPORTS = "supports"
 CONF_HORIZONTAL_SWING_SELECT = "horizontal_vane_select"
 CONF_VERTICAL_SWING_SELECT = "vertical_vane_select"
 CONF_COMPRESSOR_FREQUENCY_SENSOR = "compressor_frequency_sensor"
+CONF_ISEE_SENSOR = "isee_sensor"
 
 DEFAULT_CLIMATE_MODES = ["COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "QUIET", "LOW", "MEDIUM", "HIGH"]
@@ -39,6 +40,8 @@ VaneOrientationSelect = cg.global_ns.class_(
 CompressorFrequencySensor = cg.global_ns.class_(
     "CompressorFrequencySensor", sensor.Sensor, cg.Component
 )
+
+ISeeSensor = cg.global_ns.class_("ISeeSensor", binary_sensor.BinarySensor, cg.Component)
 
 
 def valid_uart(uart):
@@ -60,6 +63,10 @@ SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(CompressorFrequencySensor)}
 )
 
+ISEE_SENSOR_SCHEMA = binary_sensor.BINARY_SENSOR_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(ISeeSensor)}
+)
+
 
 CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
     {
@@ -76,6 +83,7 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
         cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
         cv.Optional(CONF_VERTICAL_SWING_SELECT): SELECT_SCHEMA,
         cv.Optional(CONF_COMPRESSOR_FREQUENCY_SENSOR): SENSOR_SCHEMA,
+        cv.Optional(CONF_ISEE_SENSOR): ISEE_SENSOR_SCHEMA,
         cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.update_interval,
         # Optionally override the supported ClimateTraits.
         cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
@@ -97,9 +105,6 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
 
 @coroutine
 def to_code(config):
-    # serial = HARDWARE_UART_TO_SERIAL[config[CONF_HARDWARE_UART]]
-    # var = cg.new_Pvariable(config[CONF_ID], cg.RawExpression(f"&{serial}"))
-
     uart_var = yield cg.get_variable(config["uart_id"])
 
     var = cg.new_Pvariable(config[CONF_ID], uart_var)
@@ -127,7 +132,6 @@ def to_code(config):
 
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf = config[CONF_HORIZONTAL_SWING_SELECT]
-
         swing_select = yield select.new_select(conf, options=[])
         yield cg.register_component(swing_select, conf)
         cg.add(var.set_horizontal_vane_select(swing_select))
@@ -144,6 +148,12 @@ def to_code(config):
         sensor_ = yield sensor.new_sensor(conf)
         yield cg.register_component(sensor_, conf)
         cg.add(var.set_compressor_frequency_sensor(sensor_))
+
+    if CONF_ISEE_SENSOR in config:
+        conf = config[CONF_ISEE_SENSOR]
+        bsensor_ = yield binary_sensor.new_binary_sensor(conf)
+        yield cg.register_component(bsensor_, conf)
+        cg.add(var.set_isee_sensor(bsensor_))
 
     yield cg.register_component(var, config)
     yield climate.register_climate(var, config)

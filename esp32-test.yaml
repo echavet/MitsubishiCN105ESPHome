@@ -184,6 +184,8 @@ climate:
       name: Orientation de la Vane Verticale
     horizontal_vane_select:
       name: Orientation de la Vane Horizontale
+    isee_sensor:
+      name: ISEE Sensor
     remote_temperature_timeout: 30min
     update_interval: 10s         # shouldn't be less than 1 second
     

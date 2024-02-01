@@ -168,7 +168,9 @@ void CN105Climate::getSettingsFromResponsePacket() {
         ESP_LOGD("Decoder", "widevane is not supported");
     }*/
 
-    this->iSee_sensor->publish_state(receivedSettings.iSee);
+    if (this->iSee_sensor_ != nullptr) {
+        this->iSee_sensor_->publish_state(receivedSettings.iSee);
+    }
 
     this->heatpumpUpdate(receivedSettings);
 

@@ -21,9 +21,10 @@ public:
     void set_vertical_vane_select(VaneOrientationSelect* vertical_vane_select);
     void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select);
     void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);
+    void set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_sensor);
 
     //sensor::Sensor* compressor_frequency_sensor;
-    binary_sensor::BinarySensor* iSee_sensor;
+    binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
     //select::Select* van_orientation;
 
 
