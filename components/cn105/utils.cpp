@@ -163,14 +163,20 @@ int CN105Climate::lookupByteMapIndex(const char* valuesMap[], int len, const cha
     esphome::delay(200);
     return -1;
 }
-const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo) {
+const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo, const char* defaultValue) {
     for (int i = 0; i < len; i++) {
         if (byteMap[i] == byteValue) {
             return valuesMap[i];
         }
     }
-    ESP_LOGW("lookup", "%s caution: value %d not found, returning value at index 0", debugInfo, byteValue);
-    return valuesMap[0];
+
+    if (defaultValue != nullptr) {
+        return defaultValue;
+    } else {
+        ESP_LOGW("lookup", "%s caution: value %d not found, returning value at index 0", debugInfo, byteValue);
+        return valuesMap[0];
+    }
+
 }
 int CN105Climate::lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo) {
     for (int i = 0; i < len; i++) {

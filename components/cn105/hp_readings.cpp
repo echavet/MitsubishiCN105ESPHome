@@ -157,13 +157,16 @@ void CN105Climate::getSettingsFromResponsePacket() {
     ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
 
 
-    receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F, "wideVane reading");
+    receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F, "wideVane reading", WIDEVANE_MAP[2]);
     wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
-    ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, wideVaneAdj);
 
-    // moved to settingsChanged()
-    //currentSettings = receivedSettings;
-
+    /*if ((data[10] != 0) && (this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {    // wideVane is not always supported
+        receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F, "wideVane reading");
+        wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
+        ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, wideVaneAdj);
+    } else {
+        ESP_LOGD("Decoder", "widevane is not supported");
+    }*/
 
     this->iSee_sensor->publish_state(receivedSettings.iSee);
 
@@ -286,12 +289,6 @@ void CN105Climate::updateSuccess() {
         this->extTempUpdateSuccess();
 
     }
-    /*this->currentSettings.power = this->wantedSettings.power;
-    this->currentSettings.mode = this->wantedSettings.mode;
-    this->currentSettings.fan = this->wantedSettings.fan;
-    this->currentSettings.vane = this->wantedSettings.vane;
-    //this->currentSettings.wideVane = this->wantedSettings.wideVane;
-    this->currentSettings.temperature = this->wantedSettings.temperature;*/
 
     if (!this->autoUpdate) {
         this->buildAndSendRequestsInfoPackets();
