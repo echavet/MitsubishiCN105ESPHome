@@ -2,8 +2,12 @@
 #include "Globals.h"
 #include "heatpumpFunctions.h"
 #include "van_orientation_select.h"
+#include "compressor_frequency_sensor.h"
+#include "isee_sensor.h"
+#include <esphome/components/sensor/sensor.h>
 
 using namespace esphome;
+
 
 //class VaneOrientationSelect;  // Déclaration anticipée, définie dans extraComponents
 
