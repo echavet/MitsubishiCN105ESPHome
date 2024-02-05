@@ -88,7 +88,7 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
         cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.All(
             cv.update_interval
         ),
-        cv.Optional(CONF_DEBOUNCE_DELAY, default="750ms"): cv.All(cv.update_interval),
+        cv.Optional(CONF_DEBOUNCE_DELAY, default="400ms"): cv.All(cv.update_interval),
         # Optionally override the supported ClimateTraits.
         cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
             {
