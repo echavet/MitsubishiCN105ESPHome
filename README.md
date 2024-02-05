@@ -121,9 +121,11 @@ climate:
     isee_sensor:
       name: ISEE Sensor
     remote_temperature_timeout: 30min
+    debounce_delay : 500ms      # cf. issue #21 about mulitple req in short period
     update_interval: 10s   
 ```
 Note: For the `update_interval` I recommended to use a interval longer or equal to 1s because the underlying process divides this interval into three separate requests.
+The debounce_delay can be adjusted to get a more responsive UI component or to allow short period multiple request to be merged and processed in a single one. See [#21](https://github.com/echavet/MitsubishiCN105ESPHome/issues/21) for details and example use case. 
 
 For ESP8266, disable logging to serial to avoid conflicts:
 
