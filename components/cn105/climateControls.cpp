@@ -6,8 +6,9 @@ using namespace esphome;
 
 void CN105Climate::checkPendingWantedSettings() {
 
+    long now = CUSTOM_MILLIS;
 
-    if (this->firstRun) {
+    if ((this->firstRun) || (this->wantedSettings.hasBeenSent) || (now - this->wantedSettings.lastChange < this->debounce_delay_)) {
         return;
     }
     if (this->currentSettings != this->wantedSettings) {
@@ -16,7 +17,7 @@ void CN105Climate::checkPendingWantedSettings() {
             if (!this->wantedSettings.hasBeenSent) {
                 ESP_LOGD(TAG, "checkPendingWantedSettings - wanted settings have changed, sending them to the heatpump...");
                 this->sendWantedSettings();
-                this->set_timeout("checkWantedSettings", 1000, [this]() { this->wantedSettings.hasBeenSent = false; });
+                //this->set_timeout("checkWantedSettings", 1000, [this]() { this->wantedSettings.hasBeenSent = false; });
             }
         } else {
             ESP_LOGI(TAG, "checkPendingWantedSettings - detected a change from IR Remote Control");
@@ -80,6 +81,7 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
         ESP_LOGD(LOG_ACTION_EVT_TAG, "clim.control() -> User changed something...");
         this->wantedSettings.hasChanged = true;
         this->wantedSettings.hasBeenSent = false;
+        this->wantedSettings.lastChange = CUSTOM_MILLIS;
         this->debugSettings("control (wantedSettings)", this->wantedSettings);
 
         // we don't call sendWantedSettings() anymore because it will be called by the loop() method

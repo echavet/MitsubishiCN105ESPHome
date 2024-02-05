@@ -84,6 +84,8 @@ public:
 
     void set_remote_temp_timeout(uint32_t timeout);
 
+    void set_debounce_delay(uint32_t delay);
+
     // this is the ping or heartbeat of the setRemotetemperature for timeout management
     void setExternalTemperatureCheckout();
 
@@ -207,6 +209,7 @@ private:
     unsigned long lastResponseMs;
 
     uint32_t remote_temp_timeout_;
+    uint32_t debounce_delay_;
 
     int baud_ = 0;
     int tx_pin_ = -1;

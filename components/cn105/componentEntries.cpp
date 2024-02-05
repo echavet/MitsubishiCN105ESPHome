@@ -17,6 +17,11 @@ void CN105Climate::setup() {
     this->swing_mode = climate::CLIMATE_SWING_OFF;
     this->initBytePointer();
     this->lastResponseMs = CUSTOM_MILLIS;
+
+    ESP_LOGI(TAG, "tx_pin: %d rx_pin: %d", this->tx_pin_, this->rx_pin_);
+    ESP_LOGI(TAG, "remote_temp_timeout is set to %d", this->remote_temp_timeout_);
+    ESP_LOGI(TAG, "debounce_delay is set to %d", this->debounce_delay_);
+
     this->setupUART();
     this->sendFirstConnectionPacket();
 }

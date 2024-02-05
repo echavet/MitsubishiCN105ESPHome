@@ -161,9 +161,10 @@ void CN105Climate::createPacket(uint8_t* packet, heatpumpSettings settings) {
 void CN105Climate::sendWantedSettings() {
 
     if (this->isHeatpumpConnectionActive() && this->isConnected_) {
-        if (CUSTOM_MILLIS - this->lastSend > 500) {        // we don't want to send too many packets
+        if (CUSTOM_MILLIS - this->lastSend > 100) {        // we don't want to send too many packets
 
             this->wantedSettings.hasBeenSent = true;
+            this->wantedSettings.hasChanged = false;
             this->lastSend = CUSTOM_MILLIS;
             ESP_LOGI(TAG, "sending wantedSettings..");
 

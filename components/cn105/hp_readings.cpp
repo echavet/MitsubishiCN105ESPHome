@@ -276,9 +276,9 @@ void CN105Climate::updateSuccess() {
     //this->last_received_packet_sensor->publish_state("0x61: update success");
     // as the update was successful, we can set currentSettings to wantedSettings        
     // even if the next settings request will do the same.
-    if (this->wantedSettings.hasChanged) {
+    if (this->wantedSettings.hasBeenSent) {
         ESP_LOGI(TAG, "And it was a wantedSetting ACK!");
-        this->wantedSettings.hasChanged = false;
+        //this->wantedSettings.hasChanged = false;
         this->wantedSettings.hasBeenSent = false;
         this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
         //this->settingsChanged(this->wantedSettings, "WantedSettingsUpdateSuccess");
@@ -370,8 +370,8 @@ void CN105Climate::wantedSettingsUpdateSuccess(heatpumpSettings settings) {
 
     // as wantedSettings has been received with ACK by the heatpump
     // we can update the surrentSettings
-    this->currentSettings = this->wantedSettings;
-    this->debugSettings("current", currentSettings);
+    //this->currentSettings = this->wantedSettings;
+    this->debugSettings("curStgs", currentSettings);
 }
 
 void CN105Climate::extTempUpdateSuccess() {
@@ -388,10 +388,12 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
 
     if (this->firstRun) {
         ESP_LOGD(TAG, "first run detected, setting wantedSettings to receivedSettings");
+
         this->wantedSettings = settings;
         this->wantedSettings.hasChanged = false;
         this->wantedSettings.hasBeenSent = false;
         this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
+        this->wantedSettings.lastChange = 0;                 // never knew a change
 
         this->firstRun = false;
         this->debugSettings("received", settings);
@@ -410,9 +412,9 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
 
             // no difference wt wantedSettings and received ones
             // by security tag wantedSettings hasChanged to false
-            wantedSettings.hasChanged = false;
+            /*this->wantedSettings.hasChanged = false;
             this->wantedSettings.hasBeenSent = false;
-            this->wantedSettings.nb_deffered_requests = 0;
+            this->wantedSettings.nb_deffered_requests = 0;*/
         } else {
             this->debugSettings("current", this->currentSettings);
             this->debugSettings("wanted", this->wantedSettings);

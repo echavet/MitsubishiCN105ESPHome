@@ -27,6 +27,7 @@ void CN105Climate::set_vertical_vane_select(
         this->setVaneSetting(setting);
         this->wantedSettings.hasChanged = true;
         this->wantedSettings.hasBeenSent = false;
+        this->wantedSettings.lastChange = CUSTOM_MILLIS;
         });
 
 }
@@ -46,6 +47,7 @@ void CN105Climate::set_horizontal_vane_select(
         this->setWideVaneSetting(setting);
         this->wantedSettings.hasChanged = true;
         this->wantedSettings.hasBeenSent = false;
+        this->wantedSettings.lastChange = CUSTOM_MILLIS;
         });
 
 }

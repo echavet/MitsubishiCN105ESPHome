@@ -154,6 +154,7 @@ struct wantedHeatpumpSettings : heatpumpSettings {
     bool hasChanged;
     bool hasBeenSent;
     uint8_t nb_deffered_requests;
+    long lastChange;
     wantedHeatpumpSettings& operator=(const wantedHeatpumpSettings& other) {
         if (this != &other) { // protection contre l'auto-affectation
             heatpumpSettings::operator=(other); // Appel à l'opérateur d'affectation de la classe de base

@@ -95,6 +95,11 @@ void CN105Climate::set_remote_temp_timeout(uint32_t timeout) {
     }
 }
 
+void CN105Climate::set_debounce_delay(uint32_t delay) {
+    this->debounce_delay_ = delay;
+    ESP_LOGI(LOG_ACTION_EVT_TAG, "set_debounce_delay is set to %d", delay);
+}
+
 int CN105Climate::get_compressor_frequency() {
     return currentStatus.compressorFrequency;
 }
