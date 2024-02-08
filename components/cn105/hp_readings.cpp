@@ -276,9 +276,9 @@ void CN105Climate::updateSuccess() {
     //this->last_received_packet_sensor->publish_state("0x61: update success");
     // as the update was successful, we can set currentSettings to wantedSettings        
     // even if the next settings request will do the same.
-    if (this->wantedSettings.hasBeenSent) {
+    if (this->wantedSettings.hasChanged) {
         ESP_LOGI(TAG, "And it was a wantedSetting ACK!");
-        //this->wantedSettings.hasChanged = false;
+        this->wantedSettings.hasChanged = false;
         this->wantedSettings.hasBeenSent = false;
         this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
         //this->settingsChanged(this->wantedSettings, "WantedSettingsUpdateSuccess");

@@ -164,7 +164,7 @@ void CN105Climate::sendWantedSettings() {
         if (CUSTOM_MILLIS - this->lastSend > 100) {        // we don't want to send too many packets
 
             this->wantedSettings.hasBeenSent = true;
-            this->wantedSettings.hasChanged = false;
+
             this->lastSend = CUSTOM_MILLIS;
             ESP_LOGI(TAG, "sending wantedSettings..");
 
