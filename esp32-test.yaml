@@ -184,9 +184,9 @@ climate:
       name: Orientation de la Vane Horizontale
     isee_sensor:
       name: ISEE Sensor
-    remote_temperature_timeout: 5min
+    remote_temperature_timeout: 15min
     update_interval: 1s         # shouldn't be less than 1 second
-    debounce_delay : 500ms       # delay to prevent bouncing 
+    debounce_delay : 250ms       # delay to prevent bouncing 
 
 
 # Configuration pour l'objet 'switch' (bouton)
