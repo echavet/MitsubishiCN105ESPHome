@@ -17,14 +17,14 @@ void CN105Climate::checkPendingWantedSettings() {
             if (!this->wantedSettings.hasBeenSent) {
                 ESP_LOGD(TAG, "checkPendingWantedSettings - wanted settings have changed, sending them to the heatpump...");
                 this->sendWantedSettings();
-                //this->set_timeout("checkWantedSettings", 1000, [this]() { this->wantedSettings.hasBeenSent = false; });
             }
         } else {
             ESP_LOGI(TAG, "checkPendingWantedSettings - detected a change from IR Remote Control");
             // if not wantedSettings.hasChanged this is because we've had a change from IR Remote Control
+            // in this case wantedSettings should be updated to currentSettings
+            this->wantedSettings = this->currentSettings;
 
             // TODO: this shouldn't be necessary here
-            this->wantedSettings = this->currentSettings;
             this->wantedSettings.hasChanged = false;
             this->wantedSettings.hasBeenSent = false;
         }

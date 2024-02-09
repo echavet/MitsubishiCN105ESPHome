@@ -161,7 +161,7 @@ void CN105Climate::createPacket(uint8_t* packet, heatpumpSettings settings) {
 void CN105Climate::sendWantedSettings() {
 
     if (this->isHeatpumpConnectionActive() && this->isConnected_) {
-        if (CUSTOM_MILLIS - this->lastSend > 100) {        // we don't want to send too many packets
+        if (CUSTOM_MILLIS - this->lastSend > 300) {        // we don't want to send too many packets
 
             this->wantedSettings.hasBeenSent = true;
 
@@ -184,6 +184,10 @@ void CN105Climate::sendWantedSettings() {
             this->createPacket(packet, wantedSettings);
             this->writePacket(packet, PACKET_LEN);
             this->hpPacketDebug(packet, 22, "WRITE_SETTINGS");
+
+            // set a timeout to virtually ack in case the heatpump did not
+            this->set_timeout("wantedSettingsACKTimeout", 600, [this]() { this->wantedSettings.hasBeenSent = false; });
+
 
             // here we know the update packet has been sent but we don't know if it has been received
             // so we have to program a check to be sure we will get a response
