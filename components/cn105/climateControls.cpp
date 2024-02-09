@@ -24,7 +24,7 @@ void CN105Climate::checkPendingWantedSettings() {
             // in this case wantedSettings should be updated to currentSettings
             this->wantedSettings = this->currentSettings;
 
-            // TODO: this shouldn't be necessary here
+            // TODO: chk, this shouldn't be necessary here
             this->wantedSettings.hasChanged = false;
             this->wantedSettings.hasBeenSent = false;
         }

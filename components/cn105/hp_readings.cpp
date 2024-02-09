@@ -301,6 +301,7 @@ void CN105Climate::processCommand() {
     switch (this->command) {
     case 0x61:  /* last update was successful */
         this->updateSuccess();
+        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "ACK");
         break;
 
     case 0x62:  /* packet contains data (room °C, settings, timer, status, or functions...)*/

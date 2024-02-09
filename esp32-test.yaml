@@ -43,6 +43,7 @@ logger:
     chkSum : INFO
     WRITE : WARN
     READ : WARN
+    ACK : DEBUG
     Header: INFO
     Decoder : INFO
     CONTROL_WANTED_SETTINGS: INFO    
@@ -104,13 +105,6 @@ external_components:
  - source:
      type: local
      path: components 
-
-
-#this setting is for github component 
-# external_components:
-#  - source: github://echavet/MitsubishiCN105ESPHome
-#    refresh: 0s
-
 
         # Text sensors with general information.
 text_sensor:

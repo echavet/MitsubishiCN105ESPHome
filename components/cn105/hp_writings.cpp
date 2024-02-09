@@ -188,17 +188,6 @@ void CN105Climate::sendWantedSettings() {
             // set a timeout to virtually ack in case the heatpump did not
             this->set_timeout("wantedSettingsACKTimeout", 600, [this]() { this->wantedSettings.hasBeenSent = false; });
 
-
-            // here we know the update packet has been sent but we don't know if it has been received
-            // so we have to program a check to be sure we will get a response
-            // todo: we should check if we are already waiting for a response before programming a new check
-            // todo: initialise wantedSettings only when the response is received
-
-            // wantedSettings are sent so we don't need to keep them anymore
-            // this is usefull because we might look at wantedSettings later to check if a request is pending
-            // wantedSettings = {};
-            // wantedSettings.temperature = -1;    // to know user did not ask 
-
             // here we restore the update scheduler we had canceled 
             this->set_timeout(DEFER_SHEDULER_INTERVAL_SYNC_NAME, DEFER_SCHEDULE_UPDATE_LOOP_DELAY, [this]() {
                 this->programUpdateInterval();
