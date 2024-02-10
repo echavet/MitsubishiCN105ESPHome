@@ -1,5 +1,5 @@
 ### Warning: Use at your own risk.
-This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available here.
+This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
 
 ### Warning: esp-idf framework support feature has been merged to main branch.
 
