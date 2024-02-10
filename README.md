@@ -1,4 +1,3 @@
-# MitsubishiCN105ESPHome
 
 ## Warning: esp-idf framework support feature has been merged to main branch.
 
@@ -12,7 +11,7 @@ If you don't want this change you must configure your external_components to poi
 external_components:
   - source: github://echavet/MitsubishiCN105ESPHome@v1.0.3
 ```
-
+# MitsubishiCN105ESPHome
 This component is an adaptation of [geoffdavis's esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump). Its purpose is to integrate the Mitsubishi heat pump protocol (enabled by the [SwiCago library](https://github.com/SwiCago/HeatPump)) directly into the ESPHome component classes for a more seamless integration.
 
 ## What's New:
