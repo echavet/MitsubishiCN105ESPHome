@@ -51,7 +51,17 @@ void CN105Climate::setup() {
  */
 void CN105Climate::loop() {
     if (!this->processInput()) {
-        this->checkPendingWantedSettings();
+        if (!this->isCycleRunning()) {
+            if (this->wantedSettings.hasChanged) {
+                this->checkPendingWantedSettings();
+            } else {
+                if (this->hasUpdateIntervalPassed()) {
+                    this->buildAndSendRequestsInfoPackets();
+                }
+            }
+        } else {
+            // TODO: check if a cycle timeout occured in case there was no reply             
+        }
     }
 }
 

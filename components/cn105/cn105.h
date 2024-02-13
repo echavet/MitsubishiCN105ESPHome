@@ -77,7 +77,7 @@ public:
     // will check if hp did respond
     void programResponseCheck(int packetType);
 
-    void sendWantedSettings();
+    bool sendWantedSettings();
     // Use the temperature from an external sensor. Use
     // set_remote_temp(0) to switch back to the internal sensor.
     void set_remote_temperature(float);
@@ -158,11 +158,37 @@ protected:
     bool checkSum();
     uint8_t checkSum(uint8_t bytes[], int len);
 
+    char* getModeSetting();
+    char* getPowerSetting();
+    char* getVaneSetting();
+    char* getWideVaneSetting();
+    char* getFanSpeedSetting();
+    float getTemperatureSetting();
+
     void setModeSetting(const char* setting);
     void setPowerSetting(const char* setting);
     void setVaneSetting(const char* setting);
     void setWideVaneSetting(const char* setting);
     void setFanSpeed(const char* setting);
+
+    bool isCycleRunning() {
+        return cycleRunning;
+    }
+
+    void cycleStarted() {
+        this->lastRequestInfo = CUSTOM_MILLIS;
+        cycleRunning = true;
+    }
+    void cycleEnded() {
+        cycleRunning = false;
+        // a complete cycle is done
+        this->lastCompleteCycle = CUSTOM_MILLIS;
+    }
+
+    bool hasUpdateIntervalPassed() {
+        return (CUSTOM_MILLIS - this->lastCompleteCycle) > update_interval_;
+    }
+
 private:
 
     const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
@@ -184,7 +210,7 @@ private:
 
     void statusChanged(heatpumpStatus status);
 
-    void checkPendingWantedSettings();
+    bool checkPendingWantedSettings();
     void checkPowerAndModeSettings(heatpumpSettings& settings);
     void checkFanSettings(heatpumpSettings& settings);
     void checkVaneSettings(heatpumpSettings& settings);
@@ -200,7 +226,7 @@ private:
     void debugSettings(const char* settingName, wantedHeatpumpSettings settings);
     void debugStatus(const char* statusName, heatpumpStatus status);
     void debugSettingsAndStatus(const char* settingName, heatpumpSettings settings, heatpumpStatus status);
-    void createPacket(uint8_t* packet, heatpumpSettings settings);
+    void createPacket(uint8_t* packet);
     void createInfoPacket(uint8_t* packet, uint8_t packetType);
     heatpumpSettings currentSettings{};
     wantedHeatpumpSettings wantedSettings{};
@@ -223,6 +249,11 @@ private:
 
     //HardwareSerial* _HardSerial{ nullptr };
     unsigned long lastSend;
+
+    unsigned long lastRequestInfo;
+
+    unsigned long lastCompleteCycle;
+
     uint8_t storedInputData[MAX_DATA_BYTES]; // multi-byte data
     uint8_t* data;
 
@@ -230,6 +261,7 @@ private:
     heatpumpStatus currentStatus{ 0, false, {TIMER_MODE_MAP[0], 0, 0, 0, 0}, 0 };
     heatpumpFunctions functions;
 
+    bool cycleRunning = false;
     bool tempMode = false;
     bool wideVaneAdj;
     bool autoUpdate;

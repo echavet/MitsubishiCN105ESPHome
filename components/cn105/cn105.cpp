@@ -57,8 +57,9 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->compressor_frequency_sensor_ = nullptr;
 
     this->remote_temp_timeout_ = 4294967295;    // uint32_t max
-
+    this->lastCompleteCycle = 0;
     this->generateExtraComponents();
+    this->cycleRunning = false;
 
 }
 

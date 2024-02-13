@@ -119,6 +119,15 @@ struct heatpumpSettings {
     bool iSee;   //iSee sensor, at the moment can only detect it, not set it
     bool connected;
 
+    void resetSettings() {
+        power = nullptr;
+        mode = nullptr;
+        temperature = -1.0f;
+        fan = nullptr;
+        vane = nullptr;
+        wideVane = nullptr;
+    }
+
     heatpumpSettings& operator=(const heatpumpSettings& other) {
         if (this != &other) { // protection contre l'auto-affectation
             power = other.power;
@@ -155,6 +164,16 @@ struct wantedHeatpumpSettings : heatpumpSettings {
     bool hasBeenSent;
     uint8_t nb_deffered_requests;
     long lastChange;
+
+    void resetSettings() {
+        heatpumpSettings::resetSettings();
+
+        hasChanged = false;
+        hasBeenSent = false;
+        //nb_deffered_requests = 0;
+        //lastChange = 0; 
+    }
+
     wantedHeatpumpSettings& operator=(const wantedHeatpumpSettings& other) {
         if (this != &other) { // protection contre l'auto-affectation
             heatpumpSettings::operator=(other); // Appel à l'opérateur d'affectation de la classe de base

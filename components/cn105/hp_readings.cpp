@@ -218,11 +218,17 @@ void CN105Climate::getDataFromResponsePacket() {
     switch (this->data[0]) {
     case 0x02:             /* setting information */
         this->getSettingsFromResponsePacket();
+        // next step is to get the room temperature case 0x03
+        ESP_LOGD(TAG, "sending a request room temp packet (0x03)");
+        this->buildAndSendRequestPacket(RQST_PKT_ROOM_TEMP);
         break;
 
     case 0x03:
         /* room temperature reading */
         this->getRoomTemperatureFromResponsePacket();
+        // next step is to get the heatpump status (operating and compressor frequency) case 0x06
+        ESP_LOGD(TAG, "sending a request status paquet (0x06)");
+        this->buildAndSendRequestPacket(RQST_PKT_STATUS);
         break;
 
     case 0x04:
@@ -240,6 +246,8 @@ void CN105Climate::getDataFromResponsePacket() {
     case 0x06:
         /* status */
         this->getOperatingAndCompressorFreqFromResponsePacket();
+        this->checkPendingWantedSettings();
+        this->cycleEnded();
         break;
 
     case 0x09:
@@ -300,8 +308,8 @@ void CN105Climate::updateSuccess() {
 void CN105Climate::processCommand() {
     switch (this->command) {
     case 0x61:  /* last update was successful */
-        this->updateSuccess();
         this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "ACK");
+        this->updateSuccess();
         break;
 
     case 0x62:  /* packet contains data (room °C, settings, timer, status, or functions...)*/
@@ -311,7 +319,9 @@ void CN105Climate::processCommand() {
         ESP_LOGI(TAG, "--> Heatpump did reply: connection success! <--");
         this->isHeatpumpConnected_ = true;
         //this->last_received_packet_sensor->publish_state("0x7A: Connection success");
-        programUpdateInterval();        // we know a check in this method is done on autoupdate value        
+        // programUpdateInterval();        // we know a check in this method is done on autoupdate value        
+
+        this->buildAndSendRequestsInfoPackets();
         break;
     default:
         break;
@@ -387,56 +397,13 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
     // settings correponds to current settings 
     ESP_LOGD(LOG_ACTION_EVT_TAG, "Settings received");
 
-    if (this->firstRun) {
-        ESP_LOGD(TAG, "first run detected, setting wantedSettings to receivedSettings");
+    this->debugSettings("current", this->currentSettings);
+    this->debugSettings("received", settings);
 
-        this->wantedSettings = settings;
-        this->wantedSettings.hasChanged = false;
-        this->wantedSettings.hasBeenSent = false;
-        this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
-        this->wantedSettings.lastChange = 0;                 // never knew a change
-
-        this->firstRun = false;
-        this->debugSettings("received", settings);
-        this->debugSettings("wanted(==)", this->wantedSettings);
+    if (currentSettings != settings) {
         this->publishStateToHA(settings);
-    } else {
-
-
-        heatpumpSettings& wanted = wantedSettings;  // for casting purpose
-        if (settings == wanted) {
-            ESP_LOGD(LOG_ACTION_EVT_TAG, "settings == wantedSettings");
-            // settings correponds to fresh received settings
-            if (wantedSettings.hasChanged) {
-                ESP_LOGW(LOG_SETTINGS_TAG, "receivedSettings match wanted ones, but wantedSettings.hasChanged is true, setting it to false in settingsChanged method");
-            }
-
-            // no difference wt wantedSettings and received ones
-            // by security tag wantedSettings hasChanged to false
-            /*this->wantedSettings.hasChanged = false;
-            this->wantedSettings.hasBeenSent = false;
-            this->wantedSettings.nb_deffered_requests = 0;*/
-        } else {
-            this->debugSettings("current", this->currentSettings);
-            this->debugSettings("wanted", this->wantedSettings);
-
-            // here wantedSettings and currentSettings are different
-            // we want to know why
-            if (wantedSettings.hasChanged) {
-                this->debugSettings("received", settings);
-                // it's because user did ask a change throuth HA
-                // we have nothing to do, because this change will trigger a packet send from 
-                // the loop() method
-                ESP_LOGW(LOG_ACTION_EVT_TAG, "wantedSettings is true, and we received an info packet");
-            } else {
-
-                // it's because of an IR remote control update
-                // or because the heatpump does not support one of the last wantedSetting order which causes rollback
-                this->publishStateToHA(settings);
-                this->debugSettings("receivedIR", settings);
-            }
-        }
     }
+
 }
 
 

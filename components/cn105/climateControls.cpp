@@ -4,38 +4,13 @@
 using namespace esphome;
 
 
-void CN105Climate::checkPendingWantedSettings() {
-
+bool CN105Climate::checkPendingWantedSettings() {
     long now = CUSTOM_MILLIS;
-
-    if ((this->firstRun) || (this->wantedSettings.hasBeenSent) || (now - this->wantedSettings.lastChange < this->debounce_delay_)) {
-        return;
+    if (!(this->wantedSettings.hasChanged) || (now - this->wantedSettings.lastChange < this->debounce_delay_)) {
+        return this->wantedSettings.hasChanged;
     }
-    if (this->currentSettings != this->wantedSettings) {
-
-        if (this->wantedSettings.hasChanged) {
-            if (!this->wantedSettings.hasBeenSent) {
-                ESP_LOGD(TAG, "checkPendingWantedSettings - wanted settings have changed, sending them to the heatpump...");
-                this->sendWantedSettings();
-            }
-        } else {
-            ESP_LOGI(TAG, "checkPendingWantedSettings - detected a change from IR Remote Control");
-            // if not wantedSettings.hasChanged this is because we've had a change from IR Remote Control
-            // in this case wantedSettings should be updated to currentSettings
-            this->wantedSettings = this->currentSettings;
-
-            // TODO: chk, this shouldn't be necessary here
-            this->wantedSettings.hasChanged = false;
-            this->wantedSettings.hasBeenSent = false;
-        }
-
-    } else {
-        if (this->wantedSettings.hasChanged) {
-            ESP_LOGW(TAG, "checkPendingWantedSettings- SHOULDN'T HAPPEN :  this->wantedSettings.hasChanged is true but this->currentSettings == this->wantedSettings,");
-            this->wantedSettings.hasChanged = false;
-        }
-    }
-
+    ESP_LOGD(TAG, "checkPendingWantedSettings - wanted settings have changed, sending them to the heatpump...");
+    this->sendWantedSettings();
 }
 
 //#region climate

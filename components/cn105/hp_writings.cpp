@@ -22,7 +22,7 @@ void CN105Climate::sendFirstConnectionPacket() {
 
         this->writePacket(packet, CONNECT_LEN, false);      // checkIsActive=false because it's the first packet and we don't have any reply yet
 
-        lastSend = CUSTOM_MILLIS;
+        this->lastSend = CUSTOM_MILLIS;
 
         // we wait for a 4s timeout to check if the hp has replied to connection packet
         this->set_timeout("checkFirstConnection", 4000, [this]() {
@@ -96,51 +96,104 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
     }
 }
 
-void CN105Climate::createPacket(uint8_t* packet, heatpumpSettings settings) {
+char* CN105Climate::getModeSetting() {
+    if (wantedSettings.mode) {
+        return wantedSettings.mode;
+    } else {
+        return currentSettings.mode;
+    }
+}
+
+char* CN105Climate::getPowerSetting() {
+    if (wantedSettings.power) {
+        return wantedSettings.power;
+    } else {
+        return currentSettings.power;
+    }
+}
+
+char* CN105Climate::getVaneSetting() {
+    if (wantedSettings.vane) {
+        return wantedSettings.vane;
+    } else {
+        return currentSettings.vane;
+    }
+}
+
+char* CN105Climate::getWideVaneSetting() {
+    if (wantedSettings.wideVane) {
+        return wantedSettings.wideVane;
+    } else {
+        return currentSettings.wideVane;
+    }
+}
+
+char* CN105Climate::getFanSpeedSetting() {
+    if (wantedSettings.fan) {
+        return wantedSettings.fan;
+    } else {
+        return currentSettings.fan;
+    }
+}
+
+float CN105Climate::getTemperatureSetting() {
+    if (wantedSettings.temperature != -1.0) {
+        return wantedSettings.temperature;
+    } else {
+        return currentSettings.temperature;
+    }
+}
+
+void initWantedSettings() {
+    this->wantedSettings
+}
+
+
+void CN105Climate::createPacket(uint8_t* packet) {
     prepareSetPacket(packet, PACKET_LEN);
 
     //ESP_LOGD(TAG, "checking differences bw asked settings and current ones...");
     ESP_LOGD(TAG, "building packet for writing...");
 
-    //if (this->hasChanged(currentSettings.power, settings.power, "power (wantedSettings)")) {
-    ESP_LOGD(TAG, "power is always set -> %s", settings.power);
-    packet[8] = POWER[lookupByteMapIndex(POWER_MAP, 2, settings.power, "power (write)")];
+    //if (this->hasChanged(currentSettings.power, settings.power, "power (wantedSettings)")) {        
+    ESP_LOGD(TAG, "power is always set -> %s", getPowerSetting());
+    packet[8] = POWER[lookupByteMapIndex(POWER_MAP, 2, getPowerSetting(), "power (write)")];
     packet[6] += CONTROL_PACKET_1[0];
     //}
 
     //if (this->hasChanged(currentSettings.mode, settings.mode, "mode (wantedSettings)")) {
-    ESP_LOGD(TAG, "heatpump mode -> %s", settings.mode);
-    packet[9] = MODE[lookupByteMapIndex(MODE_MAP, 5, settings.mode, "mode (write)")];
+    ESP_LOGD(TAG, "heatpump mode -> %s", getModeSetting());
+    packet[9] = MODE[lookupByteMapIndex(MODE_MAP, 5, getModeSetting(), "mode (write)")];
     packet[6] += CONTROL_PACKET_1[1];
     //}
     //if (!tempMode && settings.temperature != currentSettings.temperature) {
     if (!tempMode) {
-        ESP_LOGD(TAG, "temperature (tempmode is false) -> %f", settings.temperature);
-        packet[10] = TEMP[lookupByteMapIndex(TEMP_MAP, 16, settings.temperature, "temperature (write)")];
+        ESP_LOGD(TAG, "temperature (tempmode is false) -> %f", getTemperatureSetting());
+        packet[10] = TEMP[lookupByteMapIndex(TEMP_MAP, 16, getTemperatureSetting(), "temperature (write)")];
         packet[6] += CONTROL_PACKET_1[2];
         //} else if (tempMode && settings.temperature != currentSettings.temperature) {
     } else {
-        ESP_LOGD(TAG, "temperature (tempmode is true) -> %f", settings.temperature);
-        float temp = (settings.temperature * 2) + 128;
+        ESP_LOGD(TAG, "temperature (tempmode is true) -> %f", getTemperatureSetting());
+        float temp = (getTemperatureSetting() * 2) + 128;
         packet[19] = (int)temp;
         packet[6] += CONTROL_PACKET_1[2];
     }
 
     //if (this->hasChanged(currentSettings.fan, settings.fan, "fan (wantedSettings)")) {
-    ESP_LOGD(TAG, "heatpump fan -> %s", settings.fan);
-    packet[11] = FAN[lookupByteMapIndex(FAN_MAP, 6, settings.fan, "fan (write)")];
+    ESP_LOGD(TAG, "heatpump fan -> %s", getFanSpeedSetting());
+    packet[11] = FAN[lookupByteMapIndex(FAN_MAP, 6, getFanSpeedSetting(), "fan (write)")];
     packet[6] += CONTROL_PACKET_1[3];
     //}
 
     //if (this->hasChanged(currentSettings.vane, settings.vane, "vane (wantedSettings)")) {
-    ESP_LOGD(TAG, "heatpump vane -> %s", settings.vane);
-    packet[12] = VANE[lookupByteMapIndex(VANE_MAP, 7, settings.vane, "vane (write)")];
+    ESP_LOGD(TAG, "heatpump vane -> %s", getVaneSetting());
+    packet[12] = VANE[lookupByteMapIndex(VANE_MAP, 7, getVaneSetting(), "vane (write)")];
     packet[6] += CONTROL_PACKET_1[4];
     //}
 
-    if (this->hasChanged(currentSettings.wideVane, settings.wideVane, "wideVane (wantedSettings)")) {
-        ESP_LOGD(TAG, "heatpump widevane -> %s", settings.wideVane);
-        packet[18] = WIDEVANE[lookupByteMapIndex(WIDEVANE_MAP, 7, settings.wideVane, "wideVane (write)")] | (wideVaneAdj ? 0x80 : 0x00);
+    if (this->hasChanged(currentSettings.wideVane, getWideVaneSetting(), "wideVane (wantedSettings)")) {
+        ESP_LOGD(TAG, "heatpump widevane -> %s", getWideVaneSetting());
+        packet[18] = WIDEVANE[lookupByteMapIndex(WIDEVANE_MAP, 7, getWideVaneSetting(), "wideVane (write)")] | (wideVaneAdj ? 0x80 : 0x00);
         packet[7] += CONTROL_PACKET_2[0];
     }
 
@@ -158,7 +211,7 @@ void CN105Climate::createPacket(uint8_t* packet, heatpumpSettings settings) {
  *
  *
 */
-void CN105Climate::sendWantedSettings() {
+bool CN105Climate::sendWantedSettings() {
 
     if (this->isHeatpumpConnectionActive() && this->isConnected_) {
         if (CUSTOM_MILLIS - this->lastSend > 300) {        // we don't want to send too many packets
@@ -170,32 +223,22 @@ void CN105Climate::sendWantedSettings() {
 
             this->debugSettings("wantedSettings", wantedSettings);
 
-            if (this->autoUpdate) {
-                ESP_LOGD(TAG, "cancelling the update loop during the push of the settings..");
-                /*  we don't want the autoupdate loop to interfere with this packet communication
-                    So we first cancel the SHEDULER_INTERVAL_SYNC_NAME */
-                this->cancel_timeout(SHEDULER_INTERVAL_SYNC_NAME);
-                this->cancel_timeout("2ndPacket");
-                this->cancel_timeout("3rdPacket");
-            }
 
             // and then we send the update packet
             uint8_t packet[PACKET_LEN] = {};
-            this->createPacket(packet, wantedSettings);
+            this->createPacket(packet);
             this->writePacket(packet, PACKET_LEN);
             this->hpPacketDebug(packet, 22, "WRITE_SETTINGS");
 
-            // set a timeout to virtually ack in case the heatpump did not
-            this->set_timeout("wantedSettingsACKTimeout", 600, [this]() { this->wantedSettings.hasBeenSent = false; });
-
-            // here we restore the update scheduler we had canceled 
-            this->set_timeout(DEFER_SHEDULER_INTERVAL_SYNC_NAME, DEFER_SCHEDULE_UPDATE_LOOP_DELAY, [this]() {
-                this->programUpdateInterval();
-                });
-
+            // as soon as the packet is sent, we reset the settings
+            wantedSettings.resetSettings();
+            return true;
         } else {
             ESP_LOGD(TAG, "will sendWantedSettings later because we've sent one too recently...");
+            return false;
         }
+    } else {
+        return false;
     }
 
 }
@@ -257,56 +300,17 @@ void CN105Climate::buildAndSendRequestPacket(int packetType) {
 void CN105Climate::buildAndSendRequestsInfoPackets() {
 
     ESP_LOGD("CONTROL_WANTED_SETTINGS", "buildAndSendRequestsInfoPackets() wantedSettings.hasChanged is %s", wantedSettings.hasChanged ? "true" : "false");
+    if (this->isHeatpumpConnected_) {
 
-    if (!wantedSettings.hasChanged) {       // we don't want to interfere with the update settings process, this is a user command
+        ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
 
-        if (this->isHeatpumpConnected_) {
-
-            uint32_t interval_max = 600;
-            if (this->update_interval_ > 0) {
-                // we get the max interval of update_interval_ / 4 or interval (600)
-                interval_max = (this->update_interval_ / 4) > interval_max ? interval_max : (this->update_interval_ / 4);
-
-            }
-
-            ESP_LOGD(TAG, "buildAndSendRequestsInfoPackets: sending 3 request packet at interval: %d", interval_max);
-
-            ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
-            this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
-            this->set_timeout("2ndPacket", interval_max, [this, interval_max]() {
-                ESP_LOGD(TAG, "sending a request room temp packet (0x03)");
-                this->buildAndSendRequestPacket(RQST_PKT_ROOM_TEMP);
-                this->set_timeout("3rdPacket", interval_max, [this]() {
-                    ESP_LOGD(TAG, "sending a request status paquet (0x06)");
-                    this->buildAndSendRequestPacket(RQST_PKT_STATUS);
-                    });
-                });
-
-        } else {
-            ESP_LOGE(TAG, "sync impossible: heatpump not connected");
-            //this->setupUART();
-            //this->sendFirstConnectionPacket();
-        }
+        this->cycleStarted();
+        this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
     } else {
-        // here we want to manage a case that might happen:
-        // "updateSuccess response (ACK)  was never received"
-        // in this case: as we don't call buildAndSendRequestPacket()  wantedSettings.hasChanged will never be set to false
-        // But actually, if this happens, wantedSettings.hasChanged keeps being true, and we keep sending the same settings
-        // over and over again.
-        // In this case with have to set a limit to the number of deffered requests here
-
-        ESP_LOGD("CONTROL_WANTED_SETTINGS", "deffering requestInfo because wantedSettings.hasChanged is true");
-
-        wantedSettings.nb_deffered_requests++;
-
-        if (wantedSettings.nb_deffered_requests > 10) {
-            ESP_LOGW(TAG, "update success ACK was never received or never sent");
-            ESP_LOGW(TAG, "we're probably not connected to heatpump anymore");
-            wantedSettings.nb_deffered_requests = 0;
-            this->reconnectUART();
-        }
+        ESP_LOGE(TAG, "sync impossible: heatpump not connected");
+        //this->setupUART();
+        //this->sendFirstConnectionPacket();
     }
-    this->programUpdateInterval();
 }
 
 
