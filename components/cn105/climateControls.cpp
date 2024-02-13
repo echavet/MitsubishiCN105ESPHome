@@ -4,10 +4,10 @@
 using namespace esphome;
 
 
-bool CN105Climate::checkPendingWantedSettings() {
+void CN105Climate::checkPendingWantedSettings() {
     long now = CUSTOM_MILLIS;
     if (!(this->wantedSettings.hasChanged) || (now - this->wantedSettings.lastChange < this->debounce_delay_)) {
-        return this->wantedSettings.hasChanged;
+        return;
     }
     ESP_LOGD(TAG, "checkPendingWantedSettings - wanted settings have changed, sending them to the heatpump...");
     this->sendWantedSettings();

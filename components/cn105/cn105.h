@@ -158,11 +158,11 @@ protected:
     bool checkSum();
     uint8_t checkSum(uint8_t bytes[], int len);
 
-    char* getModeSetting();
-    char* getPowerSetting();
-    char* getVaneSetting();
-    char* getWideVaneSetting();
-    char* getFanSpeedSetting();
+    const char* getModeSetting();
+    const char* getPowerSetting();
+    const char* getVaneSetting();
+    const char* getWideVaneSetting();
+    const char* getFanSpeedSetting();
     float getTemperatureSetting();
 
     void setModeSetting(const char* setting);
@@ -202,15 +202,11 @@ private:
 
     void publishStateToHA(heatpumpSettings settings);
 
-    //void settingsChanged(heatpumpSettings settings, const char* source);
-
-    void wantedSettingsUpdateSuccess(heatpumpSettings settings);
-    void extTempUpdateSuccess();
     void heatpumpUpdate(heatpumpSettings settings);
 
     void statusChanged(heatpumpStatus status);
 
-    bool checkPendingWantedSettings();
+    void checkPendingWantedSettings();
     void checkPowerAndModeSettings(heatpumpSettings& settings);
     void checkFanSettings(heatpumpSettings& settings);
     void checkVaneSettings(heatpumpSettings& settings);

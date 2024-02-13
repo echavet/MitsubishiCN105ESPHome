@@ -281,28 +281,8 @@ void CN105Climate::getDataFromResponsePacket() {
 
 void CN105Climate::updateSuccess() {
     ESP_LOGI(TAG, "Last heatpump data update successful!");
-    //this->last_received_packet_sensor->publish_state("0x61: update success");
-    // as the update was successful, we can set currentSettings to wantedSettings        
-    // even if the next settings request will do the same.
-    if (this->wantedSettings.hasChanged) {
-        ESP_LOGI(TAG, "And it was a wantedSetting ACK!");
-        this->wantedSettings.hasChanged = false;
-        this->wantedSettings.hasBeenSent = false;
-        this->wantedSettings.nb_deffered_requests = 0;       // reset the counter which is tested each update_request_interval in buildAndSendRequestsInfoPackets()
-        //this->settingsChanged(this->wantedSettings, "WantedSettingsUpdateSuccess");
-        this->wantedSettingsUpdateSuccess(this->wantedSettings);
-    } else {
-        ESP_LOGI(TAG, "And it was a setExternalTemperature() ACK!");
-        // sendind the remoteTemperature would have more sense but we don't know it
-        // the hp will sent if later
-        //this->settingsChanged(this->currentSettings, "ExtTempUpdateSuccess");
-        this->extTempUpdateSuccess();
-
-    }
-
-    if (!this->autoUpdate) {
-        this->buildAndSendRequestsInfoPackets();
-    }
+    // nothing can be done here because we have no mean to know wether it is an external temp ack
+    // or a wantedSettings update ack
 }
 
 void CN105Climate::processCommand() {
@@ -372,26 +352,6 @@ void CN105Climate::publishStateToHA(heatpumpSettings settings) {
 
 }
 
-
-void CN105Climate::wantedSettingsUpdateSuccess(heatpumpSettings settings) {
-    // settings correponds to fresh wanted settings
-    ESP_LOGD(LOG_ACTION_EVT_TAG, "WantedSettings update success");
-    // update HA states thanks to wantedSettings
-    this->publishStateToHA(settings);
-
-    // as wantedSettings has been received with ACK by the heatpump
-    // we can update the surrentSettings
-    //this->currentSettings = this->wantedSettings;
-    this->debugSettings("curStgs", currentSettings);
-}
-
-void CN105Climate::extTempUpdateSuccess() {
-    ESP_LOGD(LOG_ACTION_EVT_TAG, "External C° update success");
-    // can retreive room °C from currentStatus.roomTemperature because 
-    // set_remote_temperature() is optimistic and has recorded it 
-    this->current_temperature = currentStatus.roomTemperature;
-    this->publish_state();
-}
 
 void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
     // settings correponds to current settings 

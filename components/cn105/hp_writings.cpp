@@ -96,7 +96,7 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
     }
 }
 
-char* CN105Climate::getModeSetting() {
+const char* CN105Climate::getModeSetting() {
     if (wantedSettings.mode) {
         return wantedSettings.mode;
     } else {
@@ -104,7 +104,7 @@ char* CN105Climate::getModeSetting() {
     }
 }
 
-char* CN105Climate::getPowerSetting() {
+const char* CN105Climate::getPowerSetting() {
     if (wantedSettings.power) {
         return wantedSettings.power;
     } else {
@@ -112,7 +112,7 @@ char* CN105Climate::getPowerSetting() {
     }
 }
 
-char* CN105Climate::getVaneSetting() {
+const char* CN105Climate::getVaneSetting() {
     if (wantedSettings.vane) {
         return wantedSettings.vane;
     } else {
@@ -120,7 +120,7 @@ char* CN105Climate::getVaneSetting() {
     }
 }
 
-char* CN105Climate::getWideVaneSetting() {
+const char* CN105Climate::getWideVaneSetting() {
     if (wantedSettings.wideVane) {
         return wantedSettings.wideVane;
     } else {
@@ -128,7 +128,7 @@ char* CN105Climate::getWideVaneSetting() {
     }
 }
 
-char* CN105Climate::getFanSpeedSetting() {
+const char* CN105Climate::getFanSpeedSetting() {
     if (wantedSettings.fan) {
         return wantedSettings.fan;
     } else {
@@ -144,9 +144,6 @@ float CN105Climate::getTemperatureSetting() {
     }
 }
 
-void initWantedSettings() {
-    this->wantedSettings
-}
 
 
 void CN105Climate::createPacket(uint8_t* packet) {
