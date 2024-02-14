@@ -60,6 +60,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->lastCompleteCycle = 0;
     this->generateExtraComponents();
     this->cycleRunning = false;
+    this->wantedSettings.resetSettings();
 
 }
 

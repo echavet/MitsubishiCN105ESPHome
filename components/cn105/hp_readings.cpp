@@ -316,9 +316,9 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->debugStatus("current", currentStatus);
 
 
-        currentStatus.operating = status.operating;
-        currentStatus.compressorFrequency = status.compressorFrequency;
-        currentStatus.roomTemperature = status.roomTemperature;
+        this->currentStatus.operating = status.operating;
+        this->currentStatus.compressorFrequency = status.compressorFrequency;
+        this->currentStatus.roomTemperature = status.roomTemperature;
         this->current_temperature = currentStatus.roomTemperature;
 
         this->updateAction();       // update action info on HA climate component
@@ -359,6 +359,8 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
 
     this->debugSettings("current", this->currentSettings);
     this->debugSettings("received", settings);
+    this->debugSettings("wanted", this->wantedSettings);
+    this->debugClimate("climate");
 
     if (currentSettings != settings) {
         this->publishStateToHA(settings);

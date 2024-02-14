@@ -46,7 +46,7 @@ logger:
     ACK : DEBUG
     Header: INFO
     Decoder : INFO
-    CONTROL_WANTED_SETTINGS: INFO    
+    CONTROL_WANTED_SETTINGS: DEBUG    
     
 
 # Enable Home Assistant API
@@ -179,7 +179,7 @@ climate:
     isee_sensor:
       name: ISEE Sensor
     remote_temperature_timeout: 15min
-    update_interval: 1s         # shouldn't be less than 1 second
+    update_interval: 3s         # shouldn't be less than 1 second
     debounce_delay : 250ms       # delay to prevent bouncing 
 
 

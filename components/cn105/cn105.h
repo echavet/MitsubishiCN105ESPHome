@@ -6,6 +6,7 @@
 #include "isee_sensor.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
+#include <mutex>
 
 using namespace esphome;
 
@@ -171,9 +172,11 @@ protected:
     void setWideVaneSetting(const char* setting);
     void setFanSpeed(const char* setting);
 
+
     bool isCycleRunning() {
         return cycleRunning;
     }
+
 
     void cycleStarted() {
         this->lastRequestInfo = CUSTOM_MILLIS;
@@ -222,11 +225,13 @@ private:
     void debugSettings(const char* settingName, wantedHeatpumpSettings settings);
     void debugStatus(const char* statusName, heatpumpStatus status);
     void debugSettingsAndStatus(const char* settingName, heatpumpSettings settings, heatpumpStatus status);
+    void debugClimate(const char* settingName);
+
     void createPacket(uint8_t* packet);
     void createInfoPacket(uint8_t* packet, uint8_t packetType);
     heatpumpSettings currentSettings{};
     wantedHeatpumpSettings wantedSettings{};
-
+    std::mutex wantedSettingsMutex;
 
     unsigned long lastResponseMs;
 

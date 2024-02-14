@@ -97,50 +97,50 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
 }
 
 const char* CN105Climate::getModeSetting() {
-    if (wantedSettings.mode) {
-        return wantedSettings.mode;
+    if (this->wantedSettings.mode) {
+        return this->wantedSettings.mode;
     } else {
-        return currentSettings.mode;
+        return this->currentSettings.mode;
     }
 }
 
 const char* CN105Climate::getPowerSetting() {
-    if (wantedSettings.power) {
-        return wantedSettings.power;
+    if (this->wantedSettings.power) {
+        return this->wantedSettings.power;
     } else {
-        return currentSettings.power;
+        return this->currentSettings.power;
     }
 }
 
 const char* CN105Climate::getVaneSetting() {
-    if (wantedSettings.vane) {
-        return wantedSettings.vane;
+    if (this->wantedSettings.vane) {
+        return this->wantedSettings.vane;
     } else {
-        return currentSettings.vane;
+        return this->currentSettings.vane;
     }
 }
 
 const char* CN105Climate::getWideVaneSetting() {
-    if (wantedSettings.wideVane) {
-        return wantedSettings.wideVane;
+    if (this->wantedSettings.wideVane) {
+        return this->wantedSettings.wideVane;
     } else {
-        return currentSettings.wideVane;
+        return this->currentSettings.wideVane;
     }
 }
 
 const char* CN105Climate::getFanSpeedSetting() {
-    if (wantedSettings.fan) {
-        return wantedSettings.fan;
+    if (this->wantedSettings.fan) {
+        return this->wantedSettings.fan;
     } else {
-        return currentSettings.fan;
+        return this->currentSettings.fan;
     }
 }
 
 float CN105Climate::getTemperatureSetting() {
-    if (wantedSettings.temperature != -1.0) {
-        return wantedSettings.temperature;
+    if (this->wantedSettings.temperature != -1.0) {
+        return this->wantedSettings.temperature;
     } else {
-        return currentSettings.temperature;
+        return this->currentSettings.temperature;
     }
 }
 
@@ -212,6 +212,8 @@ bool CN105Climate::sendWantedSettings() {
 
     if (this->isHeatpumpConnectionActive() && this->isConnected_) {
         if (CUSTOM_MILLIS - this->lastSend > 300) {        // we don't want to send too many packets
+
+            std::lock_guard<std::mutex> guard(wantedSettingsMutex);
 
             this->wantedSettings.hasBeenSent = true;
 
@@ -296,7 +298,8 @@ void CN105Climate::buildAndSendRequestPacket(int packetType) {
 */
 void CN105Climate::buildAndSendRequestsInfoPackets() {
 
-    ESP_LOGD("CONTROL_WANTED_SETTINGS", "buildAndSendRequestsInfoPackets() wantedSettings.hasChanged is %s", wantedSettings.hasChanged ? "true" : "false");
+    ESP_LOGD("CONTROL_WANTED_SETTINGS", "hasChanged is %s", wantedSettings.hasChanged ? "true" : "false");
+
     if (this->isHeatpumpConnected_) {
 
         ESP_LOGD(TAG, "sending a request for settings packet (0x02)");

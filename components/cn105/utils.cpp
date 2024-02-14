@@ -70,6 +70,21 @@ void CN105Climate::debugSettings(const char* settingName, wantedHeatpumpSettings
 #endif
 }
 
+void CN105Climate::debugClimate(const char* settingName) {
+    ESP_LOGI(LOG_SETTINGS_TAG, "[%s]-> [mode: %s, target °C: %.1f, fan: %s, swing: %s]",
+        settingName,
+        LOG_STR_ARG(climate_mode_to_string(this->mode)), // Utilisation de LOG_STR_ARG
+        this->target_temperature, // Supposant que target_temperature est un float
+        this->fan_mode.has_value() ? LOG_STR_ARG(climate_fan_mode_to_string(this->fan_mode.value())) : "-",
+        LOG_STR_ARG(climate_swing_mode_to_string(this->swing_mode)));
+}
+
+
+
+
+
+
+
 void CN105Climate::debugSettings(const char* settingName, heatpumpSettings settings) {
 #ifdef USE_ESP32
     ESP_LOGI(LOG_SETTINGS_TAG, "[%s]-> [power: %s, target °C: %.1f, mode: %s, fan: %s, vane: %s, wvane: %s]",

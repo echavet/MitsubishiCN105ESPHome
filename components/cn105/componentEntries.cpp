@@ -61,10 +61,13 @@ void CN105Climate::loop() {
             }
         } else {
             // TODO: check if a cycle timeout occured in case there was no reply             
+            if ((CUSTOM_MILLIS - this->lastRequestInfo) > 5000) {
+                ESP_LOGW(TAG, "Cycle timeout, reseting cycle...");
+                cycleRunning = false;
+            }
         }
     }
 }
-
 
 
 /**
