@@ -183,6 +183,11 @@ void CN105Climate::controlMode() {
         this->setModeSetting("AUTO");
         this->setPowerSetting("ON");
         break;
+    case climate::CLIMATE_MODE_AUTO:
+        ESP_LOGI("control", "changing mode to AUTO");
+        this->setModeSetting("AUTO");
+        this->setPowerSetting("ON");
+        break;
     case climate::CLIMATE_MODE_FAN_ONLY:
         ESP_LOGI("control", "changing mode to FAN_ONLY");
         this->setModeSetting("FAN");
@@ -193,7 +198,7 @@ void CN105Climate::controlMode() {
         this->setPowerSetting("OFF");
         break;
     default:
-        ESP_LOGW("control", "mode non pris en charge");
+        ESP_LOGW("control", "unsupported mode");
     }
 }
 
