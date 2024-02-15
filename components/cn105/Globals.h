@@ -104,8 +104,8 @@ static const int RQST_PKT_STATUS = 4;
 static const int RQST_PKT_STANDBY = 5;
 
 
-const uint8_t ESPMHP_MIN_TEMPERATURE = 16;
-const uint8_t ESPMHP_MAX_TEMPERATURE = 31;
+const uint8_t ESPMHP_MIN_TEMPERATURE = 18; //16
+const uint8_t ESPMHP_MAX_TEMPERATURE = 25; //31
 const float ESPMHP_TEMPERATURE_STEP = 0.5;
 
 
@@ -156,7 +156,7 @@ struct wantedHeatpumpSettings : heatpumpSettings {
     uint8_t nb_deffered_requests;
     long lastChange;
     wantedHeatpumpSettings& operator=(const wantedHeatpumpSettings& other) {
-        if (this != &other) { // protection contre l'auto-affectation
+        if (this != &other) { // self-assignment protection
             heatpumpSettings::operator=(other); // Appel à l'opérateur d'affectation de la classe de base
             hasChanged = other.hasChanged;
             hasBeenSent = other.hasBeenSent;
@@ -165,7 +165,7 @@ struct wantedHeatpumpSettings : heatpumpSettings {
     }
 
     wantedHeatpumpSettings& operator=(const heatpumpSettings& other) {
-        if (this != &other) { // protection contre l'auto-affectation
+        if (this != &other) { // self-assignment protection
             heatpumpSettings::operator=(other); // Copie des membres de base                        
         }
         return *this;
