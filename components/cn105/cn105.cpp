@@ -16,7 +16,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
 
     this->traits_.set_supported_modes({
-        climate::CLIMATE_MODE_HEAL_COOL,
+        climate::CLIMATE_MODE_HEAT_COOL,
         climate::CLIMATE_MODE_COOL,
         climate::CLIMATE_MODE_DRY,
         climate::CLIMATE_MODE_FAN_ONLY,
