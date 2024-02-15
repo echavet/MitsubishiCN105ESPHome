@@ -27,23 +27,6 @@ void CN105Climate::setup() {
 }
 
 
-/**
- * delays for 12s the call of setup() by esphome to let the time for OTA logs to initialize
-*/
-/*bool CN105Climate::can_proceed() {
-
-    if (!this->init_delay_initiated_) {
-        ESP_LOGI(TAG, "delaying setup process for 45 seconds..");
-        this->init_delay_initiated_ = true;
-        this->init_delay_completed_ = false;
-        this->set_timeout("init_delay", 45000, [this]() { this->init_delay_completed_ = true; });
-    }
-
-    if (this->init_delay_completed_) {
-        ESP_LOGI(TAG, "delay expired setup will start...");
-    }
-    return this->init_delay_completed_;
-}*/
 
 /**
  * @brief Executes the main loop for the CN105Climate component.

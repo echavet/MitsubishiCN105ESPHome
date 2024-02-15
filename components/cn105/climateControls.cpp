@@ -18,7 +18,9 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 
     ESP_LOGD("control", "espHome control() interface method called...");
     bool updated = false;
+#ifdef USE_ESP32
     std::lock_guard<std::mutex> guard(wantedSettingsMutex);
+#endif    
     // Traiter les commandes de climatisation ici
     if (call.get_mode().has_value()) {
         ESP_LOGD("control", "Mode change asked");

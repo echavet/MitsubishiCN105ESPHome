@@ -212,9 +212,9 @@ bool CN105Climate::sendWantedSettings() {
 
     if (this->isHeatpumpConnectionActive() && this->isConnected_) {
         if (CUSTOM_MILLIS - this->lastSend > 300) {        // we don't want to send too many packets
-
+#ifdef USE_ESP32
             std::lock_guard<std::mutex> guard(wantedSettingsMutex);
-
+#endif
             this->wantedSettings.hasBeenSent = true;
 
             this->lastSend = CUSTOM_MILLIS;

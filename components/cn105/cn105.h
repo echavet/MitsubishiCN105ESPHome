@@ -6,7 +6,9 @@
 #include "isee_sensor.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
+#ifdef USE_ESP32
 #include <mutex>
+#endif
 
 using namespace esphome;
 
@@ -231,7 +233,10 @@ private:
     void createInfoPacket(uint8_t* packet, uint8_t packetType);
     heatpumpSettings currentSettings{};
     wantedHeatpumpSettings wantedSettings{};
+
+#ifdef USE_ESP32
     std::mutex wantedSettingsMutex;
+#endif
 
     unsigned long lastResponseMs;
 
@@ -241,9 +246,6 @@ private:
     int baud_ = 0;
     int tx_pin_ = -1;
     int rx_pin_ = -1;
-
-    bool init_delay_completed_ = false;
-    bool init_delay_initiated_ = false;
 
     bool isConnected_ = false;
     bool isHeatpumpConnected_ = false;
