@@ -16,7 +16,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
 
     this->traits_.set_supported_modes({
-        //climate::CLIMATE_MODE_AUTO,
+        climate::CLIMATE_MODE_AUTO,
         climate::CLIMATE_MODE_COOL,
         climate::CLIMATE_MODE_DRY,
         climate::CLIMATE_MODE_FAN_ONLY,
@@ -32,8 +32,8 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
 
     this->traits_.set_supported_swing_modes({
-        //climate::CLIMATE_SWING_BOTH,
-        //climate::CLIMATE_SWING_HORIZONTAL,
+        climate::CLIMATE_SWING_BOTH,
+        climate::CLIMATE_SWING_HORIZONTAL,
         climate::CLIMATE_SWING_VERTICAL,
         climate::CLIMATE_SWING_OFF });
 
