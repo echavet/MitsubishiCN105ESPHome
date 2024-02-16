@@ -148,6 +148,7 @@ protected:
     void initBytePointer();
     void processDataPacket();
     void getDataFromResponsePacket();
+    void getAutoModeStateFromResponsePacket() //NET added
     void getSettingsFromResponsePacket();
     void getRoomTemperatureFromResponsePacket();
     void getOperatingAndCompressorFreqFromResponsePacket();
