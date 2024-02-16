@@ -159,28 +159,28 @@ void CN105Climate::getPowerFromResponsePacket() {
     //Only in "Auto" mode is shows what the unit is doing
     //0x01 is cool
     //0x02 is heat
-
+    //FC 62 01 30 10 09 00 00 00 01 02 00 00 00 00 00 00 00 00 00 00 51 
     heatpumpSettings receivedSettings{};
 
     ESP_LOGD("Decoder", "[0x09 is who knowns]");
 
     if (data[9] == 0x01) {
             ESP_LOGD("Decoder", "[Power is 1]");
-    } else if (data[10] == 0x02) {
+    } else if (data[9] == 0x02) {
             ESP_LOGD("Decoder", "[Power is 2]");
-    } else if (data[10] == 0x03) {
+    } else if (data[9] == 0x03) {
             ESP_LOGD("Decoder", "[Power is 3]");
-    } else if (data[10] == 0x04) {
+    } else if (data[9] == 0x04) {
             ESP_LOGD("Decoder", "[Power is 4]");
-    } else if (data[10] == 0x05) {
+    } else if (data[9] == 0x05) {
             ESP_LOGD("Decoder", "[Power is 5]");
     } else {
-            ESP_LOGD("Decoder", "[Byte 10 is unknown]");
+            ESP_LOGD("Decoder", "[Byte 9 is unknown]");
     }
 
     if (data[8] == 0x04) {
             ESP_LOGD("Decoder", "[Preheating]");
-    } else if (data[10] == 0x08) {
+    } else if (data[8] == 0x08) {
             ESP_LOGD("Decoder", "[Standby]");
     } else {
             ESP_LOGD("Decoder", "[Byte 8 is unknown]");

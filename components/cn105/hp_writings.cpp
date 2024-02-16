@@ -282,7 +282,7 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
                     });
                 });
             this->set_timeout("4thPacket", interval_max, [this, interval_max]() {
-                ESP_LOGD("Decoder", "sending a request room temp packet (0x09)");
+                ESP_LOGD("Decoder", "sending an additional info (0x09)");
                 this->buildAndSendRequestPacket(RQST_PKT_STANDBY);
                 });
             //this->set_timeout("4thPacket", interval_max, [this, interval_max]() {
