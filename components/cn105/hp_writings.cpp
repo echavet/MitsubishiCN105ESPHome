@@ -281,7 +281,12 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
                     this->buildAndSendRequestPacket(RQST_PKT_STATUS);
                     });
                 });
+            this->set_timeout("4thPacket", interval_max, [this, interval_max]() {
+                ESP_LOGD(TAG, "sending a request room temp packet (0x09)");
+                this->buildAndSendRequestPacket(RQST_PKT_STANDBY);
+                });
 
+//RQST_PKT_STANDBY
         } else {
             ESP_LOGE(TAG, "sync impossible: heatpump not connected");
             //this->setupUART();
