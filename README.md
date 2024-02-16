@@ -8,9 +8,9 @@ The benefits include fully local control over your heat pump system, without rel
 ### Warning: Use at your own risk.
 This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
 
-## What's New:
+## What's New
 
-### Breaking Changes:
+### Breaking Changes
 
 #### Warning: esp-idf framework support feature has been merged to main branch
 
@@ -24,7 +24,7 @@ external_components:
   - source: github://echavet/MitsubishiCN105ESPHome@v1.0.3
 ```
 
-### Other New Features:
+### Other New Features
 - Additional components for supported units: vane orientation (fully supporting the Swicago map), compressor frequency for energy monitoring, and i-see sensor.
 - Enhanced UART communication with the Heatpump to eliminate delays in the ESPHome loop(), which was a limitation of the original [SwiCago library](https://github.com/SwiCago/HeatPump).
 - Byte-by-byte reading within the loop() function ensures no data loss or lag, as the component continuously reads without blocking ESPHome.
@@ -33,7 +33,7 @@ external_components:
 - Extensive logging for easier troubleshooting and development.
 - Ongoing refactoring to further improve the code quality.
 
-### Retained Features:
+### Retained Features
 
 This project maintains all functionalities of the original geoffdavis project, including:
 
@@ -44,17 +44,17 @@ This project maintains all functionalities of the original geoffdavis project, i
 - Full mode and vane orientation support (added as an extra component within the Core Climate Component).
 - Thermostat in HomeAssistant with compressor frequency monitoring (an extra component within the Core Climate Component).
 
-## Requirements:
+## Requirements
 
 - [ESPHome](https://esphome.io/) - Minimum version 1.18.0, installed independently or as an add-on in HomeAssistant
 
-## Supported Microcontrollers:
+## Supported Microcontrollers
 
 - WeMos D1 Mini (ESP8266): tested
 - M5Stack ATOM Lite : tested
 - Generic ESP32 Dev Kit (ESP32): tested
 
-## Supported Mitsubishi Climate Units:
+## Supported Mitsubishi Climate Units
 
 Generally, indoor units with a `CN105` header are compatible. Refer to the [HeatPump wiki](https://github.com/SwiCago/HeatPump/wiki/Supported-models) for a comprehensive list. Additionally, Mitsubishi units listed as compatible with the [Mitsubishi PAC-USWHS002-WF-2 Kumo Cloud interface](https://mylinkdrive.com/USA/Controls/kumo_cloud/kumo_cloud_Devices/PAC_USWHS002_WF_2?product) will *likely* be compatible with this project, as they use the same CN105 connector and serial protocol.
 
@@ -64,7 +64,7 @@ Units tested by project contributors include:
 - `MSZ-SF35VE3`
 - `MSZ-GLxxNA`
 
-## Usage:
+## Usage
 
 ### Step 1: Building the Control Circuit
 
@@ -72,33 +72,106 @@ Follow the [SwiCago/HeatPump README](https://github.com/SwiCago/HeatPump/blob/ma
 
 ### Step 2: Using ESPHome
 
-This code utilizes features in ESPHome 1.18.0, including various Fan modes and [external components](https://esphome.io/components/external_components.html).
+Add a new device in your ESPHome dashboard. Create a yaml configuration file for the new device using the templates below, and flash to your device. Refer to the ESPHome documentation for guides on how to install ESPHome, add new devices, and flash the initial firmware.
 
-### Step 3: Add as an External Component
+- [Getting Started with ESPHome and HomeAssistant](https://esphome.io/guides/getting_started_hassio)
+- [Installing ESPHome Locally](https://esphome.io/guides/installing_esphome)
 
-In your ESPHome config, add this repository:
+Note: This code utilizes features in ESPHome 1.18.0, including various Fan modes and [external components](https://esphome.io/components/external_components.html).
 
+### Step 3: Configure the board and UART settings
+
+Your ESPHome device configuration file starts with common defaults for ESPHome. To these defaults, add these minimum sections:
+
+#### For ESP8266-based Devices
 ```yaml
-external_components:
-  - source: github://echavet/MitsubishiCN105ESPHome
+esp8266:
+  board: d1_mini
+
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: 1
+  rx_pin: 3
 ```
 
-### Step 4: Configuring the Heatpump
+#### For ESP32-based Devices
+```yaml
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: esp-idf   
 
-In your ESPHome config, configure an uart and add a `cn105` component:
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+```
+
+### Step 4: Configure the heatpump library
+
+Add these sections to load the external component, setup logging, and enable the climate entity.
 
 ```yaml
+# External component library
+yaml
+external_components:
+  - source: github://echavet/MitsubishiCN105ESPHome
+
+# UART configuration
 uart:
   id: HP_UART
   baud_rate: 2400
   tx_pin: 1
   rx_pin: 3
 
+# Climate entity configuration
 climate:
-  - platform: cn105 # Choose your platform
+  - platform: cn105
     name: "My Heat Pump"
     update_interval: 4s
+
+# Default logging level
+logger:
+  hardware_uart: UART1 # This line can be removed for ESP32 devices
+  level: INFO
 ```
+
+### Step 5: Optional components and variables
+
+These optional additional configurations add customization and additional capabilities. The examples below assume you have added a substitutions component to your configuration file to allow for easy renaming.
+
+```yaml
+substitutions:
+  name: heatpump-1 # Do not use underscores, which are not fully compatible with mDNS
+  friendly_name: My Heatpump 1
+```
+
+#### Climate component full example
+May support many of the other features of the [ESPHome climate component](https://esphome.io/components/climate/index.html).
+```yaml
+climate:
+  - platform: cn105
+    id: hp
+    name: "${friendly_name}"
+    icon: mdi:heat-pump
+    visual:
+      min_temperature: 15
+      max_temperature: 31
+      temperature_step: 1.0
+    compressor_frequency_sensor:
+      name: ${name} Compressor Frequency
+    vertical_vane_select:
+      name: ${name} Vertical Vane
+    horizontal_vane_select:
+      name: ${name} Horizontal Vane
+    isee_sensor:
+      name: ${name} ISEE Sensor
+    remote_temperature_timeout: 30min
+    update_interval: 4s
+```
+
 
 
 Another example on esp32 with all optional attributes:
