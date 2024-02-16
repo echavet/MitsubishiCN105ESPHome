@@ -13,6 +13,9 @@ void CN105Climate::setup() {
     ESP_LOGD(TAG, "Initialisation du composant: appel de setup()");
     this->current_temperature = NAN;
     this->target_temperature = NAN;
+    this->cool_setpoint = NAN;
+    this->heat_setpoint = NAN;
+    this->auto_setpoint = NAN;
     this->fan_mode = climate::CLIMATE_FAN_OFF;
     this->swing_mode = climate::CLIMATE_SWING_OFF;
     this->initBytePointer();
