@@ -164,6 +164,9 @@ protected:
     void setWideVaneSetting(const char* setting);
     void setFanSpeed(const char* setting);
 
+    static void save(float value, esphome::ESPPreferenceObject& storage);
+    static esphome::optional<float> load(esphome::ESPPreferenceObject& storage);
+
 private:
     const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
     int lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "");
@@ -204,7 +207,6 @@ private:
     void createInfoPacket(uint8_t* packet, uint8_t packetType);
     heatpumpSettings currentSettings{};
     wantedHeatpumpSettings wantedSettings{};
-
 
     unsigned long lastResponseMs;
 
