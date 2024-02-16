@@ -180,12 +180,7 @@ void CN105Climate::controlMode() {
         break;
     case climate::CLIMATE_MODE_HEAT_COOL:
         ESP_LOGI("control", "changing mode to HEAT_COOL");
-        this->setModeSetting("AUTO");
-        this->setPowerSetting("ON");
-        break;
-    case climate::CLIMATE_MODE_AUTO:
-        ESP_LOGI("control", "changing mode to AUTO");
-        this->setModeSetting("AUTO");
+        this->setModeSetting("HEAT_COOL");
         this->setPowerSetting("ON");
         break;
     case climate::CLIMATE_MODE_FAN_ONLY:

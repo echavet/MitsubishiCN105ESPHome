@@ -25,6 +25,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
     this->traits_.set_supported_fan_modes({
         climate::CLIMATE_FAN_AUTO,
+        climate::CLIMATE_FAN_MIDDLE,
         climate::CLIMATE_FAN_QUIET,
         climate::CLIMATE_FAN_LOW,
         climate::CLIMATE_FAN_HIGH,
