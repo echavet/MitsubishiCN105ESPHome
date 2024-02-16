@@ -149,6 +149,7 @@ protected:
     void processDataPacket();
     void getDataFromResponsePacket();
     void getAutoModeStateFromResponsePacket(); //NET added
+    void getPowerFromResponsePacket(); //NET added
     void getSettingsFromResponsePacket();
     void getRoomTemperatureFromResponsePacket();
     void getOperatingAndCompressorFreqFromResponsePacket();

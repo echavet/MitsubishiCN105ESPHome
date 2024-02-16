@@ -144,12 +144,14 @@ void CN105Climate::getAutoModeStateFromResponsePacket() {
     }
 }
 
-void getPowerFromResponsePacket() {
+void CN105Climate::getPowerFromResponsePacket() {
     //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
     //Byte 9: Heating or cooling stage.
     //0x01 to 0x04, in heating 0x01 is lowest power 0x05 is highest output
     heatpumpSettings receivedSettings{};
+
     ESP_LOGD("Decoder", "[0x09 is who knowns]");
+
     if (data[9] == 0x01) {
             ESP_LOGD("Decoder", "[Power is 1]");
     } else if (data[10] == 0x02) {
