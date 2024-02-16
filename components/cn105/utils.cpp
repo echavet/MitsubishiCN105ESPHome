@@ -231,3 +231,61 @@ void CN105Climate::emulateMutex(const char* retryName, std::function<void()>&& f
         }, 1.2f);
 }
 #endif
+
+
+#ifdef TEST_MODE
+void CN105Climate::logDelegate() {
+#ifndef USE_ESP32
+    ESP_LOGI("testMutex", "Delegate exécuté. Mutex est %s", this->esp8266Mutex ? "verrouillé" : "déverrouillé");
+#else
+    if (this->esp32Mutex.try_lock()) {
+        ESP_LOGI("testMutex", "Mutex n'est pas verrouillé");
+    } else {
+        ESP_LOGI("testMutex", "Mutex est déjà verrouillé");
+    }
+#endif    
+}
+
+void CN105Climate::testCase1() {
+    int testDelay = 600;
+
+#ifdef USE_ESP32
+
+    ESP_LOGI("testMutex", "Test 1: VERROUILLAGE ET APPEL DE logDelegate...");
+    ESP_LOGI("testMutex", "verrouillage du mutex...");
+    if (true) {
+        std::lock_guard<std::mutex> guard(this->esp32Mutex);
+        ESP_LOGI("testMutex", "verification...");
+        this->logDelegate();
+    }
+    ESP_LOGI("testMutex", "déverrouillage du mutex...");
+    this->logDelegate();
+
+    ESP_LOGI("testMutex", "Test 2: PAS DE VERROU ET APPEL DE logDelegate...");
+    this->logDelegate();
+#else
+    ESP_LOGI("testMutex", "Test 1: VERROUILLAGE ET APPEL DE logDelegate...");
+    ESP_LOGI("testMutex", "verrouillage du mutex...");
+    this->esp8266Mutex = true;
+    this->emulateMutex("testMutex", std::bind(&CN105Climate::logDelegate, this));
+    CUSTOM_DELAY(testDelay);
+    ESP_LOGI("testMutex", "Déverrouillage du mutex...");
+    this->esp8266Mutex = false;
+    CUSTOM_DELAY(200);
+    ESP_LOGI("testMutex", "verrouillage du mutex...");
+    this->esp8266Mutex = true;
+    this->emulateMutex("testMutex", std::bind(&CN105Climate::logDelegate, this));
+    ESP_LOGI("testMutex", "blocage de 2,5s...");
+    CUSTOM_DELAY(2500);
+    ESP_LOGI("testMutex", "fin du test");
+
+#endif
+}
+
+void CN105Climate::testMutex() {
+
+    ESP_LOGI("testMutex", "Test de getsion des mutex...");
+    this->testCase1();
+
+}
+#endif

@@ -127,6 +127,19 @@ public:
 
     const char* getIfNotNull(const char* what, const char* defaultValue);
 
+#ifdef TEST_MODE
+    void testMutex();
+    void testCase1();
+    void logDelegate();
+
+#ifdef USE_ESP32
+    std::mutex esp32Mutex;
+#else
+    bool esp8266Mutex = false;
+#endif
+#endif
+
+
 protected:
     // HeatPump object using the underlying Arduino library.
     // same as PolingComponent
@@ -225,6 +238,8 @@ private:
 #ifndef USE_ESP32
     void emulateMutex(const char* retryName, std::function<void()>&& f);
 #endif
+
+
 
     void controlDelegate(const esphome::climate::ClimateCall& call);
 

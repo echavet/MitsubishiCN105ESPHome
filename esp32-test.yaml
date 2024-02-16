@@ -47,7 +47,7 @@ logger:
     Header: INFO
     Decoder : INFO
     CONTROL_WANTED_SETTINGS: DEBUG    
-    
+    testMutex: DEBUG
 
 # Enable Home Assistant API
 api:
