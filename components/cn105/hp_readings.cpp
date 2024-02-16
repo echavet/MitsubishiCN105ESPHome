@@ -127,34 +127,34 @@ void CN105Climate::processDataPacket() {
 
 void CN105Climate::getSettingsFromResponsePacket() {
     heatpumpSettings receivedSettings{};
-    ESP_LOGD("Decoder", "[0x02 is settings]");
+    //ESP_LOGD("Decoder", "[0x02 is settings]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");        
     receivedSettings.connected = true;      // we're here so we're connected (actually not used property)
     receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3], "power reading");
     receivedSettings.iSee = data[4] > 0x08 ? true : false;
     receivedSettings.mode = lookupByteMapValue(MODE_MAP, MODE, 5, receivedSettings.iSee ? (data[4] - 0x08) : data[4], "mode reading");
 
-    ESP_LOGD("Decoder", "[Power : %s]", receivedSettings.power);
-    ESP_LOGD("Decoder", "[iSee  : %d]", receivedSettings.iSee);
-    ESP_LOGD("Decoder", "[Mode  : %s]", receivedSettings.mode);
+    //ESP_LOGD("Decoder", "[Power : %s]", receivedSettings.power);
+    //ESP_LOGD("Decoder", "[iSee  : %d]", receivedSettings.iSee);
+    //ESP_LOGD("Decoder", "[Mode  : %s]", receivedSettings.mode);
 
     if (data[11] != 0x00) {
         int temp = data[11];
         temp -= 128;
         receivedSettings.temperature = (float)temp / 2;
         this->tempMode = true;
-        ESP_LOGD("Decoder", "tempMode is true");
+        //ESP_LOGD("Decoder", "tempMode is true");
     } else {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
     }
 
-    ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
+    //ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
 
     receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6], "fan reading");
-    ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
+    //ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
 
     receivedSettings.vane = lookupByteMapValue(VANE_MAP, VANE, 7, data[7], "vane reading");
-    ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
+    //ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
 
 
     receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F, "wideVane reading", WIDEVANE_MAP[2]);
@@ -251,7 +251,7 @@ void CN105Climate::getDataFromResponsePacket() {
         break;
     case 0x10:
         /* unknown */
-        ESP_LOGD("Decoder", "[0x10 is Unknow : not implemented]");
+        ESP_LOGD("Decoder", "[0x10 is Unknown : not implemented]");
         //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
         break;
         //Byte 10:
