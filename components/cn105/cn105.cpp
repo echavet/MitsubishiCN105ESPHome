@@ -38,9 +38,9 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
         climate::CLIMATE_SWING_VERTICAL,
         climate::CLIMATE_SWING_OFF });
 
-    //this->cool_setpoint = 20.0;
-    //this->heat_setpoint = 20.0;
-    //this->auto_setpoint = 20.0;
+    this->cool_setpoint = -1.0;
+    this->heat_setpoint = -1.0;
+    this->auto_setpoint = -1.0;
 
     this->isConnected_ = false;
     this->tempMode = false;
