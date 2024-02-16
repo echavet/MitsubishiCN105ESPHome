@@ -113,6 +113,8 @@ struct heatpumpSettings {
     const char* power;
     const char* mode;
     float temperature;
+    float temperature_low;
+    float temperature_high;
     const char* fan;
     const char* vane; //vertical vane, up/down
     const char* wideVane; //horizontal vane, left/right
@@ -124,6 +126,8 @@ struct heatpumpSettings {
             power = other.power;
             mode = other.mode;
             temperature = other.temperature;
+            temperature_low = other.temperature_low;
+            temperature_high = other.temperature_high;
             fan = other.fan;
             vane = other.vane;
             wideVane = other.wideVane;
@@ -138,6 +142,8 @@ struct heatpumpSettings {
         return power == other.power &&
             mode == other.mode &&
             temperature == other.temperature &&
+            temperature_low = other.temperature_low &&
+            temperature_high = other.temperature_high &&
             fan == other.fan &&
             vane == other.vane &&
             wideVane == other.wideVane;
