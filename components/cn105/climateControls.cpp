@@ -197,9 +197,9 @@ void CN105Climate::controlMode() {
         this->setModeSetting("DRY");
         this->setPowerSetting("ON");
         break;
-    case climate::CLIMATE_MODE_HEAT_COOL:
-        ESP_LOGI("control", "changing mode to HEAT_COOL");
-        this->setModeSetting("HEAT_COOL");
+    case climate::CLIMATE_MODE_AUTO:
+        ESP_LOGI("control", "changing mode to AUTO");
+        this->setModeSetting("AUTO");
         this->setPowerSetting("ON");
         break;
     case climate::CLIMATE_MODE_FAN_ONLY:
@@ -253,7 +253,7 @@ void CN105Climate::updateAction() {
         //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_COOLING);
         this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
         break;
-    case climate::CLIMATE_MODE_HEAT_COOL:
+    case climate::CLIMATE_MODE_AUTO:
         //this->setActionIfOperatingAndCompressorIsActiveTo(
         // this is where lots of logic is needed to do what it takes to pick the right mode given the temps
         this->setActionIfOperatingTo(
