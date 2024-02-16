@@ -242,6 +242,7 @@ void CN105Climate::setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateA
     }
 }
 
+//inside the below we could implement an internal only HEAT_COOL doing the math with an offset or something
 void CN105Climate::updateAction() {
     ESP_LOGV(TAG, "updating action back to espHome...");
     switch (this->mode) {
@@ -255,7 +256,6 @@ void CN105Climate::updateAction() {
         break;
     case climate::CLIMATE_MODE_AUTO:
         //this->setActionIfOperatingAndCompressorIsActiveTo(
-        // this is where lots of logic is needed to do what it takes to pick the right mode given the temps
         this->setActionIfOperatingTo(
             (this->current_temperature > this->target_temperature  ?
                 climate::CLIMATE_ACTION_COOLING :

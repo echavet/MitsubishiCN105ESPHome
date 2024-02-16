@@ -14,8 +14,6 @@ void CN105Climate::setup() {
     this->current_temperature = NAN;
 
     this->target_temperature = NAN;
-    this->target_temperature_low = NAN;
-    this->target_temperature_high = NAN;
 
     this->fan_mode = climate::CLIMATE_FAN_OFF;
     this->swing_mode = climate::CLIMATE_SWING_OFF;
@@ -58,7 +56,6 @@ void CN105Climate::loop() {
         this->checkPendingWantedSettings();
     }
 }
-
 
 
 /**
