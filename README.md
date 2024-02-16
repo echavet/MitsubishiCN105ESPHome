@@ -15,9 +15,9 @@ This is an unofficial implementation of the reverse-engineered Mitsubishi protoc
 #### Warning: esp-idf framework support feature has been merged to main branch
 
 This is a major change in UART configuration. But not so scary! If you upgrade to the head of main you will have to change the way you configure the UART in your yaml files. Look at the Step 4 in this document.
-The reason is [issue #6](https://github.com/echavet/MitsubishiCN105ESPHome/issues/6). The old configuration did not allow to use ESP32 ESP-IDF framework, which improves reliability of the hardware UART.
+The reason is issue https://github.com/echavet/MitsubishiCN105ESPHome/issues/6. The old configuration did not allow to use ESP32 ESP-IDF framework, which improves reliability of the hardware UART.
 
-If you don't want this change you must configure your external_components to point to the [tagged v1.0.3](https://github.com/echavet/MitsubishiCN105ESPHome/tree/v1.0.3) tree this way:
+If you don't want this change you must configure your external_components to point to the [v1.0.3](https://github.com/echavet/MitsubishiCN105ESPHome/tree/v1.0.3) tree this way:
 
 ```yaml
 external_components:
@@ -145,7 +145,7 @@ This example adds support for configuring the temperature steps, adding an icon,
 
 The `remote_temperature_timeout` setting allows the unit to revert back to the internal temperature measurement if it does not receive an update in the specified time range (highly recommended if using remote temperature updates).
 
-`debounce_delay` adds a small delay to the command processing to account for some HomeAssistant buttons that may send repeat commands too quickly. A shorter value creates a more responsive UI, a longer value protects against repeat commands. (See [Issue #21](https://github.com/echavet/MitsubishiCN105ESPHome/issues/21))
+`debounce_delay` adds a small delay to the command processing to account for some HomeAssistant buttons that may send repeat commands too quickly. A shorter value creates a more responsive UI, a longer value protects against repeat commands. (See Issue https://github.com/echavet/MitsubishiCN105ESPHome/issues/21)
 
 ```yaml
 climate:
@@ -247,6 +247,10 @@ Build the project in ESPHome and install to your device. Install the device in y
 
 This minimal configuration includes the basic components necessary for the firmware to operate. Note that you need to choose between the ESP32 and the ESP8266 sections to get the correct UART configuration. Utilizes a `secrets.yaml` file to store your credentials.
 
+<details>
+
+<summary>Minimal Configuration</summary>
+  
 ```yaml
 esphome:
   name: heatpump-1
@@ -310,10 +314,15 @@ wifi:
 
 captive_portal:
 ```
+</details>
 
 ## Example Configuration - Complete:
 
 This example includes all the bells and whistles, optional components, remote temperature sensing, reboot button, and additional sensors in HomeAssistant including uptime, the current wifi SSID, and signal strength. Note that you need to choose between the ESP32 and the ESP8266 sections to get the correct UART configuration. Utilizes a `secrets.yaml` file to store your credentials. Comment out or remote features your unit doesn't support (such as the isee sensor or horizontal vane). It doesn't hurt to try them, but if your unit doesn't support that feature then it will be inactive.
+
+<details>
+
+<summary>Complete Configuration</summary>
 
 ```yaml
 substitutions:
@@ -482,6 +491,7 @@ climate:
     debounce_delay : 500ms
     update_interval: 4s
 ```
+</details>
 
 ## Methods for updating external temperature
 
@@ -523,7 +533,7 @@ sensor:
 
 Coming Soon.
 
-For more configuration options, see the provided hp-debug.yaml and hp-sejour.yaml examples or refer to the original project.
+For more configuration options, see the provided [hp-debug.yaml](https://github.com/echavet/MitsubishiCN105ESPHome/blob/main/hp-debug.yaml) and [hp-sejour.yaml](https://github.com/echavet/MitsubishiCN105ESPHome/blob/main/hp-sejour.yaml) examples or refer to the original project.
 
 ## Other Implementations:
 
