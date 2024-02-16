@@ -142,8 +142,8 @@ struct heatpumpSettings {
         return power == other.power &&
             mode == other.mode &&
             temperature == other.temperature &&
-            temperature_low = other.temperature_low &&
-            temperature_high = other.temperature_high &&
+            temperature_low == other.temperature_low &&
+            temperature_high == other.temperature_high &&
             fan == other.fan &&
             vane == other.vane &&
             wideVane == other.wideVane;
