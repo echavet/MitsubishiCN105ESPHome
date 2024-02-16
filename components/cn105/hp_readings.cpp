@@ -148,7 +148,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
     }
 
-    ESP_LOGD("Decoder", "[Consigne °C: %f]", receivedSettings.temperature);
+    ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
 
     receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6], "fan reading");
     ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
