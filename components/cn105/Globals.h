@@ -105,7 +105,7 @@ static const int RQST_PKT_STANDBY = 5;
 
 
 const uint8_t ESPMHP_MIN_TEMPERATURE = 16; //16
-const uint8_t ESPMHP_MAX_TEMPERATURE = 31; //31
+const uint8_t ESPMHP_MAX_TEMPERATURE = 26; //31
 const float ESPMHP_TEMPERATURE_STEP = 0.5;
 
 
