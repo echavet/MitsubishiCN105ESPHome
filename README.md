@@ -239,6 +239,10 @@ logger:
 #    CONTROL_WANTED_SETTINGS: DEBUG
 ```
 
+### Step 6: Build the project and install
+
+Build the project in ESPHome and install to your device. Install the device in your indoor unit connected to the CN105 port, and confirm that it powers up and connects to the Wifi. Visit the local IP address of the device, and confirm that you can change modes and temperature setpoints. HomeAssistant should now include a climate entity for your heatpump.
+
 ## Example Configuration - Minimal
 
 This minimal configuration includes the basic components necessary for the firmware to operate. Note that you need to choose between the ESP32 and the ESP8266 sections to get the correct UART configuration. Utilizes a `secrets.yaml` file to store your credentials.
