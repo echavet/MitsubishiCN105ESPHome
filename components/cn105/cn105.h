@@ -43,12 +43,6 @@ public:
     sensor::Sensor* compressor_frequency_sensor_ =
         nullptr;  // Sensor to store compressor frequency
 
-    // When received command to change the vane positions
-    void on_horizontal_swing_change(const std::string& swing);
-    void on_vertical_swing_change(const std::string& swing);
-
-    //text_sensor::TextSensor* last_sent_packet_sensor;
-    //text_sensor::TextSensor* last_received_packet_sensor;
 
     int get_compressor_frequency();
     bool is_operating();
@@ -77,10 +71,9 @@ public:
     void buildAndSendRequestsInfoPackets();
     void buildAndSendRequestPacket(int packetType);
     bool isHeatpumpConnectionActive();
-    // will check if hp did respond
-    void programResponseCheck(int packetType);
 
-    bool sendWantedSettings();
+    void sendWantedSettings();
+    void sendWantedSettingsDelegate();
     // Use the temperature from an external sensor. Use
     // set_remote_temp(0) to switch back to the internal sensor.
     void set_remote_temperature(float);
@@ -229,6 +222,12 @@ private:
     void debugSettingsAndStatus(const char* settingName, heatpumpSettings settings, heatpumpStatus status);
     void debugClimate(const char* settingName);
 
+#ifndef USE_ESP32
+    void emulateMutex(const char* retryName, std::function<void()>&& f);
+#endif
+
+    void controlDelegate(const esphome::climate::ClimateCall& call);
+
     void createPacket(uint8_t* packet);
     void createInfoPacket(uint8_t* packet, uint8_t packetType);
     heatpumpSettings currentSettings{};
@@ -236,6 +235,8 @@ private:
 
 #ifdef USE_ESP32
     std::mutex wantedSettingsMutex;
+#else
+    bool wantedSettingsMutex = false;
 #endif
 
     unsigned long lastResponseMs;

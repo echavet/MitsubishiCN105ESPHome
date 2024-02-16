@@ -202,3 +202,32 @@ int CN105Climate::lookupByteMapValue(const int valuesMap[], const uint8_t byteMa
     ESP_LOGW("lookup", "%s caution: value %d not found, returning value at index 0", debugInfo, byteValue);
     return valuesMap[0];
 }
+
+#ifndef USE_ESP32
+/**
+ * This methode emulates the esp32 lock_guard feature with a boolean variable
+ *
+*/
+void CN105Climate::emulateMutex(const char* retryName, std::function<void()>&& f) {
+    this->set_retry(retryName, 100, 10, [this, f, retryName](uint8_t retry_count) {
+        if (this->wantedSettingsMutex) {
+            if (retry_count < 1) {
+                ESP_LOGW(retryName, "10 retry calls failed because mutex was locked, forcing unlock...");
+                this->wantedSettingsMutex = true;
+                f();
+                this->wantedSettingsMutex = false;
+                return RetryResult::DONE;
+            }
+            ESP_LOGI(retryName, "wantedSettingsMutex is already locked, defferring...");
+            return RetryResult::RETRY;
+        } else {
+            this->wantedSettingsMutex = true;
+            ESP_LOGD(retryName, "emulateMutex normal behaviour, locking...");
+            f();
+            ESP_LOGD(retryName, "emulateMutex unlocking...");
+            this->wantedSettingsMutex = false;
+            return RetryResult::DONE;
+        }
+        }, 1.2f);
+}
+#endif

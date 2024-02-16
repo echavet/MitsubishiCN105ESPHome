@@ -13,14 +13,11 @@ void CN105Climate::checkPendingWantedSettings() {
     this->sendWantedSettings();
 }
 
-//#region climate
-void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 
+void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
     ESP_LOGD("control", "espHome control() interface method called...");
     bool updated = false;
-#ifdef USE_ESP32
-    std::lock_guard<std::mutex> guard(wantedSettingsMutex);
-#endif    
+
     // Traiter les commandes de climatisation ici
     if (call.get_mode().has_value()) {
         ESP_LOGD("control", "Mode change asked");
@@ -53,25 +50,28 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
         this->controlSwing();
     }
 
-
-
     if (updated) {
         ESP_LOGD(LOG_ACTION_EVT_TAG, "clim.control() -> User changed something...");
         this->wantedSettings.hasChanged = true;
         this->wantedSettings.hasBeenSent = false;
         this->wantedSettings.lastChange = CUSTOM_MILLIS;
         this->debugSettings("control (wantedSettings)", this->wantedSettings);
-
-        // we don't call sendWantedSettings() anymore because it will be called by the loop() method
-        // just because we changed something doesn't mean we want to send it to the heatpump right away
-        //ESP_LOGD(TAG, "User changed something, sending change to heatpump...");
-        //this->sendWantedSettings();        
     }
 
-    // send the update back to esphome: this will update the UI
-    // this is not necessary because state will be published after the response and the call off settingsChanged() in the updateSuccess() method
-    // this->publish_state();
 }
+
+void CN105Climate::control(const esphome::climate::ClimateCall& call) {
+
+#ifdef USE_ESP32
+    std::lock_guard<std::mutex> guard(wantedSettingsMutex);
+    this->controlDelegate(call);
+#else    
+    this->emulateMutex("CONTROL_WANTED_SETTINGS", std::bind(&CN105Climate::controlDelegate, this, call));
+#endif    
+
+}
+
+
 void CN105Climate::controlSwing() {
     switch (this->swing_mode) {                 //setVaneSetting supports:  AUTO 1 2 3 4 5 and SWING
     case climate::CLIMATE_SWING_OFF:
@@ -235,24 +235,7 @@ void CN105Climate::updateAction() {
 }
 
 climate::ClimateTraits CN105Climate::traits() {
-    // Définir les caractéristiques de ton climatiseur ici
-
     return traits_;
-    // auto traits = climate::ClimateTraits();
-
-    // traits.set_supports_current_temperature(true);
-    // traits.set_supports_two_point_target_temperature(false);
-    // traits.set_supports_cool_mode(true);
-    // traits.set_supports_heat_mode(true);
-    // traits.set_supports_fan_mode_auto(true);
-    // traits.set_supports_fan_mode_on(true);
-    // traits.set_supports_fan_mode_off(true);
-    // traits.set_supports_swing_mode_off(true);
-    // traits.set_supports_swing_mode_both(true);
-    // traits.set_visual_min_temperature(16);
-    // traits.set_visual_max_temperature(30);
-    // traits.set_visual_temperature_step(0.5f);
-    // return traits;
 }
 
 
@@ -310,21 +293,6 @@ void CN105Climate::setWideVaneSetting(const char* setting) {
     } else {
         wantedSettings.wideVane = WIDEVANE_MAP[0];
     }
-}
-
-
-void CN105Climate::on_horizontal_swing_change(const std::string& swing) {
-    ESP_LOGD(TAG, "Setting vertical swing position: %s", swing.c_str());
-    //this->setWideVaneSetting(swing.c_str());
-    //this->wantedSettings.hasChanged = true;
-    //this->wantedSettings.hasBeenSent = false;
-}
-
-void CN105Climate::on_vertical_swing_change(const std::string& swing) {
-    ESP_LOGD(TAG, "Setting horizontal swing position: %s", swing.c_str());
-    //this->setVaneSetting(swing.c_str());
-    //this->wantedSettings.hasChanged = true;
-    //this->wantedSettings.hasBeenSent = false;
 }
 
 

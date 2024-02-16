@@ -202,89 +202,46 @@ void CN105Climate::createPacket(uint8_t* packet) {
     //this->hpPacketDebug(packet, 22, "WRITE");
 }
 
+
+
+void CN105Climate::sendWantedSettingsDelegate() {
+    this->wantedSettings.hasBeenSent = true;
+    this->lastSend = CUSTOM_MILLIS;
+    ESP_LOGI(TAG, "sending wantedSettings..");
+    this->debugSettings("wantedSettings", wantedSettings);
+    // and then we send the update packet
+    uint8_t packet[PACKET_LEN] = {};
+    this->createPacket(packet);
+    this->writePacket(packet, PACKET_LEN);
+    this->hpPacketDebug(packet, 22, "WRITE_SETTINGS");
+    // as soon as the packet is sent, we reset the settings
+    wantedSettings.resetSettings();
+}
+
 /**
  * builds and send all an update packet to the heatpump
  * SHEDULER_INTERVAL_SYNC_NAME scheduler is canceled
  *
  *
 */
-bool CN105Climate::sendWantedSettings() {
-
+void CN105Climate::sendWantedSettings() {
     if (this->isHeatpumpConnectionActive() && this->isConnected_) {
         if (CUSTOM_MILLIS - this->lastSend > 300) {        // we don't want to send too many packets
+
 #ifdef USE_ESP32
             std::lock_guard<std::mutex> guard(wantedSettingsMutex);
-#endif
-            this->wantedSettings.hasBeenSent = true;
-
-            this->lastSend = CUSTOM_MILLIS;
-            ESP_LOGI(TAG, "sending wantedSettings..");
-
-            this->debugSettings("wantedSettings", wantedSettings);
-
-
-            // and then we send the update packet
-            uint8_t packet[PACKET_LEN] = {};
-            this->createPacket(packet);
-            this->writePacket(packet, PACKET_LEN);
-            this->hpPacketDebug(packet, 22, "WRITE_SETTINGS");
-
-            // as soon as the packet is sent, we reset the settings
-            wantedSettings.resetSettings();
-            return true;
+            this->sendWantedSettingsDelegate();
+#else            
+            this->emulateMutex("WRITE_SETTINGS", std::bind(&CN105Climate::sendWantedSettingsDelegate, this));
+#endif    
         } else {
             ESP_LOGD(TAG, "will sendWantedSettings later because we've sent one too recently...");
-            return false;
         }
-    } else {
-        return false;
     }
-
 }
 
 
 
-// void CN105Climate::programResponseCheck(byte* packet) {
-//     int packetType = packet[5];
-//     // 0x01 Settings
-//     // 0x06 status
-//     // 0x07 Update remote temp
-//     if ((packetType == 0x01) || (packetType == 0x06) || (packetType == 0x07)) {
-//         // increment the counter which will be decremented by the response handled by
-//         // getDataFromResponsePacket() method case 0x06 
-//         // processCommand (case 0x61)
-//         this->nonResponseCounter++;
-
-//     }
-
-// }
-
-// TODO: changer cette methode afin qu'elle programme le check aussi pour les paquets de 
-// setRemoteTemperature et pour les sendWantedSettings
-// deprecated: we now use isHeatpumpConnectionActive() each time a packet is written 
-// checkPoints are when we get a packet and before we send one
-
-void CN105Climate::programResponseCheck(int packetType) {
-    if (packetType == RQST_PKT_STATUS) {
-        // increment the counter which will be decremented by the response handled by
-        //getDataFromResponsePacket() method case 0x06
-        this->nonResponseCounter++;
-
-        this->set_timeout("checkpacketResponse", this->update_interval_ * 0.9, [this]() {
-
-            if (this->nonResponseCounter > MAX_NON_RESPONSE_REQ) {
-                ESP_LOGI(TAG, "There are too many status resquests without response: %d of max %d", this->nonResponseCounter, MAX_NON_RESPONSE_REQ);
-                ESP_LOGI(TAG, "Heater is not connected anymore");
-                this->disconnectUART();
-                this->setupUART();
-                this->sendFirstConnectionPacket();
-                this->nonResponseCounter = 0;
-            }
-
-            });
-    }
-
-}
 void CN105Climate::buildAndSendRequestPacket(int packetType) {
     uint8_t packet[PACKET_LEN] = {};
     createInfoPacket(packet, packetType);

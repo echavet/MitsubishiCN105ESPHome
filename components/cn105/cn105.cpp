@@ -61,7 +61,9 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->generateExtraComponents();
     this->cycleRunning = false;
     this->wantedSettings.resetSettings();
-
+#ifndef USE_ESP32
+    this->wantedSettingsMutex = false;
+#endif
 }
 
 
