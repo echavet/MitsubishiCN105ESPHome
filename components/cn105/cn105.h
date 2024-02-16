@@ -164,8 +164,17 @@ protected:
     void setWideVaneSetting(const char* setting);
     void setFanSpeed(const char* setting);
 
-    static void save(float value, esphome::ESPPreferenceObject& storage);
-    static esphome::optional<float> load(esphome::ESPPreferenceObject& storage);
+    ESPPreferenceObject cool_storage;
+    ESPPreferenceObject heat_storage;
+    ESPPreferenceObject auto_storage;
+
+    optional<float> cool_setpoint;
+    optional<float> heat_setpoint;
+    optional<float> auto_setpoint;
+
+    static void save(float value, ESPPreferenceObject& storage);
+    static optional<float> load(ESPPreferenceObject& storage);
+
 
 private:
     const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
