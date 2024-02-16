@@ -160,10 +160,11 @@ void CN105Climate::getPowerFromResponsePacket() {
     //0x01 is cool
     //0x02 is heat
     //FC 62 01 30 10 09 00 00 *00 *01 *02 00 00 00 00 00 00 00 00 00 00 51 
+    //FC 62 01 30 10 09 00 00 00 01 01 00 00 00 00 00 00 00 00 00 00 52 
     heatpumpSettings receivedSettings{};
 
     //ESP_LOGD("Decoder", "[0x09 is who knowns]");
-
+    //byte 9
     if (data[4] == 0x01) {
             ESP_LOGD("Decoder", "[Power is 1]");
     } else if (data[4] == 0x02) {
@@ -177,7 +178,7 @@ void CN105Climate::getPowerFromResponsePacket() {
     } else {
             ESP_LOGD("Decoder", "[Byte 9 is unknown]");
     }
-
+    //byte 8
     if (data[3] == 0x04) {
             ESP_LOGD("Decoder", "[Preheating]");
     } else if (data[3] == 0x08) {
@@ -185,10 +186,10 @@ void CN105Climate::getPowerFromResponsePacket() {
     } else {
             ESP_LOGD("Decoder", "[Byte 8 is unknown]");
     }
-
-    if (data[6] == 0x01) {
+    // byte 10
+    if (data[5] == 0x01) {
             ESP_LOGD("Decoder", "[AUTO Cool]");
-    } else if (data[6] == 0x02) {
+    } else if (data[5] == 0x02) {
             ESP_LOGD("Decoder", "[AUTO Heat]");
     } else {
             ESP_LOGD("Decoder", "[Byte 10 is unknown]");
