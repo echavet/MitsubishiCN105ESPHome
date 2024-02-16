@@ -154,9 +154,9 @@ void CN105Climate::getSettingsFromResponsePacket() {
     receivedSettings.iSee = data[4] > 0x08 ? true : false;
     receivedSettings.mode = lookupByteMapValue(MODE_MAP, MODE, 5, receivedSettings.iSee ? (data[4] - 0x08) : data[4], "mode reading");
 
-    //ESP_LOGD("Decoder", "[Power : %s]", receivedSettings.power);
-    //ESP_LOGD("Decoder", "[iSee  : %d]", receivedSettings.iSee);
-    //ESP_LOGD("Decoder", "[Mode  : %s]", receivedSettings.mode);
+    ESP_LOGD("Decoder", "[Power : %s]", receivedSettings.power);
+    ESP_LOGD("Decoder", "[iSee  : %d]", receivedSettings.iSee);
+    ESP_LOGD("Decoder", "[Mode  : %s]", receivedSettings.mode);
 
     if (data[11] != 0x00) {
         int temp = data[11];
@@ -220,7 +220,7 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 }
 void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
     heatpumpStatus receivedStatus{};
-    //ESP_LOGD("Decoder", "[0x06 is status]");
+    ESP_LOGD("Decoder", "[0x06 is status]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x06: Data -> Heatpump Status");
 
     // reset counter (because a reply indicates it is connected)
@@ -270,7 +270,8 @@ void CN105Climate::getDataFromResponsePacket() {
         //0x01 to 0x04, in heating 0x01 is lowest power 0x05 is highest output
         break;
     case 0x10:
-        this->getAutoModeStateFromResponsePacket();
+        ESP_LOGD("Decoder", "[0x10 is Unknown : not implemented]");
+        //this->getAutoModeStateFromResponsePacket();
         break;
 
     case 0x20:
