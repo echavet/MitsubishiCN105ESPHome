@@ -139,11 +139,9 @@ void CN105Climate::getAutoModeStateFromResponsePacket() {
             ESP_LOGD("Decoder", "[0x10 is 0x02]");
 
     } else {
-                    ESP_LOGD("Decoder", "[0x10 is unknown]");
+            ESP_LOGD("Decoder", "[0x10 is unknown]");
 
     }
-
-    break;
 }
 
 
