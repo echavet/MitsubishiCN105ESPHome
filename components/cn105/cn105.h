@@ -81,9 +81,6 @@ public:
     // Use the temperature from an external sensor. Use
     // set_remote_temp(0) to switch back to the internal sensor.
     void set_remote_temperature(float);
-    void set_cool_setpoint(float);
-    void set_heat_setpoint(float);
-    void set_auto_setpoint(float);
 
     void set_remote_temp_timeout(uint32_t timeout);
 
@@ -166,8 +163,8 @@ protected:
     void setVaneSetting(const char* setting);
     void setWideVaneSetting(const char* setting);
     void setFanSpeed(const char* setting);
-private:
 
+private:
     const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
     int lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "");
     int lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue, const char* debugInfo = "");

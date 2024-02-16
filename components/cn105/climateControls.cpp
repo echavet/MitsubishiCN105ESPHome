@@ -150,9 +150,9 @@ void CN105Climate::controlFan() {
 void CN105Climate::controlTemperature() {
     float setting = this->target_temperature;
 
-    float cool_setpoint = this->cool_setpoint;
-    float heat_setpoint = this->heat_setpoint;
-    float auto_setpoint = this->auto_setpoint;
+    float cool_setpoint = this->target_temperature_low;
+    float heat_setpoint = this->target_temperature_high;
+    float humidity_setpoint = this->target_humidity;
 
     if (!this->tempMode) {
         this->wantedSettings.temperature = this->lookupByteMapIndex(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
