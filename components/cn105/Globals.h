@@ -102,7 +102,7 @@ static const int RQST_PKT_ROOM_TEMP = 1;
 static const int RQST_PKT_TIMERS = 3;
 static const int RQST_PKT_STATUS = 4;
 static const int RQST_PKT_STANDBY = 5;
-
+static const int RQST_PKT_UNKNOWN = 2;
 
 const uint8_t ESPMHP_MIN_TEMPERATURE = 16; //16
 const uint8_t ESPMHP_MAX_TEMPERATURE = 26; //31

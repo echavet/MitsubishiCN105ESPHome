@@ -144,6 +144,27 @@ void CN105Climate::getAutoModeStateFromResponsePacket() {
     }
 }
 
+void getPowerFromResponsePacket() {
+    //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
+    //Byte 9: Heating or cooling stage.
+    //0x01 to 0x04, in heating 0x01 is lowest power 0x05 is highest output
+    heatpumpSettings receivedSettings{};
+    ESP_LOGD("Decoder", "[0x09 is who knowns]");
+    if (data[9] == 0x01) {
+            ESP_LOGD("Decoder", "[Power is 1]");
+    } else if (data[10] == 0x02) {
+            ESP_LOGD("Decoder", "[Power is 2]");
+    } else if (data[10] == 0x03) {
+            ESP_LOGD("Decoder", "[Power is 3]");
+    } else if (data[10] == 0x04) {
+            ESP_LOGD("Decoder", "[Power is 4]");
+    } else if (data[10] == 0x05) {
+            ESP_LOGD("Decoder", "[Power is 5]");
+    } else {
+            ESP_LOGD("Decoder", "[Power is unknown]");
+
+    }
+}
 
 void CN105Climate::getSettingsFromResponsePacket() {
     heatpumpSettings receivedSettings{};
@@ -265,12 +286,11 @@ void CN105Climate::getDataFromResponsePacket() {
         break;
 
     case 0x09:
-        /* unknown */
-        ESP_LOGD("Decoder", "[0x09 is Unknown : not implemented]");
-        //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
-        //Byte 9: Heating or cooling stage.
-        //0x01 to 0x04, in heating 0x01 is lowest power 0x05 is highest output
+        /* Power */
+        this->getPowerFromResponsePacket();
+        //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50 
         break;
+
     case 0x10:
         ESP_LOGD("Decoder", "[0x10 is Unknown : not implemented]");
         //this->getAutoModeStateFromResponsePacket();
