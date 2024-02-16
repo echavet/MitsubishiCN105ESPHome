@@ -125,6 +125,28 @@ void CN105Climate::processDataPacket() {
     }
 }
 
+
+void CN105Climate::getAutoModeStateFromResponsePacket() {
+    heatpumpSettings receivedSettings{};
+
+    if (data[10] == 0x00) {
+            ESP_LOGD("Decoder", "[0x10 is 0x00]");
+
+    } else if (data[10] == 0x01) {
+            ESP_LOGD("Decoder", "[0x10 is 0x01]");
+
+    } else if (data[10] == 0x02) {
+            ESP_LOGD("Decoder", "[0x10 is 0x02]");
+
+    } else {
+                    ESP_LOGD("Decoder", "[0x10 is unknown]");
+
+    }
+
+    break;
+}
+
+
 void CN105Climate::getSettingsFromResponsePacket() {
     heatpumpSettings receivedSettings{};
     //ESP_LOGD("Decoder", "[0x02 is settings]");
@@ -250,14 +272,9 @@ void CN105Climate::getDataFromResponsePacket() {
         //0x01 to 0x04, in heating 0x01 is lowest power 0x05 is highest output
         break;
     case 0x10:
-        /* unknown */
-        ESP_LOGD("Decoder", "[0x10 is Unknown : not implemented]");
-        //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
+        this->getAutoModeStateFromResponsePacket();
         break;
-        //Byte 10:
-        //Only in "Auto" mode is shows what the unit is doing
-        //0x01 is cool
-        //0x02 is heat
+
     case 0x20:
     case 0x22: {
         ESP_LOGD("Decoder", "[Packet Functions 0x20 et 0x22]");
