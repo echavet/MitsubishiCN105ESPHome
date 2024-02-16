@@ -164,7 +164,7 @@ void CN105Climate::getPowerFromResponsePacket() {
     heatpumpSettings receivedSettings{};
 
     //ESP_LOGD("Decoder", "[0x09 is who knowns]");
-    //byte 9
+    //byte 9 power of the system
     if (data[4] == 0x01) {
             ESP_LOGD("Decoder", "[Stage is 1]");
     } else if (data[4] == 0x02) {
@@ -178,17 +178,19 @@ void CN105Climate::getPowerFromResponsePacket() {
     } else {
             ESP_LOGD("Decoder", "[Byte 9 is unknown]");
     }
-    //byte 8 02
+    //byte 8 02 - submode?
     if (data[3] == 0x04) {
             ESP_LOGD("Decoder", "[Preheating]");
     } else if (data[3] == 0x08) {
             ESP_LOGD("Decoder", "[Standby]");
     } else if (data[3] == 0x02) {
             ESP_LOGD("Decoder", "[Defrost]");
+        } else if (data[3] == 0x00) {
+            ESP_LOGD("Decoder", "[Normal]");
     } else {
             ESP_LOGD("Decoder", "[Byte 8 is unknown]");
     }
-    // byte 10
+    // byte 10 what mode are we in with AUTO
     if (data[5] == 0x01) {
             ESP_LOGD("Decoder", "[AUTO Cool]");
     } else if (data[5] == 0x02) {
