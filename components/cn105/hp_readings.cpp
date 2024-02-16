@@ -164,31 +164,31 @@ void CN105Climate::getPowerFromResponsePacket() {
 
     ESP_LOGD("Decoder", "[0x09 is who knowns]");
 
-    if (data[9] == 0x01) {
+    if (data[9] == "0x01") {
             ESP_LOGD("Decoder", "[Power is 1]");
-    } else if (data[9] == 0x02) {
+    } else if (data[9] == "0x02") {
             ESP_LOGD("Decoder", "[Power is 2]");
-    } else if (data[9] == 0x03) {
+    } else if (data[9] == "0x03") {
             ESP_LOGD("Decoder", "[Power is 3]");
-    } else if (data[9] == 0x04) {
+    } else if (data[9] == "0x04") {
             ESP_LOGD("Decoder", "[Power is 4]");
-    } else if (data[9] == 0x05) {
+    } else if (data[9] == "0x05") {
             ESP_LOGD("Decoder", "[Power is 5]");
     } else {
             ESP_LOGD("Decoder", "[Byte 9 is unknown]");
     }
 
-    if (data[8] == 0x04) {
+    if (data[8] == "0x04") {
             ESP_LOGD("Decoder", "[Preheating]");
-    } else if (data[8] == 0x08) {
+    } else if (data[8] == "0x08") {
             ESP_LOGD("Decoder", "[Standby]");
     } else {
             ESP_LOGD("Decoder", "[Byte 8 is unknown]");
     }
 
-    if (data[10] == 0x01) {
+    if (data[10] == "0x01") {
             ESP_LOGD("Decoder", "[AUTO Cool]");
-    } else if (data[10] == 0x02) {
+    } else if (data[10] == "0x02") {
             ESP_LOGD("Decoder", "[AUTO Heat]");
     } else {
             ESP_LOGD("Decoder", "[Byte 8 is unknown]");
