@@ -547,7 +547,7 @@ void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings) {
                 }*/
             } else if (strcmp(currentSettings.mode, "FAN") == 0) {
                 this->mode = climate::CLIMATE_MODE_FAN_ONLY;
-            } else if (strcmp(currentSettings.mode, "AUTO") == 0) {
+            } else if (strcmp(currentSettings.mode, "HEAT_COOL") == 0) {
                 this->mode = climate::CLIMATE_MODE_HEAT_COOL;
             } else {
                 ESP_LOGW(
