@@ -147,7 +147,8 @@ void CN105Climate::getAutoModeStateFromResponsePacket() {
 
 void CN105Climate::getSettingsFromResponsePacket() {
     heatpumpSettings receivedSettings{};
-    //ESP_LOGD("Decoder", "[0x02 is settings]");
+    ESP_LOGD("Decoder", "[0x02 is settings]");
+    //02 00 00 01 08 0A 00 07 00 00 03 AA 00 00 00 00 94
     //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");        
     receivedSettings.connected = true;      // we're here so we're connected (actually not used property)
     receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3], "power reading");
@@ -168,13 +169,13 @@ void CN105Climate::getSettingsFromResponsePacket() {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
     }
 
-    //ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
+    ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
 
     receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6], "fan reading");
-    //ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
+    ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
 
     receivedSettings.vane = lookupByteMapValue(VANE_MAP, VANE, 7, data[7], "vane reading");
-    //ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
+    ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
 
 
     receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F, "wideVane reading", WIDEVANE_MAP[2]);
@@ -219,6 +220,7 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
 }
 void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
+    //FC 62 01 30 10 06 00 00 1A 01 00 00 00 00 00 00 00 00 00 00 00 3C
     heatpumpStatus receivedStatus{};
     ESP_LOGD("Decoder", "[0x06 is status]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x06: Data -> Heatpump Status");
