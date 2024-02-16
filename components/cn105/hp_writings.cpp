@@ -285,10 +285,10 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
                 ESP_LOGD("Decoder", "sending a request room temp packet (0x09)");
                 this->buildAndSendRequestPacket(RQST_PKT_STANDBY);
                 });
-            this->set_timeout("4thPacket", interval_max, [this, interval_max]() {
-                ESP_LOGD("Decoder", "sending a request room temp packet (0x04)");
-                this->buildAndSendRequestPacket(RQST_PKT_UNKNOWN);
-                });
+            //this->set_timeout("4thPacket", interval_max, [this, interval_max]() {
+            //    ESP_LOGD("Decoder", "sending a request room temp packet (0x04)");
+            //    this->buildAndSendRequestPacket(RQST_PKT_UNKNOWN);
+            //    });
 
 //RQST_PKT_STANDBY
         } else {

@@ -148,6 +148,18 @@ void CN105Climate::getPowerFromResponsePacket() {
     //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
     //Byte 9: Heating or cooling stage.
     //0x01 to 0x04, in heating 0x01 is lowest power 0x05 is highest output
+    //Byte 8:
+    //0x04 is preheating
+    //0x08 is standby or waiting, In a multi head system if others are already heating and one wants to cool it goes to this mode.
+
+    //Byte 9: Heating or cooling stage.
+    //0x01 to 0x04, in heating 0x01 is lowest power 0x05 is highest output
+
+    //Byte 10:
+    //Only in "Auto" mode is shows what the unit is doing
+    //0x01 is cool
+    //0x02 is heat
+
     heatpumpSettings receivedSettings{};
 
     ESP_LOGD("Decoder", "[0x09 is who knowns]");
@@ -163,8 +175,23 @@ void CN105Climate::getPowerFromResponsePacket() {
     } else if (data[10] == 0x05) {
             ESP_LOGD("Decoder", "[Power is 5]");
     } else {
-            ESP_LOGD("Decoder", "[Power is unknown]");
+            ESP_LOGD("Decoder", "[Byte 10 is unknown]");
+    }
 
+    if (data[8] == 0x04) {
+            ESP_LOGD("Decoder", "[Preheating]");
+    } else if (data[10] == 0x08) {
+            ESP_LOGD("Decoder", "[Standby]");
+    } else {
+            ESP_LOGD("Decoder", "[Byte 8 is unknown]");
+    }
+
+    if (data[10] == 0x01) {
+            ESP_LOGD("Decoder", "[AUTO Cool]");
+    } else if (data[10] == 0x02) {
+            ESP_LOGD("Decoder", "[AUTO Heat]");
+    } else {
+            ESP_LOGD("Decoder", "[Byte 8 is unknown]");
     }
 }
 
