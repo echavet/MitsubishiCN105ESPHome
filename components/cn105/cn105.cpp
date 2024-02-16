@@ -64,8 +64,6 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
 
 
-
-
 void CN105Climate::set_baud_rate(int baud) {
     this->baud_ = baud;
     ESP_LOGI(TAG, "setting baud rate to: %d", baud);

@@ -60,6 +60,21 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
         controlTemperature();
     }
 
+    if (call.get_target_temperature_low().has_value()) {
+        // Changer la température cible
+        ESP_LOGI("control", "Setting heatpump low setpoint : %.1f", *call.get_target_temperature_low());
+        this->target_temperature_low = *call.get_target_temperature_low();
+        updated = true;
+        controlTemperature();
+    }
+    if (call.get_target_temperature_high().has_value()) {
+        // Changer la température cible
+        ESP_LOGI("control", "Setting heatpump high setpoint : %.1f", *call.get_target_temperature_high());
+        this->target_temperature_high = *call.get_target_temperature_high();
+        updated = true;
+        controlTemperature();
+    }
+
     if (call.get_fan_mode().has_value()) {
         ESP_LOGD("control", "Fan change asked");
         // Changer le mode de ventilation
@@ -152,7 +167,7 @@ void CN105Climate::controlTemperature() {
 
     float cool_setpoint = this->target_temperature_low;
     float heat_setpoint = this->target_temperature_high;
-    float humidity_setpoint = this->target_humidity;
+    //float humidity_setpoint = this->target_humidity;
 
     if (!this->tempMode) {
         this->wantedSettings.temperature = this->lookupByteMapIndex(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
