@@ -257,7 +257,7 @@ void CN105Climate::updateAction() {
         //this->setActionIfOperatingAndCompressorIsActiveTo(
         // this is where lots of logic is needed to do what it takes to pick the right mode given the temps
         this->setActionIfOperatingTo(
-            (this->current_temperature > this->target_temperature ?
+            (this->current_temperature > this->target_temperature  ?
                 climate::CLIMATE_ACTION_COOLING :
                 climate::CLIMATE_ACTION_HEATING));
         break;
