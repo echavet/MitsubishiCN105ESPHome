@@ -12,6 +12,8 @@ from esphome.const import (
     CONF_FAN_MODE,
     CONF_SWING_MODE,
     CONF_UART_ID,
+    CONF_AUTO_MODE,
+    CONF_DRY_MODE,
 )
 from esphome.core import CORE, coroutine
 
