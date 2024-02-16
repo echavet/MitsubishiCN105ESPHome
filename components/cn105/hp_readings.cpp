@@ -264,7 +264,7 @@ void CN105Climate::getDataFromResponsePacket() {
              break;
 
     default:
-        ESP_LOGW("Decoder", "type de packet [%02X] <-- inconnu et inattendu", data[0]);
+        ESP_LOGW("Decoder", "type de packet [%02X] <-- unknown and unexpected", data[0]);
         //this->last_received_packet_sensor->publish_state("0x62-> ?? : Data -> Unknown");
         break;
     }

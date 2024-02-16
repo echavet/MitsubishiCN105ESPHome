@@ -10,7 +10,7 @@
 */
 void CN105Climate::setup() {
 
-    ESP_LOGD(TAG, "Initialisation du composant: appel de setup()");
+    ESP_LOGD(TAG, "Component initialization: setup call");
     this->current_temperature = NAN;
 
     this->target_temperature = NAN;
