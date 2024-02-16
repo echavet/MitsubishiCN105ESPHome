@@ -13,15 +13,15 @@ void CN105Climate::initBytePointer() {
 
 /**
  *
- * La taille totale d'une trame, se compose de plusieurs éléments :
- * Taille du Header : Le header a une longueur fixe de 5 octets (INFOHEADER_LEN).
- * Longueur des Données : La longueur des données est variable et est spécifiée par le quatrième octet du header (header[4]).
- * Checksum : Il y a 1 octet de checksum à la fin de la trame.
- *
- * La taille totale d'une trame est donc la somme de ces éléments : taille du header (5 octets) + longueur des données (variable) + checksum (1 octet).
- * Pour calculer la taille totale, on peut utiliser la formule :
- * Taille totale = 5 (header) + Longueur des données + 1 (checksum)
- * La taille totale dépend de la longueur spécifique des données pour chaque trame individuelle.
+* The total size of a frame is made up of several elements:
+  * Header size: The header has a fixed length of 5 bytes (INFOHEADER_LEN).
+  * Data Length: The data length is variable and is specified by the fourth byte of the header (header[4]).
+  * Checksum: There is 1 checksum byte at the end of the frame.
+  *
+  * The total size of a frame is therefore the sum of these elements: header size (5 bytes) + data length (variable) + checksum (1 byte).
+  * To calculate the total size, we can use the formula:
+  * Total size = 5 (header) + Data length + 1 (checksum)
+  *The total size depends on the specific data length for each individual frame.
  */
 void CN105Climate::parse(uint8_t inputData) {
 
@@ -246,7 +246,18 @@ void CN105Climate::getDataFromResponsePacket() {
         /* unknown */
         ESP_LOGD("Decoder", "[0x09 is unknown]");
         //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
+        //Byte 9: Heating or cooling stage.
+        //0x01 to 0x04, in heating 0x01 is lowest power 0x05 is highest output
         break;
+    case 0x10:
+        /* unknown */
+        ESP_LOGD("Decoder", "[0x10 is unknown]");
+        //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
+        break;
+        //Byte 10:
+        //Only in "Auto" mode is shows what the unit is doing
+        //0x01 is cool
+        //0x02 is heat
     case 0x20:
     case 0x22: {
         ESP_LOGD("Decoder", "[Packet Functions 0x20 et 0x22]");
