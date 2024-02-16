@@ -180,7 +180,7 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
     heatpumpStatus receivedStatus{};
 
-    ESP_LOGD("Decoder", "[0x03 room temperature]");
+    //ESP_LOGD("Decoder", "[0x03 room temperature]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");        
 
     if (data[6] != 0x00) {
@@ -200,7 +200,7 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 }
 void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
     heatpumpStatus receivedStatus{};
-    ESP_LOGD("Decoder", "[0x06 is status]");
+    //ESP_LOGD("Decoder", "[0x06 is status]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x06: Data -> Heatpump Status");
 
     // reset counter (because a reply indicates it is connected)
@@ -227,13 +227,13 @@ void CN105Climate::getDataFromResponsePacket() {
 
     case 0x04:
         /* unknown */
-        ESP_LOGI("Decoder", "[0x04 is unknown]");
+        ESP_LOGI("Decoder", "[0x04 is unknown : not implemented]");
         //this->last_received_packet_sensor->publish_state("0x62-> 0x04: Data -> Unknown");
         break;
 
     case 0x05:
         /* timer packet */
-        ESP_LOGW("Decoder", "[0x05 is timer packet: not implemented]");
+        ESP_LOGW("Decoder", "[0x05 is Timer : not implemented]");
         //this->last_received_packet_sensor->publish_state("0x62-> 0x05: Data -> Timer Packet");
         break;
 
@@ -244,14 +244,14 @@ void CN105Climate::getDataFromResponsePacket() {
 
     case 0x09:
         /* unknown */
-        ESP_LOGD("Decoder", "[0x09 is unknown]");
+        ESP_LOGD("Decoder", "[0x09 is Unknown : not implemented]");
         //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
         //Byte 9: Heating or cooling stage.
         //0x01 to 0x04, in heating 0x01 is lowest power 0x05 is highest output
         break;
     case 0x10:
         /* unknown */
-        ESP_LOGD("Decoder", "[0x10 is unknown]");
+        ESP_LOGD("Decoder", "[0x10 is Unknow : not implemented]");
         //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
         break;
         //Byte 10:
@@ -275,7 +275,7 @@ void CN105Climate::getDataFromResponsePacket() {
              break;
 
     default:
-        ESP_LOGW("Decoder", "type de packet [%02X] <-- unknown and unexpected", data[0]);
+        ESP_LOGW("Decoder", "packet type [%02X] <-- unknown and unexpected", data[0]);
         //this->last_received_packet_sensor->publish_state("0x62-> ?? : Data -> Unknown");
         break;
     }
