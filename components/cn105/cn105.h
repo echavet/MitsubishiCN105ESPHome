@@ -81,6 +81,9 @@ public:
     // Use the temperature from an external sensor. Use
     // set_remote_temp(0) to switch back to the internal sensor.
     void set_remote_temperature(float);
+    void set_cool_setpoint(float);
+    void set_heat_setpoint(float);
+    void set_auto_setpoint(float);
 
     void set_remote_temp_timeout(uint32_t timeout);
 
