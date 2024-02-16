@@ -243,7 +243,7 @@ logger:
 
 This minimal configuration includes the basic components necessary for the firmware to operate. Note that you need to choose between the ESP32 and the ESP8266 sections to get the correct UART configuration. Utilizes a `secrets.yaml` file to store your credentials.
 
-```
+```yaml
 esphome:
   name: heatpump-1
   friendly_name: My Heatpump 1
@@ -517,7 +517,7 @@ sensor:
 
 ### Update external temperature using a HomeAssistant automation blueprint
 
-IN PROGRESS
+Coming Soon.
 
 For more configuration options, see the provided hp-debug.yaml and hp-sejour.yaml examples or refer to the original project.
 
