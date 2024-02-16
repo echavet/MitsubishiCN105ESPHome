@@ -1,32 +1,39 @@
+# MitsubishiCN105ESPHome
+This component is an adaptation of [geoffdavis's esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump). Its purpose is to integrate the Mitsubishi heat pump protocol (enabled by the [SwiCago library](https://github.com/SwiCago/HeatPump)) directly into the ESPHome component classes for a more seamless integration.
+
+The intended use case is for owners of a Mitsubishi Electric heat pump or air conditioner that includes a CN105 communication port to directly control their air handler or indoor unit using local communication through a web browser, or most commonly, the [HomeAssistant](https://www.home-assistant.io/) home automation platform. Installation requires the use of a WiFi capable ESP32 or ESP8266 device, modified to include a 5 pin plug to connect to the heat pump indoor unit. ESPHome is used to load the custom firmware onto the device, and the web browser or HomeAssistant software is used to send temperature setpoints, external temperature references, and settings to the heat pump. Installation requires basic soldering skills, and basic skills in flashing a firmware to a microcontroller (though ESPHome makes this as painless as possible).
+
+The benefits include fully local control over your heat pump system, without reliance on a vendor network. Additional visibility, finer control, and even improved energy efficiency and comfort are possible when utilizing the remote temperature features.
+
 ### Warning: Use at your own risk.
 This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
 
-### Warning: esp-idf framework support feature has been merged to main branch.
+## What's New:
 
-This is a major change in UART configuration. But not so scary!
-If you upgrade to the head of main you will have to change the way you configure the uart in your yaml files. Look at the step 4 in this document.
-The reason is [issue #6](https://github.com/echavet/MitsubishiCN105ESPHome/issues/6). The old configuration did not allow to use ESP32 ESP-IDF framework.
+### Breaking Changes:
 
-If you don't want this change you must configure your external_components to point to the [tagged v1.0.3] https://github.com/echavet/MitsubishiCN105ESPHome/tree/v1.0.3 this way:
+#### Warning: esp-idf framework support feature has been merged to main branch
+
+This is a major change in UART configuration. But not so scary! If you upgrade to the head of main you will have to change the way you configure the UART in your yaml files. Look at the Step 4 in this document.
+The reason is [issue #6](https://github.com/echavet/MitsubishiCN105ESPHome/issues/6). The old configuration did not allow to use ESP32 ESP-IDF framework, which improves reliability of the hardware UART.
+
+If you don't want this change you must configure your external_components to point to the [tagged v1.0.3](https://github.com/echavet/MitsubishiCN105ESPHome/tree/v1.0.3) tree this way:
 
 ```yaml
 external_components:
   - source: github://echavet/MitsubishiCN105ESPHome@v1.0.3
 ```
-# MitsubishiCN105ESPHome
-This component is an adaptation of [geoffdavis's esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump). Its purpose is to integrate the Mitsubishi heat pump protocol (enabled by the [SwiCago library](https://github.com/SwiCago/HeatPump)) directly into the ESPHome component classes for a more seamless integration.
 
-## What's New:
-
+### Other New Features:
+- Additional components for supported units: vane orientation (fully supporting the Swicago map), compressor frequency for energy monitoring, and i-see sensor.
 - Enhanced UART communication with the Heatpump to eliminate delays in the ESPHome loop(), which was a limitation of the original [SwiCago library](https://github.com/SwiCago/HeatPump).
 - Byte-by-byte reading within the loop() function ensures no data loss or lag, as the component continuously reads without blocking ESPHome.
 - UART writes are followed by non-blocking reads. The responses are accumulated byte-by-byte in the loop() method and processed when complete, allowing command stacking without delays for a more responsive UI.
 - Code is divided into distinct concerns for better readability.
-- Additional components: vane orientation (fully supporting the Swicago map), compressor frequency for energy monitoring, and i-see sensor.
 - Extensive logging for easier troubleshooting and development.
 - Ongoing refactoring to further improve the code quality.
 
-## Retained Features:
+### Retained Features:
 
 This project maintains all functionalities of the original geoffdavis project, including:
 
@@ -34,12 +41,12 @@ This project maintains all functionalities of the original geoffdavis project, i
 - Instant feedback of command changes via RF Remote to HomeAssistant or MQTT.
 - Direct control independent of the remote.
 - A slightly modified version of the [SwiCago/HeatPump](https://github.com/SwiCago/HeatPump) Arduino library for direct communication via the internal `CN105` connector.
-- Full modes vane orientation support (added as an extra component within the Core Climate Component).
-- Thermostat in HomeAssistant with compressor Frequency monitoring (an extra component within the Core Climate Component).
+- Full mode and vane orientation support (added as an extra component within the Core Climate Component).
+- Thermostat in HomeAssistant with compressor frequency monitoring (an extra component within the Core Climate Component).
 
 ## Requirements:
 
-- ESPHome
+- [ESPHome](https://esphome.io/) - Minimum version 1.18.0, installed independently or as an add-on in HomeAssistant
 
 ## Supported Microcontrollers:
 
@@ -49,11 +56,13 @@ This project maintains all functionalities of the original geoffdavis project, i
 
 ## Supported Mitsubishi Climate Units:
 
-Primarily, units with a `CN105` header are compatible. Refer to the [HeatPump wiki](https://github.com/SwiCago/HeatPump/wiki/Supported-models) for a comprehensive list.
-Tested units include:
+Generally, indoor units with a `CN105` header are compatible. Refer to the [HeatPump wiki](https://github.com/SwiCago/HeatPump/wiki/Supported-models) for a comprehensive list. Additionally, Mitsubishi units listed as compatible with the [Mitsubishi PAC-USWHS002-WF-2 Kumo Cloud interface](https://mylinkdrive.com/USA/Controls/kumo_cloud/kumo_cloud_Devices/PAC_USWHS002_WF_2?product) will *likely* be compatible with this project, as they use the same CN105 connector and serial protocol.
+
+Units tested by project contributors include:
 
 - `MSZ-SF50VE3`
 - `MSZ-SF35VE3`
+- `MSZ-GLxxNA`
 
 ## Usage:
 
