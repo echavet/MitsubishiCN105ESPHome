@@ -43,7 +43,7 @@ CompressorFrequencySensor = cg.global_ns.class_(
 )
 
 ISeeSensor = cg.global_ns.class_("ISeeSensor", binary_sensor.BinarySensor, cg.Component)
-StageSensor = cg.global_ns.class_("StageSensor", text_sensor::TextSensor, cg.Component)
+StageSensor = cg.global_ns.class_("StageSensor", text_sensor.TextSensor, cg.Component)
 
 
 def valid_uart(uart):
