@@ -169,7 +169,7 @@ def to_code(config):
 
     if CONF_STAGE_SENSOR in config:
         conf = config[CONF_STAGE_SENSOR]
-        tsensor_ = yield binary_sensor.new_text_sensor(conf)
+        tsensor_ = yield text_sensor.new_text_sensor(conf)
         yield cg.register_component(tsensor_, conf)
         cg.add(var.set_stage_sensor(bsensor_))
 
