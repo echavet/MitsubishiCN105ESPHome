@@ -145,11 +145,11 @@ void CN105Climate::getAutoModeStateFromResponsePacket() {
 }
 
 void CN105Climate::getPowerFromResponsePacket() {
-    ESP_LOGD("Decoder", "[0x029 is sub modes]");
+    ESP_LOGD("Decoder", "[0x09 is sub modes]");
 
     heatpumpSettings receivedSettings{};
     receivedSettings.stage = lookupByteMapValue(STAGE_MAP, STAGE, 2, data[4], "current stage for delivery");
-    receivedSettings.sub_mode = lookupByteMapValue(SUB_MODE_MAP, SUB_MODE, 2, data[4], "submode");
+    receivedSettings.sub_mode = lookupByteMapValue(SUB_MODE_MAP, SUB_MODE, 2, data[3], "submode");
     receivedSettings.auto_sub_mode = lookupByteMapValue(AUTO_SUB_MODE_MAP, AUTO_SUB_MODE, 2, data[5], "auto mode sub mode");
 
     ESP_LOGD("Decoder", "[Stage : %s]", receivedSettings.stage);
