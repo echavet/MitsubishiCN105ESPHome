@@ -260,7 +260,7 @@ void CN105Climate::updateAction() {
             //(this->current_temperature > this->target_temperature  ?
             //    climate::CLIMATE_ACTION_COOLING :
             //    climate::CLIMATE_ACTION_HEATING));
-            (this->auto_sub_mode == "AUTO_COOL"  ?
+            ( strcmp( this->auto_sub_mode, "AUTO_COOL") == 0 ?
                 climate::CLIMATE_ACTION_COOLING :
                 climate::CLIMATE_ACTION_HEATING));
         break;
