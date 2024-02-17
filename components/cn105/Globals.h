@@ -87,8 +87,8 @@ static const uint8_t STAGE[5] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
 static const char* STAGE_MAP[5] = { "STAGE 1", "STAGE 2", "STAGE 3", "STAGE 4", "STAGE 5" };
 static const uint8_t SUB_MODE[4] = { 0x00, 0x02, 0x04, 0x08 };
 static const char* SUB_MODE_MAP[4] = { "NORMAL", "DEFROST", "PREHEAT", "STANDBY"};
-static const uint8_t AUTO_SUB_MODE[3] = { 0x01, 0x02, 0x03 };
-static const char* AUTO_SUB_MODE_MAP[3] = { "AUTO_COOL", "AUTO_HEAT", "AUTO_LEADER"};
+static const uint8_t AUTO_SUB_MODE[4] = { 0x00, 0x01, 0x02, 0x03 };
+static const char* AUTO_SUB_MODE_MAP[4] = { "AUTO_OFF","AUTO_COOL", "AUTO_HEAT", "AUTO_LEADER"};
 
 static const int TIMER_INCREMENT_MINUTES = 10;
 
