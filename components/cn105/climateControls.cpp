@@ -257,7 +257,10 @@ void CN105Climate::updateAction() {
     case climate::CLIMATE_MODE_AUTO:
         //this->setActionIfOperatingAndCompressorIsActiveTo(
         this->setActionIfOperatingTo(
-            (this->current_temperature > this->target_temperature  ?
+            //(this->current_temperature > this->target_temperature  ?
+            //    climate::CLIMATE_ACTION_COOLING :
+            //    climate::CLIMATE_ACTION_HEATING));
+            (this->auto_sub_mode == "AUTO_COOL"  ?
                 climate::CLIMATE_ACTION_COOLING :
                 climate::CLIMATE_ACTION_HEATING));
         break;
