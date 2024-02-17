@@ -23,6 +23,7 @@ CONF_HORIZONTAL_SWING_SELECT = "horizontal_vane_select"
 CONF_VERTICAL_SWING_SELECT = "vertical_vane_select"
 CONF_COMPRESSOR_FREQUENCY_SENSOR = "compressor_frequency_sensor"
 CONF_ISEE_SENSOR = "isee_sensor"
+CONF_STAGE_SENSOR = "state_sensor"
 
 DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
@@ -139,6 +140,7 @@ def to_code(config):
 
     cg.add(var.set_debounce_delay(config[CONF_DEBOUNCE_DELAY]))
 
+
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf = config[CONF_HORIZONTAL_SWING_SELECT]
         swing_select = yield select.new_select(conf, options=[])
@@ -164,9 +166,16 @@ def to_code(config):
         yield cg.register_component(bsensor_, conf)
         cg.add(var.set_isee_sensor(bsensor_))
 
+    if CONF_STAGE_SENSOR in config:
+        conf = config[CONF_STAGE_SENSOR]
+        tsensor_ = yield binary_sensor.new_text_sensor(conf)
+        yield cg.register_component(tsensor_, conf)
+        cg.add(var.set_stage_sensor(bsensor_))
+
+
+
     yield cg.register_component(var, config)
     yield climate.register_climate(var, config)
-
 
 ## cg.add_library(
 ##    name="HeatPump",
