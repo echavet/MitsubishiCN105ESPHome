@@ -126,6 +126,9 @@ struct heatpumpSettings {
     const char* wideVane; //horizontal vane, left/right
     bool iSee;   //iSee sensor, at the moment can only detect it, not set it
     bool connected;
+    const char* stage;
+    const char* sub_mode;
+    const char* auto_sub_mode;
 
     heatpumpSettings& operator=(const heatpumpSettings& other) {
         if (this != &other) { // protection contre l'auto-affectation
@@ -137,6 +140,9 @@ struct heatpumpSettings {
             wideVane = other.wideVane;
             iSee = other.iSee;
             connected = other.connected;
+            stage = other.stage;
+            sub_mode = other.sub_mode;
+            auto_sub_mode = other.auto_sub_mode;
         }
         return *this;
     }
