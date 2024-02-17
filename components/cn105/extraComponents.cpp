@@ -60,3 +60,15 @@ void CN105Climate::set_compressor_frequency_sensor(
 void CN105Climate::set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_sensor) {
     this->iSee_sensor_ = iSee_sensor;
 }
+
+void CN105Climate::stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor) { 
+    this->Stage_sensor_ = Stage_sensor;
+}
+
+/*void CN105Climate::sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_Mode_Sensor) { 
+    this->Sub_Mode_Sensor_ = Sub_Mode_Sensor;
+}
+
+void CN105Climate::auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_Mode_Sensor) { 
+    this->Auto_Mode_Sensor_ = Auto_Mode_Sensor;
+}*/
