@@ -4,6 +4,7 @@
 #include "van_orientation_select.h"
 #include "compressor_frequency_sensor.h"
 #include "isee_sensor.h"
+#include "stage_sensor.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
 
@@ -27,9 +28,11 @@ public:
     void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select);
     void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);
     void set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_sensor);
+    void set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor);
 
     //sensor::Sensor* compressor_frequency_sensor;
     binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
+    text_sensor::TextSensor* Stage_sensor_ = nullptr;
     //select::Select* van_orientation;
 
 
