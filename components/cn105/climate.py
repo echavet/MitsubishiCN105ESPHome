@@ -69,6 +69,9 @@ ISEE_SENSOR_SCHEMA = binary_sensor.BINARY_SENSOR_SCHEMA.extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(ISeeSensor)}
 )
 
+STAGE_SENSOR_SCHEMA = text_sensor.TextSensor_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(StageSensor)}
+)
 
 CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
     {
