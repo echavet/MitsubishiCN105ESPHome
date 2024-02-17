@@ -197,7 +197,7 @@ void CN105Climate::getPowerFromResponsePacket() {
     } else if (data[5] == 0x02) {
             ESP_LOGD("Decoder", "[AUTO Heat]");
     } else if (data[5] == 0x03) {
-            ESP_LOGD("Decoder", "[Something NEW]");
+            ESP_LOGD("Decoder", "[AUTO uncertain - does this mean I am the leader?]");
     } else {
             ESP_LOGD("Decoder", "[Byte 10 is unknown]");
     }
