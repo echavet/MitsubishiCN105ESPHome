@@ -61,7 +61,7 @@ void CN105Climate::set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_se
     this->iSee_sensor_ = iSee_sensor;
 }
 
-void CN105Climate::stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor) { 
+void CN105Climate::set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor) { 
     this->Stage_sensor_ = Stage_sensor;
 }
 
