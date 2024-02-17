@@ -136,7 +136,6 @@ public:
     }
 
     const char* getIfNotNull(const char* what, const char* defaultValue);
-    const char* auto_sub_mode;
 
 protected:
     // HeatPump object using the underlying Arduino library.
