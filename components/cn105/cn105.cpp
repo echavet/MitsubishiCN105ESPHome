@@ -60,7 +60,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
     this->generateExtraComponents();
 
-    this->auto_sub_mode = false;
+    this->auto_sub_mode = nullptr;
 
 }
 
