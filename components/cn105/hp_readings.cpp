@@ -166,7 +166,6 @@ void CN105Climate::getPowerFromResponsePacket() {
     if (this->Auto_sub_mode_sensor_ != nullptr) {
         this->Auto_sub_mode_sensor_->publish_state(receivedSettings.auto_sub_mode);
     }
-    this->statusChanged(receivedStatus);
 }
 
 void CN105Climate::getSettingsFromResponsePacket() {
