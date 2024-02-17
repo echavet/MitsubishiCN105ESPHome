@@ -161,6 +161,7 @@ void CN105Climate::getPowerFromResponsePacket() {
     //0x02 is heat
     //FC 62 01 30 10 09 00 00 *00 *01 *02 00 00 00 00 00 00 00 00 00 00 51 
     //FC 62 01 30 10 09 00 00 00 01 01 00 00 00 00 00 00 00 00 00 00 52 
+    //FC 62 01 30 10 09 00 00 00 04 03 00 00 00 00 00 00 00 00 00 00 4D 
     heatpumpSettings receivedSettings{};
 
     //ESP_LOGD("Decoder", "[0x09 is who knowns]");
@@ -195,6 +196,8 @@ void CN105Climate::getPowerFromResponsePacket() {
             ESP_LOGD("Decoder", "[AUTO Cool]");
     } else if (data[5] == 0x02) {
             ESP_LOGD("Decoder", "[AUTO Heat]");
+    } else if (data[5] == 0x03) {
+            ESP_LOGD("Decoder", "[Something NEW]");
     } else {
             ESP_LOGD("Decoder", "[Byte 10 is unknown]");
     }
