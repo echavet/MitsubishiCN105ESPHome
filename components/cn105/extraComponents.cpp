@@ -65,6 +65,9 @@ void CN105Climate::set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sens
     this->Stage_sensor_ = Stage_sensor;
 }
 
+void CN105Climate::set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor) { 
+    this->Sub_mode_sensor_ = Sub_mode_sensor;
+}
 /*void CN105Climate::sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_Mode_Sensor) { 
     this->Sub_Mode_Sensor_ = Sub_Mode_Sensor;
 }

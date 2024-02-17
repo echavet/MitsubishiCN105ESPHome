@@ -160,6 +160,9 @@ void CN105Climate::getPowerFromResponsePacket() {
     if (this->Stage_sensor_ != nullptr) {
         this->Stage_sensor_->publish_state(receivedSettings.stage);
     }
+    if (this->Sub_mode_sensor_ != nullptr) {
+        this->Sub_mode_sensor_->publish_state(receivedSettings.sub_mode);
+    }
 
 }
 

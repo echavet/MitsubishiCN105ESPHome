@@ -24,6 +24,7 @@ CONF_VERTICAL_SWING_SELECT = "vertical_vane_select"
 CONF_COMPRESSOR_FREQUENCY_SENSOR = "compressor_frequency_sensor"
 CONF_ISEE_SENSOR = "isee_sensor"
 CONF_STAGE_SENSOR = "stage_sensor"
+CONF_SUB_MODE_SENSOR = "sub_mode_sensor"
 
 DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
@@ -45,6 +46,7 @@ CompressorFrequencySensor = cg.global_ns.class_(
 
 ISeeSensor = cg.global_ns.class_("ISeeSensor", binary_sensor.BinarySensor, cg.Component)
 StageSensor = cg.global_ns.class_("StageSensor", text_sensor.TextSensor, cg.Component)
+SubModSensor = cg.global_ns.class_("SubModSensor", text_sensor.TextSensor, cg.Component)
 
 
 def valid_uart(uart):
@@ -74,6 +76,10 @@ STAGE_SENSOR_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(StageSensor)}
 )
 
+SUB_MODE_SENSOR_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(SubModSensor)}
+)
+
 CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(CN105Climate),
@@ -91,6 +97,7 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
         cv.Optional(CONF_COMPRESSOR_FREQUENCY_SENSOR): SENSOR_SCHEMA,
         cv.Optional(CONF_ISEE_SENSOR): ISEE_SENSOR_SCHEMA,
         cv.Optional(CONF_STAGE_SENSOR): STAGE_SENSOR_SCHEMA,
+        cv.Optional(CONF_SUB_MODE_SENSOR): SUB_MODE_SENSOR_SCHEMA,
         cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.All(
             cv.update_interval
         ),
@@ -141,7 +148,6 @@ def to_code(config):
 
     cg.add(var.set_debounce_delay(config[CONF_DEBOUNCE_DELAY]))
 
-
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf = config[CONF_HORIZONTAL_SWING_SELECT]
         swing_select = yield select.new_select(conf, options=[])
@@ -173,7 +179,11 @@ def to_code(config):
         yield cg.register_component(tsensor_, conf)
         cg.add(var.set_stage_sensor(tsensor_))
 
-
+    if CONF_SUB_MODE_SENSOR in config:
+        conf = config[CONF_SUB_MODE_SENSOR]
+        tsensor_ = yield text_sensor.new_text_sensor(conf)
+        yield cg.register_component(tsensor_, conf)
+        cg.add(var.set_sub_mode_sensor(tsensor_))
 
     yield cg.register_component(var, config)
     yield climate.register_climate(var, config)
