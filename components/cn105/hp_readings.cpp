@@ -153,7 +153,7 @@ void CN105Climate::getPowerFromResponsePacket() {
     receivedSettings.auto_sub_mode = lookupByteMapValue(AUTO_SUB_MODE_MAP, AUTO_SUB_MODE, 2, data[5], "auto mode sub mode");
 
     ESP_LOGD("Decoder", "[Stage : %s]", receivedSettings.stage);
-    ESP_LOGD("Decoder", "[Sub Mode  : %d]", receivedSettings.sub_mode);
+    ESP_LOGD("Decoder", "[Sub Mode  : %s]", receivedSettings.sub_mode);
     ESP_LOGD("Decoder", "[Auto Mode Sub Mode  : %s]", receivedSettings.auto_sub_mode);
 
     this->heatpumpUpdate(receivedSettings);
