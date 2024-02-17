@@ -31,11 +31,13 @@ public:
     void set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_sensor);
     void set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor);
     void set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor);
+    void set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor);
 
     //sensor::Sensor* compressor_frequency_sensor;
     binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
     text_sensor::TextSensor* Stage_sensor_ = nullptr;
     text_sensor::TextSensor* Sub_mode_sensor_ = nullptr;
+    text_sensor::TextSensor* Auto_sub_mode_sensor_ = nullptr;
 
     //select::Select* van_orientation;
 
