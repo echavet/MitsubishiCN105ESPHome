@@ -23,7 +23,7 @@ CONF_HORIZONTAL_SWING_SELECT = "horizontal_vane_select"
 CONF_VERTICAL_SWING_SELECT = "vertical_vane_select"
 CONF_COMPRESSOR_FREQUENCY_SENSOR = "compressor_frequency_sensor"
 CONF_ISEE_SENSOR = "isee_sensor"
-CONF_STAGE_SENSOR = "state_sensor"
+CONF_STAGE_SENSOR = "stage_sensor"
 
 DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
