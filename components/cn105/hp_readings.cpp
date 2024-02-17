@@ -145,62 +145,17 @@ void CN105Climate::getAutoModeStateFromResponsePacket() {
 }
 
 void CN105Climate::getPowerFromResponsePacket() {
-    //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
-    //Byte 9: Heating or cooling stage.
-    //0x01 to 0x04, in heating 0x01 is lowest power 0x05 is highest output
-    //Byte 8:
-    //0x04 is preheating
-    //0x08 is standby or waiting, In a multi head system if others are already heating and one wants to cool it goes to this mode.
+    ESP_LOGD("Decoder", "[0x029 is sub modes]");
 
-    //Byte 9: Heating or cooling stage.
-    //0x01 to 0x04, in heating 0x01 is lowest power 0x05 is highest output
-
-    //Byte 10:
-    //Only in "Auto" mode is shows what the unit is doing
-    //0x01 is cool
-    //0x02 is heat
-    //FC 62 01 30 10 09 00 00 *00 *01 *02 00 00 00 00 00 00 00 00 00 00 51 
-    //FC 62 01 30 10 09 00 00 00 01 01 00 00 00 00 00 00 00 00 00 00 52 
-    //FC 62 01 30 10 09 00 00 00 04 03 00 00 00 00 00 00 00 00 00 00 4D 
     heatpumpSettings receivedSettings{};
+    receivedSettings.stage = lookupByteMapValue(STAGE_MAP, STAGE, 2, data[4], "current stage for delivery");
+    receivedSettings.sub_mode = lookupByteMapValue(SUB_MODE_MAP, SUB_MODE, 2, data[4], "submode");
+    receivedSettings.auto_sub_mode = lookupByteMapValue(AUTO_SUB_MODE_MAP, AUTO_SUB_MODE, 2, data[5], "auto mode sub mode");
 
-    //ESP_LOGD("Decoder", "[0x09 is who knowns]");
-    //byte 9 power of the system
-    if (data[4] == 0x01) {
-            ESP_LOGD("Decoder", "[Stage is 1]");
-    } else if (data[4] == 0x02) {
-            ESP_LOGD("Decoder", "[Stage is 2]");
-    } else if (data[4] == 0x03) {
-            ESP_LOGD("Decoder", "[Stage is 3]");
-    } else if (data[4] == 0x04) {
-            ESP_LOGD("Decoder", "[Stage is 4]");
-    } else if (data[4] == 0x05) {
-            ESP_LOGD("Decoder", "[Stage is 5]");
-    } else {
-            ESP_LOGD("Decoder", "[Byte 9 is unknown]");
-    }
-    //byte 8 02 - submode?
-    if (data[3] == 0x04) {
-            ESP_LOGD("Decoder", "[Preheating]");
-    } else if (data[3] == 0x08) {
-            ESP_LOGD("Decoder", "[Standby]");
-    } else if (data[3] == 0x02) {
-            ESP_LOGD("Decoder", "[Defrost]");
-        } else if (data[3] == 0x00) {
-            ESP_LOGD("Decoder", "[Normal]");
-    } else {
-            ESP_LOGD("Decoder", "[Byte 8 is unknown]");
-    }
-    // byte 10 what mode are we in with AUTO
-    if (data[5] == 0x01) {
-            ESP_LOGD("Decoder", "[AUTO Cool]");
-    } else if (data[5] == 0x02) {
-            ESP_LOGD("Decoder", "[AUTO Heat]");
-    } else if (data[5] == 0x03) {
-            ESP_LOGD("Decoder", "[AUTO uncertain - does this mean I am the leader?]");
-    } else {
-            ESP_LOGD("Decoder", "[Byte 10 is unknown]");
-    }
+    ESP_LOGD("Decoder", "[Stage : %s]", receivedSettings.stage);
+    ESP_LOGD("Decoder", "[Sub Mode  : %d]", receivedSettings.sub_mode);
+    ESP_LOGD("Decoder", "[Auto Mode Sub Mode  : %s]", receivedSettings.auto_sub_mode);
+
 }
 
 void CN105Climate::getSettingsFromResponsePacket() {
