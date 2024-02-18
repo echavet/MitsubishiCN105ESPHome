@@ -104,6 +104,7 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
         cv.Optional(CONF_ISEE_SENSOR): ISEE_SENSOR_SCHEMA,
         cv.Optional(CONF_STAGE_SENSOR): STAGE_SENSOR_SCHEMA,
         cv.Optional(CONF_SUB_MODE_SENSOR): SUB_MODE_SENSOR_SCHEMA,
+        cv.Optional(CONF_AUTO_SUB_MODE_SENSOR): SUB_AUTO_MODE_SENSOR_SCHEMA,
         cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.All(
             cv.update_interval
         ),
