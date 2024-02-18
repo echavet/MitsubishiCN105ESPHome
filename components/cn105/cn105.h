@@ -24,7 +24,6 @@ public:
 
     CN105Climate(uart::UARTComponent* hw_serial);
 
-
     void set_vertical_vane_select(VaneOrientationSelect* vertical_vane_select);
     void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select);
     void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);

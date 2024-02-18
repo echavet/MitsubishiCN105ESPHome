@@ -25,6 +25,7 @@ CONF_COMPRESSOR_FREQUENCY_SENSOR = "compressor_frequency_sensor"
 CONF_ISEE_SENSOR = "isee_sensor"
 CONF_STAGE_SENSOR = "stage_sensor"
 CONF_SUB_MODE_SENSOR = "sub_mode_sensor"
+CONF_AUTO_SUB_MODE_SENSOR = "auto_sub_mode_sensor"
 
 DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
@@ -47,6 +48,7 @@ CompressorFrequencySensor = cg.global_ns.class_(
 ISeeSensor = cg.global_ns.class_("ISeeSensor", binary_sensor.BinarySensor, cg.Component)
 StageSensor = cg.global_ns.class_("StageSensor", text_sensor.TextSensor, cg.Component)
 SubModSensor = cg.global_ns.class_("SubModSensor", text_sensor.TextSensor, cg.Component)
+AutoSubModSensor = cg.global_ns.class_("AutoSubModSensor", text_sensor.TextSensor, cg.Component)
 
 
 def valid_uart(uart):
@@ -78,6 +80,10 @@ STAGE_SENSOR_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
 
 SUB_MODE_SENSOR_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(SubModSensor)}
+)
+
+AUTO_SUB_MODE_SENSOR_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(AutoSubModSensor)}
 )
 
 CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
@@ -184,6 +190,12 @@ def to_code(config):
         tsensor_ = yield text_sensor.new_text_sensor(conf)
         yield cg.register_component(tsensor_, conf)
         cg.add(var.set_sub_mode_sensor(tsensor_))
+
+    if CONF_AUTO_SUB_MODE_SENSOR in config:
+        conf = config[CONF_AUTO_SUB_MODE_SENSOR]
+        tsensor_ = yield text_sensor.new_text_sensor(conf)
+        yield cg.register_component(tsensor_, conf)
+        cg.add(var.set_auto_sub_mode_sensor(tsensor_))
 
     yield cg.register_component(var, config)
     yield climate.register_climate(var, config)
