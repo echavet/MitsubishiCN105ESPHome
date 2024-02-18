@@ -12,10 +12,7 @@
 
 using namespace esphome;
 
-
 //class VaneOrientationSelect;  // Déclaration anticipée, définie dans extraComponents
-
-
 
 class CN105Climate : public climate::Climate, public Component, public uart::UARTDevice {
 
