@@ -3,6 +3,7 @@
 #include "heatpumpFunctions.h"
 #include "van_orientation_select.h"
 #include "compressor_frequency_sensor.h"
+#include "auto_sub_mode_sensor.h"
 #include "isee_sensor.h"
 #include "stage_sensor.h"
 #include "sub_mode_sensor.h"
