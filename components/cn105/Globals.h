@@ -16,8 +16,11 @@
 
 static const char* LOG_ACTION_EVT_TAG = "EVT_SETS";
 static const char* TAG = "CN105"; // Logging tag
-static const char* LOG_SETTINGS_TAG = "SETTINGS"; // Logging tag
-static const char* LOG_STATUS_TAG = "STATUS"; // Logging tag
+static const char* LOG_SETTINGS_TAG = "SETTINGS";   // Logging settings changes
+static const char* LOG_STATUS_TAG = "STATUS";       // Logging status changes
+static const char* LOG_CYCLE_TAG = "CYCLE";         // loop cycles logs
+static const char* LOG_UPD_INT_TAG = "UPDT_ITVL";   // update interval logging
+
 
 static const char* SHEDULER_INTERVAL_SYNC_NAME = "hp->sync"; // name of the scheduler to prpgram hp updates
 static const char* DEFER_SHEDULER_INTERVAL_SYNC_NAME = "hp->sync_defer"; // name of the scheduler to prpgram hp updates

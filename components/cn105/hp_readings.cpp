@@ -217,17 +217,19 @@ void CN105Climate::getDataFromResponsePacket() {
 
     switch (this->data[0]) {
     case 0x02:             /* setting information */
+        ESP_LOGD(LOG_CYCLE_TAG, "2d: Receiving settings response");
         this->getSettingsFromResponsePacket();
-        // next step is to get the room temperature case 0x03
-        ESP_LOGD(TAG, "sending a request room temp packet (0x03)");
+        // next step is to get the room temperature case 0x03        
+        ESP_LOGD(LOG_CYCLE_TAG, "3a: Sending room °C request (0x03)");
         this->buildAndSendRequestPacket(RQST_PKT_ROOM_TEMP);
         break;
 
     case 0x03:
         /* room temperature reading */
+        ESP_LOGD(LOG_CYCLE_TAG, "3b: Receiving room °C response");
         this->getRoomTemperatureFromResponsePacket();
-        // next step is to get the heatpump status (operating and compressor frequency) case 0x06
-        ESP_LOGD(TAG, "sending a request status paquet (0x06)");
+        // next step is to get the heatpump status (operating and compressor frequency) case 0x06        
+        ESP_LOGD(LOG_CYCLE_TAG, "4a: Sending status request (0x06)");
         this->buildAndSendRequestPacket(RQST_PKT_STATUS);
         break;
 
@@ -245,7 +247,9 @@ void CN105Climate::getDataFromResponsePacket() {
 
     case 0x06:
         /* status */
+        ESP_LOGD(LOG_CYCLE_TAG, "4b: Receiving status response");
         this->getOperatingAndCompressorFreqFromResponsePacket();
+        ESP_LOGD(LOG_CYCLE_TAG, "5: Check Pending Wnted Settings");
         this->checkPendingWantedSettings();
         this->cycleEnded();
         break;
@@ -321,11 +325,8 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->currentStatus.roomTemperature = status.roomTemperature;
         this->current_temperature = currentStatus.roomTemperature;
 
-        this->updateAction();       // update action info on HA climate component
-
+        this->updateAction();       // update action info on HA climate component        
         this->publish_state();
-
-        //this->compressor_frequency_sensor->publish_state(currentStatus.compressorFrequency);
 
         if (this->compressor_frequency_sensor_ != nullptr) {
             this->compressor_frequency_sensor_->publish_state(currentStatus.compressorFrequency);
@@ -335,15 +336,27 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
 
 
 void CN105Climate::publishStateToHA(heatpumpSettings settings) {
-    checkPowerAndModeSettings(settings);
-    this->updateAction();       // update action info on HA climate component
-    checkFanSettings(settings);
-    checkVaneSettings(settings);
-    // HA Temp
-    this->target_temperature = settings.temperature;
 
-    // CurrentSettings update
-    this->currentSettings.temperature = settings.temperature;
+    if ((this->wantedSettings.mode == nullptr) && (this->wantedSettings.power == nullptr)) {        // to prevent overwriting a user demand 
+        checkPowerAndModeSettings(settings);
+    }
+
+    this->updateAction();       // update action info on HA climate component
+
+    if (this->wantedSettings.fan == nullptr) {  // to prevent overwriting a user demand
+        checkFanSettings(settings);
+    }
+
+    if ((this->wantedSettings.vane == nullptr) && (this->wantedSettings.wideVane == nullptr)) { // to prevent overwriting a user demand
+        checkVaneSettings(settings);
+    }
+
+    // HA Temp
+    if (this->wantedSettings.temperature == -1) { // to prevent overwriting a user demand
+        this->target_temperature = settings.temperature;
+        this->currentSettings.temperature = settings.temperature;
+    }
+
     this->currentSettings.iSee = settings.iSee;
     this->currentSettings.connected = true;
 
@@ -355,7 +368,7 @@ void CN105Climate::publishStateToHA(heatpumpSettings settings) {
 
 void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
     // settings correponds to current settings 
-    ESP_LOGD(LOG_ACTION_EVT_TAG, "Settings received");
+    ESP_LOGV(LOG_ACTION_EVT_TAG, "Settings received");
 
     this->debugSettings("current", this->currentSettings);
     this->debugSettings("received", settings);

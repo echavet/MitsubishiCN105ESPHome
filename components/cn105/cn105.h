@@ -135,6 +135,7 @@ public:
 #ifdef USE_ESP32
     std::mutex esp32Mutex;
 #else
+    void testEmulateMutex(const char* retryName, std::function<void()>&& f);
     bool esp8266Mutex = false;
 #endif
 #endif
@@ -187,17 +188,19 @@ protected:
 
 
     void cycleStarted() {
+        ESP_LOGI(LOG_CYCLE_TAG, "1: Cycle start");
         this->lastRequestInfo = CUSTOM_MILLIS;
         cycleRunning = true;
     }
     void cycleEnded() {
+        ESP_LOGI(LOG_CYCLE_TAG, "6: Cycle ends");
         cycleRunning = false;
         // a complete cycle is done
         this->lastCompleteCycle = CUSTOM_MILLIS;
     }
 
     bool hasUpdateIntervalPassed() {
-        return (CUSTOM_MILLIS - this->lastCompleteCycle) > update_interval_;
+        return (CUSTOM_MILLIS - this->lastCompleteCycle) > this->update_interval_;
     }
 
 private:
@@ -212,6 +215,7 @@ private:
     void prepareSetPacket(uint8_t* packet, int length);
 
     void publishStateToHA(heatpumpSettings settings);
+    void publishWantedSettingsStateToHA();
 
     void heatpumpUpdate(heatpumpSettings settings);
 
@@ -223,7 +227,7 @@ private:
     void checkVaneSettings(heatpumpSettings& settings);
     void updateExtraSelectComponents(heatpumpSettings& settings);
 
-    void statusChanged();
+    //void statusChanged();
     void updateAction();
     void setActionIfOperatingTo(climate::ClimateAction action);
     void setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateAction action);

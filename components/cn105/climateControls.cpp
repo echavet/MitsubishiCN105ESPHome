@@ -9,7 +9,8 @@ void CN105Climate::checkPendingWantedSettings() {
     if (!(this->wantedSettings.hasChanged) || (now - this->wantedSettings.lastChange < this->debounce_delay_)) {
         return;
     }
-    ESP_LOGD(TAG, "checkPendingWantedSettings - wanted settings have changed, sending them to the heatpump...");
+
+    ESP_LOGI(LOG_ACTION_EVT_TAG, "checkPendingWantedSettings - wanted settings have changed, sending them to the heatpump...");
     this->sendWantedSettings();
 }
 

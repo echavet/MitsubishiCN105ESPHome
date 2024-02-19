@@ -30,11 +30,11 @@ debug:
 logger:    
   level: DEBUG
   logs:
-    EVT_SETS : INFO
+    EVT_SETS : DEBUG
     WIFI : INFO
     MQTT : INFO
     WRITE_SETTINGS : INFO
-    SETTINGS : INFO
+    SETTINGS : DEBUG
     STATUS : INFO
     CN105Climate: WARN
     CN105: INFO
@@ -46,8 +46,12 @@ logger:
     ACK : DEBUG
     Header: INFO
     Decoder : INFO
-    CONTROL_WANTED_SETTINGS: DEBUG    
+    CONTROL_WANTED_SETTINGS: INFO    
     testMutex: DEBUG
+    UPDT_ITVL: DEBUG
+    CYCLE: DEBUG
+
+
 
 # Enable Home Assistant API
 api:
@@ -67,6 +71,12 @@ api:
     - service: use_internal_temperature
       then:
         - lambda: 'id(esp32_clim).set_remote_temperature(0);'
+    - service: test-mutex
+      then:
+        - logger.log: "Test de la fonction mutex..."
+        - lambda: |-
+            id(esp32_clim).testMutex();
+
   encryption:
     key: !secret encryption_key
 
@@ -179,8 +189,12 @@ climate:
     isee_sensor:
       name: ISEE Sensor
     remote_temperature_timeout: 15min
-    update_interval: 1s         # shouldn't be less than 1 second
+    update_interval: 2s         # shouldn't be less than 1 second
     debounce_delay : 100ms       # delay to prevent bouncing 
+    visual:
+      min_temperature: 17
+      max_temperature: 23
+      temperature_step: 1.0
 
 
 # Configuration pour l'objet 'switch' (bouton)

@@ -34,19 +34,19 @@ void CN105Climate::setup() {
  */
 void CN105Climate::loop() {
     if (!this->processInput()) {
-        if (!this->isCycleRunning()) {
-            if (this->wantedSettings.hasChanged) {
-                this->checkPendingWantedSettings();
-            } else {
+        if (this->wantedSettings.hasChanged) {
+            this->checkPendingWantedSettings();
+        } else {
+            if (!this->isCycleRunning()) {
                 if (this->hasUpdateIntervalPassed()) {
+                    ESP_LOGD(LOG_UPD_INT_TAG, "triggering infopacket because of update interval tic");
                     this->buildAndSendRequestsInfoPackets();
                 }
-            }
-        } else {
-            // TODO: check if a cycle timeout occured in case there was no reply             
-            if ((CUSTOM_MILLIS - this->lastRequestInfo) > 5000) {
-                ESP_LOGW(TAG, "Cycle timeout, reseting cycle...");
-                cycleRunning = false;
+            } else {
+                if ((CUSTOM_MILLIS - this->lastRequestInfo) > 2 * this->update_interval_ + 3000) {
+                    ESP_LOGW(TAG, "Cycle timeout, reseting cycle...");
+                    cycleRunning = false;
+                }
             }
         }
     }

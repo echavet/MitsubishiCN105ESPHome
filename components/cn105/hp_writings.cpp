@@ -42,17 +42,17 @@ void CN105Climate::sendFirstConnectionPacket() {
 
 
 
-void CN105Climate::statusChanged() {
-    ESP_LOGD(TAG, "hpStatusChanged ->");
-    this->current_temperature = currentStatus.roomTemperature;
+// void CN105Climate::statusChanged() {
+//     ESP_LOGD(TAG, "hpStatusChanged ->");
+//     this->current_temperature = currentStatus.roomTemperature;
 
-    ESP_LOGD(TAG, "t°: %f", currentStatus.roomTemperature);
-    ESP_LOGD(TAG, "operating: %d", currentStatus.operating);
-    ESP_LOGD(TAG, "compressor freq: %d", currentStatus.compressorFrequency);
+//     ESP_LOGD(TAG, "t°: %f", currentStatus.roomTemperature);
+//     ESP_LOGD(TAG, "operating: %d", currentStatus.operating);
+//     ESP_LOGD(TAG, "compressor freq: %d", currentStatus.compressorFrequency);
 
-    this->updateAction();
-    this->publish_state();
-}
+//     this->updateAction();
+//     this->publish_state();
+// }
 
 void CN105Climate::prepareInfoPacket(uint8_t* packet, int length) {
     ESP_LOGV(TAG, "preparing info packet...");
@@ -204,6 +204,45 @@ void CN105Climate::createPacket(uint8_t* packet) {
 
 
 
+
+
+void CN105Climate::publishWantedSettingsStateToHA() {
+
+    if ((this->wantedSettings.mode != nullptr) || (this->wantedSettings.mode != nullptr)) {
+        checkPowerAndModeSettings(this->wantedSettings);
+        this->updateAction();       // update action info on HA climate component
+    }
+
+    if (this->wantedSettings.fan != nullptr) {
+        checkFanSettings(this->wantedSettings);
+    }
+
+
+    if ((this->wantedSettings.vane != nullptr) || (this->wantedSettings.wideVane != nullptr)) {
+        if (this->wantedSettings.vane == nullptr) { // to prevent a nullpointer error
+            this->wantedSettings.vane = this->currentSettings.vane;
+        }
+        if (this->wantedSettings.wideVane == nullptr) { // to prevent a nullpointer error
+            this->wantedSettings.wideVane = this->currentSettings.wideVane;
+        }
+
+        checkVaneSettings(this->wantedSettings);
+    }
+
+    // HA Temp
+
+    if (this->wantedSettings.temperature != -1.0f) {
+        this->target_temperature = this->wantedSettings.temperature;
+        this->currentSettings.temperature = this->wantedSettings.temperature;
+    }
+
+
+    // publish to HA
+    this->publish_state();
+
+}
+
+
 void CN105Climate::sendWantedSettingsDelegate() {
     this->wantedSettings.hasBeenSent = true;
     this->lastSend = CUSTOM_MILLIS;
@@ -214,6 +253,9 @@ void CN105Climate::sendWantedSettingsDelegate() {
     this->createPacket(packet);
     this->writePacket(packet, PACKET_LEN);
     this->hpPacketDebug(packet, 22, "WRITE_SETTINGS");
+
+    this->publishWantedSettingsStateToHA();
+
     // as soon as the packet is sent, we reset the settings
     wantedSettings.resetSettings();
 }
@@ -262,6 +304,8 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
         ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
 
         this->cycleStarted();
+
+        ESP_LOGD(LOG_CYCLE_TAG, "2a: Sending settings request (0x02)");
         this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
     } else {
         ESP_LOGE(TAG, "sync impossible: heatpump not connected");
