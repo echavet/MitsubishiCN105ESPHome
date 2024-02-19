@@ -7,14 +7,20 @@
 #endif
 
 #define CUSTOM_MILLIS ::millis()
+#define CUSTOM_DELAY(x) ::delay(x)
+
 #define MAX_DATA_BYTES     64         // max number of data bytes in incoming messages
 #define MAX_DELAY_RESPONSE_FACTOR 10  // update_interval*10 seconds max without response
 
+#define TEST_MODE
 
 static const char* LOG_ACTION_EVT_TAG = "EVT_SETS";
 static const char* TAG = "CN105"; // Logging tag
-static const char* LOG_SETTINGS_TAG = "SETTINGS"; // Logging tag
-static const char* LOG_STATUS_TAG = "STATUS"; // Logging tag
+static const char* LOG_SETTINGS_TAG = "SETTINGS";   // Logging settings changes
+static const char* LOG_STATUS_TAG = "STATUS";       // Logging status changes
+static const char* LOG_CYCLE_TAG = "CYCLE";         // loop cycles logs
+static const char* LOG_UPD_INT_TAG = "UPDT_ITVL";   // update interval logging
+
 
 static const char* SHEDULER_INTERVAL_SYNC_NAME = "hp->sync"; // name of the scheduler to prpgram hp updates
 static const char* DEFER_SHEDULER_INTERVAL_SYNC_NAME = "hp->sync_defer"; // name of the scheduler to prpgram hp updates
@@ -130,6 +136,15 @@ struct heatpumpSettings {
     const char* sub_mode;
     const char* auto_sub_mode;
 
+    void resetSettings() {
+        power = nullptr;
+        mode = nullptr;
+        temperature = -1.0f;
+        fan = nullptr;
+        vane = nullptr;
+        wideVane = nullptr;
+    }
+
     heatpumpSettings& operator=(const heatpumpSettings& other) {
         if (this != &other) { // protection contre l'auto-affectation
             power = other.power;
@@ -169,6 +184,16 @@ struct wantedHeatpumpSettings : heatpumpSettings {
     bool hasBeenSent;
     uint8_t nb_deffered_requests;
     long lastChange;
+
+    void resetSettings() {
+        heatpumpSettings::resetSettings();
+
+        hasChanged = false;
+        hasBeenSent = false;
+        //nb_deffered_requests = 0;
+        //lastChange = 0; 
+    }
+
     wantedHeatpumpSettings& operator=(const wantedHeatpumpSettings& other) {
         if (this != &other) { // self-assignment protection
             heatpumpSettings::operator=(other); // Appel à l'opérateur d'affectation de la classe de base

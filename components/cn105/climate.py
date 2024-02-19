@@ -97,7 +97,7 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
             "'hardware_uart' options is not supported anymore. Please add a separate UART component with the correct rx and tx pin."
         ),
         # cv.Optional(CONF_HARDWARE_UART, default="UART0"): valid_uart,
-        cv.Optional(CONF_UPDATE_INTERVAL, default="4s"): cv.All(cv.update_interval),
+        cv.Optional(CONF_UPDATE_INTERVAL, default="2s"): cv.All(cv.update_interval),
         cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
         cv.Optional(CONF_VERTICAL_SWING_SELECT): SELECT_SCHEMA,
         cv.Optional(CONF_COMPRESSOR_FREQUENCY_SENSOR): SENSOR_SCHEMA,
@@ -108,7 +108,7 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
         cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.All(
             cv.update_interval
         ),
-        cv.Optional(CONF_DEBOUNCE_DELAY, default="400ms"): cv.All(cv.update_interval),
+        cv.Optional(CONF_DEBOUNCE_DELAY, default="100ms"): cv.All(cv.update_interval),
         # Optionally override the supported ClimateTraits.
         cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
             {
