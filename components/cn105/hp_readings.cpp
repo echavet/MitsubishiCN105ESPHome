@@ -130,16 +130,16 @@ void CN105Climate::getAutoModeStateFromResponsePacket() {
     heatpumpSettings receivedSettings{};
 
     if (data[10] == 0x00) {
-            ESP_LOGD("Decoder", "[0x10 is 0x00]");
+        ESP_LOGD("Decoder", "[0x10 is 0x00]");
 
     } else if (data[10] == 0x01) {
-            ESP_LOGD("Decoder", "[0x10 is 0x01]");
+        ESP_LOGD("Decoder", "[0x10 is 0x01]");
 
     } else if (data[10] == 0x02) {
-            ESP_LOGD("Decoder", "[0x10 is 0x02]");
+        ESP_LOGD("Decoder", "[0x10 is 0x02]");
 
     } else {
-            ESP_LOGD("Decoder", "[0x10 is unknown]");
+        ESP_LOGD("Decoder", "[0x10 is unknown]");
 
     }
 }
@@ -294,15 +294,16 @@ void CN105Climate::getDataFromResponsePacket() {
         /* status */
         ESP_LOGD(LOG_CYCLE_TAG, "4b: Receiving status response");
         this->getOperatingAndCompressorFreqFromResponsePacket();
-        ESP_LOGD(LOG_CYCLE_TAG, "5: Check Pending Wnted Settings");
-        this->checkPendingWantedSettings();
-        this->cycleEnded();
+        ESP_LOGD(LOG_CYCLE_TAG, "5a: Sending power request (0x09)");
+        this->buildAndSendRequestPacket(RQST_PKT_STANDBY);
         break;
 
     case 0x09:
         /* Power */
+        ESP_LOGD(LOG_CYCLE_TAG, "5b: Receiving Power/Standby response");
         this->getPowerFromResponsePacket();
-        //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50 
+        //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50             
+        this->cycleEnded();
         break;
 
     case 0x10:
