@@ -12,6 +12,16 @@ This is an unofficial implementation of the reverse-engineered Mitsubishi protoc
 
 ### Breaking Changes
 
+#### Warning: a big refactor has been merged with branch main
+
+This is a [pre-release version](https://github.com/echavet/MitsubishiCN105ESPHome/releases/tag/v1.2).
+You can keep you're production version connected to any previous release setting the wanted release tag reference in your yaml:
+
+```yaml
+external_components:
+  - source: github://echavet/MitsubishiCN105ESPHome@v1.1.3  
+```
+
 #### Warning: esp-idf framework support feature has been merged to main branch
 
 This is a major change in UART configuration. But not so scary! If you upgrade to the head of main you will have to change the way you configure the UART in your yaml files. Look at the Step 4 in this document.
