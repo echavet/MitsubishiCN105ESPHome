@@ -291,10 +291,7 @@ void CN105Climate::buildAndSendRequestPacket(int packetType) {
 }
 
 
-/**
- * builds ans send all 3 types of packet to get a full informations back from heatpump
- * 3 packets are sent at 300 ms interval
-*/
+
 void CN105Climate::buildAndSendRequestsInfoPackets() {
 
     ESP_LOGD("CONTROL_WANTED_SETTINGS", "hasChanged is %s", wantedSettings.hasChanged ? "true" : "false");
@@ -313,6 +310,7 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
         //this->sendFirstConnectionPacket();
     }
 }
+
 
 
 

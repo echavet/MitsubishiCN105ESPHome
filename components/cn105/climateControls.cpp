@@ -36,6 +36,21 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
         controlTemperature();
     }
 
+    if (call.get_target_temperature_low().has_value()) {
+        // Changer la température cible
+        ESP_LOGI("control", "Setting heatpump low setpoint : %.1f", *call.get_target_temperature_low());
+        this->target_temperature_low = *call.get_target_temperature_low();
+        updated = true;
+        controlTemperature();
+    }
+    if (call.get_target_temperature_high().has_value()) {
+        // Changer la température cible
+        ESP_LOGI("control", "Setting heatpump high setpoint : %.1f", *call.get_target_temperature_high());
+        this->target_temperature_high = *call.get_target_temperature_high();
+        updated = true;
+        controlTemperature();
+    }
+
     if (call.get_fan_mode().has_value()) {
         ESP_LOGD("control", "Fan change asked");
         // Changer le mode de ventilation
@@ -129,6 +144,10 @@ void CN105Climate::controlFan() {
 void CN105Climate::controlTemperature() {
     float setting = this->target_temperature;
 
+    float cool_setpoint = this->target_temperature_low;
+    float heat_setpoint = this->target_temperature_high;
+    //float humidity_setpoint = this->target_humidity;
+
     if (!this->tempMode) {
         this->wantedSettings.temperature = this->lookupByteMapIndex(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
     } else {
@@ -157,8 +176,8 @@ void CN105Climate::controlMode() {
         this->setModeSetting("DRY");
         this->setPowerSetting("ON");
         break;
-    case climate::CLIMATE_MODE_HEAT_COOL:
-        ESP_LOGI("control", "changing mode to HEAT_COOL");
+    case climate::CLIMATE_MODE_AUTO:
+        ESP_LOGI("control", "changing mode to AUTO");
         this->setModeSetting("AUTO");
         this->setPowerSetting("ON");
         break;
@@ -172,7 +191,7 @@ void CN105Climate::controlMode() {
         this->setPowerSetting("OFF");
         break;
     default:
-        ESP_LOGW("control", "mode non pris en charge");
+        ESP_LOGW("control", "unsupported mode");
     }
 }
 
@@ -202,6 +221,7 @@ void CN105Climate::setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateA
     }
 }
 
+//inside the below we could implement an internal only HEAT_COOL doing the math with an offset or something
 void CN105Climate::updateAction() {
     ESP_LOGV(TAG, "updating action back to espHome...");
     switch (this->mode) {
@@ -213,10 +233,10 @@ void CN105Climate::updateAction() {
         //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_COOLING);
         this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
         break;
-    case climate::CLIMATE_MODE_HEAT_COOL:
+    case climate::CLIMATE_MODE_AUTO:
         //this->setActionIfOperatingAndCompressorIsActiveTo(
         this->setActionIfOperatingTo(
-            (this->current_temperature > this->target_temperature ?
+            (this->current_temperature > this->target_temperature  ?
                 climate::CLIMATE_ACTION_COOLING :
                 climate::CLIMATE_ACTION_HEATING));
         break;

@@ -135,14 +135,14 @@ void CN105Climate::debugSettingsAndStatus(const char* settingName, heatpumpSetti
 
 
 void CN105Climate::hpPacketDebug(uint8_t* packet, unsigned int length, const char* packetDirection) {
-    char buffer[4]; // Petit tampon pour stocker chaque octet sous forme de texte
-    char outputBuffer[length * 4 + 1]; // Tampon pour stocker l'ensemble des octets sous forme de texte
+    char buffer[4]; // Small buffer to store each byte as text
+    char outputBuffer[length * 4 + 1]; // Buffer to store all bytes as text
 
     // Initialisation du tampon de sortie avec une chaîne vide
     outputBuffer[0] = '\0';
 
     for (unsigned int i = 0; i < length; i++) {
-        snprintf(buffer, sizeof(buffer), "%02X ", packet[i]); // Utilisation de snprintf pour éviter les dépassements de tampon
+        snprintf(buffer, sizeof(buffer), "%02X ", packet[i]); // Using snprintf to avoid buffer overflows
         strcat(outputBuffer, buffer);
     }
 

@@ -88,6 +88,14 @@ static const int ROOM_TEMP_MAP[32] = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 2
 static const uint8_t TIMER_MODE[4] = { 0x00,  0x01,  0x02, 0x03 };
 static const char* TIMER_MODE_MAP[4] = { "NONE", "OFF", "ON", "BOTH" };
 
+//added NET to work with additional data
+static const uint8_t STAGE[6] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
+static const char* STAGE_MAP[6] = { "STAGE 0", "STAGE 1", "STAGE 2", "STAGE 3", "STAGE 4", "STAGE 5" };
+static const uint8_t SUB_MODE[4] = { 0x00, 0x02, 0x04, 0x08 };
+static const char* SUB_MODE_MAP[4] = { "NORMAL", "DEFROST", "PREHEAT", "STANDBY"};
+static const uint8_t AUTO_SUB_MODE[4] = { 0x00, 0x01, 0x02, 0x03 };
+static const char* AUTO_SUB_MODE_MAP[4] = { "AUTO_OFF","AUTO_COOL", "AUTO_HEAT", "AUTO_LEADER"};
+
 static const int TIMER_INCREMENT_MINUTES = 10;
 
 static const uint8_t FUNCTIONS_SET_PART1 = 0x1F;
@@ -108,10 +116,10 @@ static const int RQST_PKT_ROOM_TEMP = 1;
 static const int RQST_PKT_TIMERS = 3;
 static const int RQST_PKT_STATUS = 4;
 static const int RQST_PKT_STANDBY = 5;
+static const int RQST_PKT_UNKNOWN = 2;
 
-
-const uint8_t ESPMHP_MIN_TEMPERATURE = 16;
-const uint8_t ESPMHP_MAX_TEMPERATURE = 31;
+const uint8_t ESPMHP_MIN_TEMPERATURE = 16; //16
+const uint8_t ESPMHP_MAX_TEMPERATURE = 26; //31
 const float ESPMHP_TEMPERATURE_STEP = 0.5;
 
 
@@ -124,6 +132,9 @@ struct heatpumpSettings {
     const char* wideVane; //horizontal vane, left/right
     bool iSee;   //iSee sensor, at the moment can only detect it, not set it
     bool connected;
+    const char* stage;
+    const char* sub_mode;
+    const char* auto_sub_mode;
 
     void resetSettings() {
         power = nullptr;
@@ -144,6 +155,9 @@ struct heatpumpSettings {
             wideVane = other.wideVane;
             iSee = other.iSee;
             connected = other.connected;
+            stage = other.stage;
+            sub_mode = other.sub_mode;
+            auto_sub_mode = other.auto_sub_mode;
         }
         return *this;
     }
@@ -181,7 +195,7 @@ struct wantedHeatpumpSettings : heatpumpSettings {
     }
 
     wantedHeatpumpSettings& operator=(const wantedHeatpumpSettings& other) {
-        if (this != &other) { // protection contre l'auto-affectation
+        if (this != &other) { // self-assignment protection
             heatpumpSettings::operator=(other); // Appel à l'opérateur d'affectation de la classe de base
             hasChanged = other.hasChanged;
             hasBeenSent = other.hasBeenSent;
@@ -190,7 +204,7 @@ struct wantedHeatpumpSettings : heatpumpSettings {
     }
 
     wantedHeatpumpSettings& operator=(const heatpumpSettings& other) {
-        if (this != &other) { // protection contre l'auto-affectation
+        if (this != &other) { // self-assignment protection
             heatpumpSettings::operator=(other); // Copie des membres de base                        
         }
         return *this;

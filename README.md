@@ -1,31 +1,39 @@
-# MitsubishiCN105ESPHome
+# Mitsubishi CN105 ESPHome
+This component is an adaptation of [geoffdavis's esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump). Its purpose is to integrate the Mitsubishi heat pump protocol (enabled by the [SwiCago library](https://github.com/SwiCago/HeatPump)) directly into the ESPHome component classes for a more seamless integration.
 
-## Warning: esp-idf framework support feature has been merged to main branch.
+The intended use case is for owners of a Mitsubishi Electric heat pump or air conditioner that includes a CN105 communication port to directly control their air handler or indoor unit using local communication through a web browser, or most commonly, the [HomeAssistant](https://www.home-assistant.io/) home automation platform. Installation requires the use of a WiFi capable ESP32 or ESP8266 device, modified to include a 5 pin plug to connect to the heat pump indoor unit. ESPHome is used to load the custom firmware onto the device, and the web browser or HomeAssistant software is used to send temperature setpoints, external temperature references, and settings to the heat pump. Installation requires basic soldering skills, and basic skills in flashing a firmware to a microcontroller (though ESPHome makes this as painless as possible).
 
-This is a major change in UART configuration. But not so scary!
-If you upgrade to the head of main you will have to change the way you configure the uart in your yaml files. Look at the step 4 in this document.
-The reason is [issue #6](https://github.com/echavet/MitsubishiCN105ESPHome/issues/6). The old configuration did not allow to use ESP32 ESP-IDF framework.
+The benefits include fully local control over your heat pump system, without reliance on a vendor network. Additional visibility, finer control, and even improved energy efficiency and comfort are possible when utilizing the remote temperature features.
 
-If you don't want this change you must configure your external_components to point to the [tagged v1.0.3] https://github.com/echavet/MitsubishiCN105ESPHome/tree/v1.0.3 this way:
+### Warning: Use at your own risk.
+This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
+
+## What's New
+
+### Breaking Changes
+
+#### Warning: esp-idf framework support feature has been merged to main branch
+
+This is a major change in UART configuration. But not so scary! If you upgrade to the head of main you will have to change the way you configure the UART in your yaml files. Look at the Step 4 in this document.
+The reason is issue https://github.com/echavet/MitsubishiCN105ESPHome/issues/6. The old configuration did not allow to use ESP32 ESP-IDF framework, which improves reliability of the hardware UART.
+
+If you don't want this change you must configure your external_components to point to the [v1.0.3](https://github.com/echavet/MitsubishiCN105ESPHome/tree/v1.0.3) tree this way:
 
 ```yaml
 external_components:
   - source: github://echavet/MitsubishiCN105ESPHome@v1.0.3
 ```
 
-This component is an adaptation of [geoffdavis's esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump). Its purpose is to integrate the Mitsubishi heat pump protocol (enabled by the [SwiCago library](https://github.com/SwiCago/HeatPump)) directly into the ESPHome component classes for a more seamless integration.
-
-## What's New:
-
+### Other New Features
+- Additional components for supported units: vane orientation (fully supporting the Swicago map), compressor frequency for energy monitoring, and i-see sensor.
 - Enhanced UART communication with the Heatpump to eliminate delays in the ESPHome loop(), which was a limitation of the original [SwiCago library](https://github.com/SwiCago/HeatPump).
 - Byte-by-byte reading within the loop() function ensures no data loss or lag, as the component continuously reads without blocking ESPHome.
 - UART writes are followed by non-blocking reads. The responses are accumulated byte-by-byte in the loop() method and processed when complete, allowing command stacking without delays for a more responsive UI.
 - Code is divided into distinct concerns for better readability.
-- Additional components: vane orientation (fully supporting the Swicago map), compressor frequency for energy monitoring, and i-see sensor.
 - Extensive logging for easier troubleshooting and development.
 - Ongoing refactoring to further improve the code quality.
 
-## Retained Features:
+### Retained Features
 
 This project maintains all functionalities of the original geoffdavis project, including:
 
@@ -33,28 +41,30 @@ This project maintains all functionalities of the original geoffdavis project, i
 - Instant feedback of command changes via RF Remote to HomeAssistant or MQTT.
 - Direct control independent of the remote.
 - A slightly modified version of the [SwiCago/HeatPump](https://github.com/SwiCago/HeatPump) Arduino library for direct communication via the internal `CN105` connector.
-- Full modes vane orientation support (added as an extra component within the Core Climate Component).
-- Thermostat in HomeAssistant with compressor Frequency monitoring (an extra component within the Core Climate Component).
+- Full mode and vane orientation support (added as an extra component within the Core Climate Component).
+- Thermostat in HomeAssistant with compressor frequency monitoring (an extra component within the Core Climate Component).
 
-## Requirements:
+## Requirements
 
-- ESPHome
+- [ESPHome](https://esphome.io/) - Minimum version 1.18.0, installed independently or as an add-on in HomeAssistant
 
-## Supported Microcontrollers:
+## Supported Microcontrollers
 
 - WeMos D1 Mini (ESP8266): tested
 - M5Stack ATOM Lite : tested
 - Generic ESP32 Dev Kit (ESP32): tested
 
-## Supported Mitsubishi Climate Units:
+## Supported Mitsubishi Climate Units
 
-Primarily, units with a `CN105` header are compatible. Refer to the [HeatPump wiki](https://github.com/SwiCago/HeatPump/wiki/Supported-models) for a comprehensive list.
-Tested units include:
+Generally, indoor units with a `CN105` header are compatible. Refer to the [HeatPump wiki](https://github.com/SwiCago/HeatPump/wiki/Supported-models) for a comprehensive list. Additionally, Mitsubishi units listed as compatible with the [Mitsubishi PAC-USWHS002-WF-2 Kumo Cloud interface](https://mylinkdrive.com/USA/Controls/kumo_cloud/kumo_cloud_Devices/PAC_USWHS002_WF_2?product) will *likely* be compatible with this project, as they use the same CN105 connector and serial protocol.
+
+Units tested by project contributors include:
 
 - `MSZ-SF50VE3`
 - `MSZ-SF35VE3`
+- `MSZ-GLxxNA`
 
-## Usage:
+## Usage
 
 ### Step 1: Building the Control Circuit
 
@@ -62,163 +72,134 @@ Follow the [SwiCago/HeatPump README](https://github.com/SwiCago/HeatPump/blob/ma
 
 ### Step 2: Using ESPHome
 
-This code utilizes features in ESPHome 1.18.0, including various Fan modes and [external components](https://esphome.io/components/external_components.html).
+Add a new device in your ESPHome dashboard. Create a yaml configuration file for the new device using the templates below, and flash to your device. Refer to the ESPHome documentation for guides on how to install ESPHome, add new devices, and flash the initial firmware.
 
-### Step 3: Add as an External Component
+- [Getting Started with ESPHome and HomeAssistant](https://esphome.io/guides/getting_started_hassio)
+- [Installing ESPHome Locally](https://esphome.io/guides/installing_esphome)
 
-In your ESPHome config, add this repository:
+Note: This code utilizes features in ESPHome 1.18.0, including various Fan modes and [external components](https://esphome.io/components/external_components.html).
 
+### Step 3: Configure the board and UART settings
+
+Your ESPHome device configuration file starts with common defaults for ESPHome. To these defaults, add these minimum sections:
+
+#### For ESP8266-based Devices
 ```yaml
-external_components:
-  - source: github://echavet/MitsubishiCN105ESPHome
-```
+esp8266:
+  board: d1_mini
 
-### Step 4: Configuring the Heatpump
-
-In your ESPHome config, configure an uart and add a `cn105` component:
-
-```yaml
 uart:
   id: HP_UART
   baud_rate: 2400
   tx_pin: 1
   rx_pin: 3
-
-climate:
-  - platform: cn105 # Choose your platform
-    name: "My Heat Pump"
-    update_interval: 4s
 ```
 
-
-Another example on esp32 with all optional attributes:
-
+#### For ESP32-based Devices
 ```yaml
-...
-
 esp32:
   board: esp32doit-devkit-v1
   framework:
     type: esp-idf   
-
-...
 
 uart:
   id: HP_UART
   baud_rate: 2400
   tx_pin: GPIO17
   rx_pin: GPIO16
-
-climate:
-  - platform: cn105  
-    name: ${friendly_name}    
-    compressor_frequency_sensor:
-      name: Compressor frequency (clim Sejour)    
-    vertical_vane_select:
-      name: Vertical Vane Orientation
-    horizontal_vane_select:
-      name: Horizontal Vane Orientation
-    isee_sensor:
-      name: ISEE Sensor
-    remote_temperature_timeout: 30min
-    debounce_delay : 500ms      # cf. issue #21 about mulitple req in short period
-    update_interval: 10s   
-```
-Note: For the `update_interval` I recommended to use a interval longer or equal to 1s because the underlying process divides this interval into three separate requests.
-The debounce_delay can be adjusted to get a more responsive UI component or to allow short period multiple request to be merged and processed in a single one. See [#21](https://github.com/echavet/MitsubishiCN105ESPHome/issues/21) for details and example use case. 
-
-For ESP8266, disable logging to serial to avoid conflicts:
-
-```yaml
-logger:
-  baud_rate: 0
 ```
 
-Or redirect logs to UART1:
+### Step 4: Configure the heatpump library
+
+Add these sections to load the external component, setup logging, and enable the climate entity.
 
 ```yaml
-logger:
-  hardware_uart: UART1
-```
-
-## Example Configuration:
-
-Below is a sample configuration including wireless strength indicators and OTA updates. You'll need a `secrets.yaml` file with the necessary credentials.
-
-```yaml
-substitutions:
-  name: hptest
-  friendly_name: Test Heatpump
-
-esphome:
-  name: ${name}
-  friendly_name: ${friendly_name}
-
-esp8266:
-  board: d1_mini
-
-# Enable logging
-logger:
-  hardware_uart: UART1
-  level: INFO
-
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "${friendly_name} Fallback Hotspot"
-    password: !secret fallback_password
-
-# Enable Home Assistant API
-api:
-
-ota:
-
+# External component library
 external_components:
   - source: github://echavet/MitsubishiCN105ESPHome
 
-uart:
-  id: HP_UART
-  baud_rate: 2400
-  tx_pin: 1
-  rx_pin: 3
-
+# Climate entity configuration
 climate:
-  - platform: cn105 
-    name: ${friendly_name}
-    id: "clim_id"
-
-    # this update interval is not the same as the original geoffdavis parameter
-    # this one activates the autoupdate feature (or not is set to 0)
-    # the underlying component is not a PollingComponent so the component just uses
-    # the espHome scheduler to program the heatpump requests at the given interval.
-    # 3 requests are sent each update_interval with an interval of update_interval/4 or 300ms.
+  - platform: cn105
+    name: "My Heat Pump"
     update_interval: 4s
+
+# Default logging level
+logger:
+  hardware_uart: UART1 # This line can be removed for ESP32 devices
+  level: INFO
 ```
 
+### Step 5: Optional components and variables
 
-## External temperature
-
-This example uses a homeassistant sensor to update the room temperature and uses esp32 with esp-idf framework which allows to keep logging enabled on the main serial port while another UART is configured for the heatpump connection.
+These optional additional configurations add customization and additional capabilities. The examples below assume you have added a substitutions component to your configuration file to allow for easy renaming, and that you have added a `secrets.yaml` file to your ESPHome configuration to hide private variables like your random API keys, OTA passwords, and Wifi passwords.
 
 ```yaml
 substitutions:
-  name: "esp32-hp"
-  friendly_name: Clim Sejour
+  name: heatpump-1 # Do not use underscores, which are not fully compatible with mDNS
+  friendly_name: My Heatpump 1
+```
 
-esphome:
-  name: ${name}
-  friendly_name: ${friendly_name}
+#### Climate component full example
+This example adds support for configuring the temperature steps, adding an icon, and the optional climate sensors supported by SwiCago (but not supported by all indoor units), `compressor_frequency_sensor`, `vertical_vane_select`, `horizontal_vane_select` and `isee_sensor`. Supports many of the other features of the [ESPHome climate component](https://esphome.io/components/climate/index.html) as well for additional customization.
 
-esp32:
-  board: esp32doit-devkit-v1
-  framework:
-    type: esp-idf
+The `remote_temperature_timeout` setting allows the unit to revert back to the internal temperature measurement if it does not receive an update in the specified time range (highly recommended if using remote temperature updates).
 
-# Enable logging
-logger:    
+`debounce_delay` adds a small delay to the command processing to account for some HomeAssistant buttons that may send repeat commands too quickly. A shorter value creates a more responsive UI, a longer value protects against repeat commands. (See Issue https://github.com/echavet/MitsubishiCN105ESPHome/issues/21)
+
+```yaml
+climate:
+  - platform: cn105
+    id: hp
+    name: "${friendly_name}"
+    icon: mdi:heat-pump
+    visual:
+      min_temperature: 15
+      max_temperature: 31
+      temperature_step: 1.0
+    compressor_frequency_sensor:
+      name: ${name} Compressor Frequency
+    vertical_vane_select:
+      name: ${name} Vertical Vane
+    horizontal_vane_select:
+      name: ${name} Horizontal Vane
+    isee_sensor:
+      name: ${name} ISEE Sensor
+    remote_temperature_timeout: 30min
+    debounce_delay : 500ms
+    update_interval: 4s
+```
+
+Note: An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
+
+#### External temperature support
+This example extends to default `api:` component to add a `set_remote_temperature` service that can be called from within HomeAssistant, allowing you to send a remote temperature value to the heat pump. This replaces the heat pump's internal temperature measurement with an external temperature measurement as the Mitsubishi wireless thermostats do, allowing you to more precisely control room comfort. You will need to include an automation in HomeAssistant to periodically call the service and update the temperature with `set_remote_temperature`, or disable remote temperature with `use_internal_temperature`. Example automations linked below.
+
+```yaml
+api:
+  encryption:
+    key: !secret api_key
+  services:
+    - service: set_remote_temperature
+      variables:
+        temperature: float
+      then:
+# Select between the C version and the F version
+# Uncomment just ONE of the below lines. The top receives the temperature value in C,
+# the bottom receives the value in F, converting to C here.
+        - lambda: 'id(hp).set_remote_temperature(temperature);'
+#        - lambda: 'id(hp).set_remote_temperature((temperature - 32.0) * (5.0 / 9.0));'
+    - service: use_internal_temperature
+      then:
+        - lambda: 'id(hp).set_remote_temperature(0);'
+```
+
+#### Logger granularity
+This firmware supports detailed log granularity for troubleshooting. Below is the full list of logger components and recommended defaults.
+
+```yaml
+logger:
+  hardware_uart: UART1 # Only needed on ESP8266 devices
   level: INFO
   logs:
     EVT_SETS : INFO
@@ -237,51 +218,300 @@ logger:
     Header: INFO
     Decoder : INFO
     CONTROL_WANTED_SETTINGS: INFO
+# Swap the above settings with these debug settings for development or troubleshooting
+#  level: DEBUG
+#  logs:
+#    EVT_SETS : DEBUG
+#    WIFI : INFO
+#    MQTT : INFO
+#    WRITE_SETTINGS : DEBUG
+#    SETTINGS : DEBUG
+#    STATUS : INFO
+#    CN105Climate: WARN
+#    CN105: DEBUG
+#    climate: WARN
+#    sensor: WARN
+#    chkSum : INFO
+#    WRITE : WARN
+#    READ : WARN
+#    Header: INFO
+#    Decoder : DEBUG
+#    CONTROL_WANTED_SETTINGS: DEBUG
+```
 
-api:
-  services:    
-    - service: set_remote_temperature
-      variables:
-        temperature: float
-      then:
-        - lambda: 'id(esp32_clim).set_remote_temperature(temperature);'
+### Step 6: Build the project and install
 
-    - service: use_internal_temperature
-      then:
-        - lambda: 'id(esp32_clim).set_remote_temperature(0);'
-  encryption:
-    key: !secret encryption_key
+Build the project in ESPHome and install to your device. Install the device in your indoor unit connected to the CN105 port, and confirm that it powers up and connects to the Wifi. Visit the local IP address of the device, and confirm that you can change modes and temperature setpoints. HomeAssistant should now include a climate entity for your heatpump.
 
-ota:  
-  password: !secret ota_pwd
+## Example Configuration - Minimal
 
-# external temperature
-sensor:
-  - platform: homeassistant
-    id: ha_cdeg_sejour_et_cuisine
-    entity_id: sensor.cdeg_sejour_et_cuisine
-    internal: true
-    on_value:
-      then:
-        - lambda: |-
-            id(esp32_clim).set_remote_temperature(x);
+This minimal configuration includes the basic components necessary for the firmware to operate. Note that you need to choose between the ESP32 and the ESP8266 sections to get the correct UART configuration. Utilizes a `secrets.yaml` file to store your credentials.
+
+<details>
+
+<summary>Minimal Configuration</summary>
+  
+```yaml
+esphome:
+  name: heatpump-1
+  friendly_name: My Heatpump 1
+
+# For ESP8266 Devices
+esp8266:
+  board: d1_mini
 
 uart:
   id: HP_UART
   baud_rate: 2400
-  tx_pin: GPIO17
-  rx_pin: GPIO16
+  tx_pin: 1
+  rx_pin: 3
+
+# For ESP32 Devices
+#esp32:
+#  board: esp32doit-devkit-v1
+#  framework:
+#    type: esp-idf   
+#
+#uart:
+#  id: HP_UART
+#  baud_rate: 2400
+#  tx_pin: GPIO17
+#  rx_pin: GPIO16
+
+external_components:
+  - source: github://echavet/MitsubishiCN105ESPHome
+
+# Climate entity configuration
+climate:
+  - platform: cn105
+    name: "My Heat Pump"
+    update_interval: 4s
+
+# Default logging level
+logger:
+  hardware_uart: UART1 # This line can be removed for ESP32 devices
+  level: INFO
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Heatpump Fallback Hotspot"
+    password: !secret fallback_password
+
+captive_portal:
+```
+</details>
+
+## Example Configuration - Complete:
+
+This example includes all the bells and whistles, optional components, remote temperature sensing, reboot button, and additional sensors in HomeAssistant including uptime, the current wifi SSID, and signal strength. Note that you need to choose between the ESP32 and the ESP8266 sections to get the correct UART configuration. Utilizes a `secrets.yaml` file to store your credentials. Comment out or remote features your unit doesn't support (such as the isee sensor or horizontal vane). It doesn't hurt to try them, but if your unit doesn't support that feature then it will be inactive.
+
+<details>
+
+<summary>Complete Configuration</summary>
+
+```yaml
+substitutions:
+  name: heatpump-1
+  friendly_name: My Heatpump 1
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  
+# For ESP8266 Devices
+esp8266:
+  board: d1_mini
+
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: 1
+  rx_pin: 3
+
+# For ESP32 Devices
+#esp32:
+#  board: esp32doit-devkit-v1
+#  framework:
+#    type: esp-idf   
+#
+#uart:
+#  id: HP_UART
+#  baud_rate: 2400
+#  tx_pin: GPIO17
+#  rx_pin: GPIO16
+
+external_components:
+  - source: github://echavet/MitsubishiCN105ESPHome
+#    refresh: 0s
+
+wifi:
+  ssid: !secret ssid
+  password: !secret password
+  domain: !secret domain
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "${friendly_name} ESP"
+    password: !secret fallback_password
+
+captive_portal:
+
+# Enable logging
+logger:
+  hardware_uart: UART1
+  level: INFO
+  logs:
+    EVT_SETS : INFO
+    WIFI : INFO
+    MQTT : INFO
+    WRITE_SETTINGS : INFO
+    SETTINGS : INFO
+    STATUS : INFO
+    CN105Climate: WARN
+    CN105: INFO
+    climate: WARN
+    sensor: WARN
+    chkSum : INFO
+    WRITE : WARN
+    READ : WARN
+    Header: INFO
+    Decoder : INFO
+    CONTROL_WANTED_SETTINGS: INFO
+#  level: DEBUG
+#  logs:
+#    EVT_SETS : DEBUG
+#    WIFI : INFO
+#    MQTT : INFO
+#    WRITE_SETTINGS : DEBUG
+#    SETTINGS : DEBUG
+#    STATUS : INFO
+#    CN105Climate: WARN
+#    CN105: DEBUG
+#    climate: WARN
+#    sensor: WARN
+#    chkSum : INFO
+#    WRITE : WARN
+#    READ : WARN
+#    Header: INFO
+#    Decoder : DEBUG
+#    CONTROL_WANTED_SETTINGS: DEBUG
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_key
+  services:
+    - service: set_remote_temperature
+      variables:
+        temperature: float
+      then:
+# Select between the C version and the F version
+# Uncomment just ONE of the below lines. The top receives the temperature value in C,
+# the bottom receives the value in F, converting to C here.
+        - lambda: 'id(hp).set_remote_temperature(temperature);'
+#        - lambda: 'id(hp).set_remote_temperature((temperature - 32.0) * (5.0 / 9.0));'
+    - service: use_internal_temperature
+      then:
+        - lambda: 'id(hp).set_remote_temperature(0);'
+
+ota:
+
+# Enable Web server.
+web_server:
+  port: 80
+
+# Sync time with Home Assistant.
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+# Text sensors with general information.
+text_sensor:
+  # Expose ESPHome version as sensor.
+  - platform: version
+    name: ${name} ESPHome Version
+  # Expose WiFi information as sensors.
+  - platform: wifi_info
+    ip_address:
+      name: ${name} IP
+    ssid:
+      name: ${name} SSID
+    bssid:
+      name: ${name} BSSID
+
+# Sensors with general information.
+sensor:
+  # Uptime sensor.
+  - platform: uptime
+    name: ${name} Uptime
+
+  # WiFi Signal sensor.
+  - platform: wifi_signal
+    name: ${name} WiFi Signal
+    update_interval: 120s
+
+# Create a button to restart the unit from HomeAssistant. Rarely needed, but can be handy.
+button:
+  - platform: restart
+    name: "Restart ${friendly_name}"
 
 climate:
-  - platform: cn105  
-    name: ${friendly_name}
-    id: "esp32_clim"
+  - platform: cn105
+    id: hp
+    name: "${friendly_name}"
+    icon: mdi:heat-pump
+    visual:
+      min_temperature: 15
+      max_temperature: 31
+      temperature_step: 1.0
     compressor_frequency_sensor:
-      name: Compressor frequency (clim Sejour)    
-    update_interval: 10s         # shouldn't be less than 1 second
+      name: ${name} Compressor Frequency
+    vertical_vane_select:
+      name: ${name} Vertical Vane
+    horizontal_vane_select:
+      name: ${name} Horizontal Vane
+    isee_sensor:
+      name: ${name} ISEE Sensor
+    remote_temperature_timeout: 30min
+    debounce_delay : 500ms
+    update_interval: 4s
+```
+</details>
+
+## Methods for updating external temperature
+
+There are several methods for updating the unit with an remote temperature value.
+
+### Get external temperature from a [HomeAssistant Sensor](https://esphome.io/components/sensor/homeassistant.html) through the HomeAssistant API
+
+```yaml
+sensor:
+  - platform: homeassistant
+    id: current_temp
+    entity_id: sensor.my_temperature_sensor
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            id(hp).set_remote_temperature(x);
 ```
 
-Another example with a physical sensor and a throttle average filter:
+### Get external temperature from a networked sensor with a throttle filter
 
 ```yaml
 sensor:
@@ -299,7 +529,11 @@ sensor:
           - lambda: 'id(use_your_name).set_remote_temperature(x);'
 ```
 
-For more configuration options, see the provided hp-debug.yaml and hp-sejour.yaml examples or refer to the original project.
+### Update external temperature using a HomeAssistant automation blueprint
+
+Coming Soon.
+
+For more configuration options, see the provided [hp-debug.yaml](https://github.com/echavet/MitsubishiCN105ESPHome/blob/main/hp-debug.yaml) and [hp-sejour.yaml](https://github.com/echavet/MitsubishiCN105ESPHome/blob/main/hp-sejour.yaml) examples or refer to the original project.
 
 ## Other Implementations:
 

@@ -3,7 +3,10 @@
 #include "heatpumpFunctions.h"
 #include "van_orientation_select.h"
 #include "compressor_frequency_sensor.h"
+#include "auto_sub_mode_sensor.h"
 #include "isee_sensor.h"
+#include "stage_sensor.h"
+#include "sub_mode_sensor.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
 #ifdef USE_ESP32
@@ -12,10 +15,7 @@
 
 using namespace esphome;
 
-
 //class VaneOrientationSelect;  // Déclaration anticipée, définie dans extraComponents
-
-
 
 class CN105Climate : public climate::Climate, public Component, public uart::UARTDevice {
 
@@ -25,14 +25,20 @@ public:
 
     CN105Climate(uart::UARTComponent* hw_serial);
 
-
     void set_vertical_vane_select(VaneOrientationSelect* vertical_vane_select);
     void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select);
     void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);
     void set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_sensor);
+    void set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor);
+    void set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor);
+    void set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor);
 
     //sensor::Sensor* compressor_frequency_sensor;
     binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
+    text_sensor::TextSensor* Stage_sensor_ = nullptr;
+    text_sensor::TextSensor* Sub_mode_sensor_ = nullptr;
+    text_sensor::TextSensor* Auto_sub_mode_sensor_ = nullptr;
+
     //select::Select* van_orientation;
 
 
@@ -54,9 +60,6 @@ public:
     float get_setup_priority() const override {
         return setup_priority::AFTER_WIFI;  // Configurez ce composant après le WiFi
     }
-
-
-
 
     void generateExtraComponents();
 
@@ -158,6 +161,8 @@ protected:
     void initBytePointer();
     void processDataPacket();
     void getDataFromResponsePacket();
+    void getAutoModeStateFromResponsePacket(); //NET added
+    void getPowerFromResponsePacket(); //NET added
     void getSettingsFromResponsePacket();
     void getRoomTemperatureFromResponsePacket();
     void getOperatingAndCompressorFreqFromResponsePacket();
@@ -181,7 +186,6 @@ protected:
     void setWideVaneSetting(const char* setting);
     void setFanSpeed(const char* setting);
 
-
     bool isCycleRunning() {
         return cycleRunning;
     }
@@ -204,7 +208,6 @@ protected:
     }
 
 private:
-
     const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
     int lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "");
     int lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue, const char* debugInfo = "");
