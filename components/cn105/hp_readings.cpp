@@ -13,15 +13,15 @@ void CN105Climate::initBytePointer() {
 
 /**
  *
- * La taille totale d'une trame, se compose de plusieurs éléments :
- * Taille du Header : Le header a une longueur fixe de 5 octets (INFOHEADER_LEN).
- * Longueur des Données : La longueur des données est variable et est spécifiée par le quatrième octet du header (header[4]).
- * Checksum : Il y a 1 octet de checksum à la fin de la trame.
- *
- * La taille totale d'une trame est donc la somme de ces éléments : taille du header (5 octets) + longueur des données (variable) + checksum (1 octet).
- * Pour calculer la taille totale, on peut utiliser la formule :
- * Taille totale = 5 (header) + Longueur des données + 1 (checksum)
- * La taille totale dépend de la longueur spécifique des données pour chaque trame individuelle.
+* The total size of a frame is made up of several elements:
+  * Header size: The header has a fixed length of 5 bytes (INFOHEADER_LEN).
+  * Data Length: The data length is variable and is specified by the fourth byte of the header (header[4]).
+  * Checksum: There is 1 checksum byte at the end of the frame.
+  *
+  * The total size of a frame is therefore the sum of these elements: header size (5 bytes) + data length (variable) + checksum (1 byte).
+  * To calculate the total size, we can use the formula:
+  * Total size = 5 (header) + Data length + 1 (checksum)
+  *The total size depends on the specific data length for each individual frame.
  */
 void CN105Climate::parse(uint8_t inputData) {
 
@@ -125,9 +125,53 @@ void CN105Climate::processDataPacket() {
     }
 }
 
+
+void CN105Climate::getAutoModeStateFromResponsePacket() {
+    heatpumpSettings receivedSettings{};
+
+    if (data[10] == 0x00) {
+            ESP_LOGD("Decoder", "[0x10 is 0x00]");
+
+    } else if (data[10] == 0x01) {
+            ESP_LOGD("Decoder", "[0x10 is 0x01]");
+
+    } else if (data[10] == 0x02) {
+            ESP_LOGD("Decoder", "[0x10 is 0x02]");
+
+    } else {
+            ESP_LOGD("Decoder", "[0x10 is unknown]");
+
+    }
+}
+
+void CN105Climate::getPowerFromResponsePacket() {
+    ESP_LOGD("Decoder", "[0x09 is sub modes]");
+
+    heatpumpSettings receivedSettings{};
+    receivedSettings.stage = lookupByteMapValue(STAGE_MAP, STAGE, 6, data[4], "current stage for delivery");
+    receivedSettings.sub_mode = lookupByteMapValue(SUB_MODE_MAP, SUB_MODE, 4, data[3], "submode");
+    receivedSettings.auto_sub_mode = lookupByteMapValue(AUTO_SUB_MODE_MAP, AUTO_SUB_MODE, 4, data[5], "auto mode sub mode");
+
+    ESP_LOGD("Decoder", "[Stage : %s]", receivedSettings.stage);
+    ESP_LOGD("Decoder", "[Sub Mode  : %s]", receivedSettings.sub_mode);
+    ESP_LOGD("Decoder", "[Auto Mode Sub Mode  : %s]", receivedSettings.auto_sub_mode);
+
+    //this->heatpumpUpdate(receivedSettings);
+    if (this->Stage_sensor_ != nullptr) {
+        this->Stage_sensor_->publish_state(receivedSettings.stage);
+    }
+    if (this->Sub_mode_sensor_ != nullptr) {
+        this->Sub_mode_sensor_->publish_state(receivedSettings.sub_mode);
+    }
+    if (this->Auto_sub_mode_sensor_ != nullptr) {
+        this->Auto_sub_mode_sensor_->publish_state(receivedSettings.auto_sub_mode);
+    }
+}
+
 void CN105Climate::getSettingsFromResponsePacket() {
     heatpumpSettings receivedSettings{};
     ESP_LOGD("Decoder", "[0x02 is settings]");
+    //02 00 00 01 08 0A 00 07 00 00 03 AA 00 00 00 00 94
     //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");        
     receivedSettings.connected = true;      // we're here so we're connected (actually not used property)
     receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3], "power reading");
@@ -143,12 +187,12 @@ void CN105Climate::getSettingsFromResponsePacket() {
         temp -= 128;
         receivedSettings.temperature = (float)temp / 2;
         this->tempMode = true;
-        ESP_LOGD("Decoder", "tempMode is true");
+        //ESP_LOGD("Decoder", "tempMode is true");
     } else {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
     }
 
-    ESP_LOGD("Decoder", "[Consigne °C: %f]", receivedSettings.temperature);
+    ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
 
     receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6], "fan reading");
     ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
@@ -180,7 +224,7 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
     heatpumpStatus receivedStatus{};
 
-    ESP_LOGD("Decoder", "[0x03 room temperature]");
+    //ESP_LOGD("Decoder", "[0x03 room temperature]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");        
 
     if (data[6] != 0x00) {
@@ -199,6 +243,7 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
 }
 void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
+    //FC 62 01 30 10 06 00 00 1A 01 00 00 00 00 00 00 00 00 00 00 00 3C
     heatpumpStatus receivedStatus{};
     ESP_LOGD("Decoder", "[0x06 is status]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x06: Data -> Heatpump Status");
@@ -227,13 +272,13 @@ void CN105Climate::getDataFromResponsePacket() {
 
     case 0x04:
         /* unknown */
-        ESP_LOGI("Decoder", "[0x04 is unknown]");
+        ESP_LOGI("Decoder", "[0x04 is unknown : not implemented]");
         //this->last_received_packet_sensor->publish_state("0x62-> 0x04: Data -> Unknown");
         break;
 
     case 0x05:
         /* timer packet */
-        ESP_LOGW("Decoder", "[0x05 is timer packet: not implemented]");
+        ESP_LOGW("Decoder", "[0x05 is Timer : not implemented]");
         //this->last_received_packet_sensor->publish_state("0x62-> 0x05: Data -> Timer Packet");
         break;
 
@@ -243,10 +288,16 @@ void CN105Climate::getDataFromResponsePacket() {
         break;
 
     case 0x09:
-        /* unknown */
-        ESP_LOGD("Decoder", "[0x09 is unknown]");
-        //this->last_received_packet_sensor->publish_state("0x62-> 0x09: Data -> Unknown");
+        /* Power */
+        this->getPowerFromResponsePacket();
+        //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50 
         break;
+
+    case 0x10:
+        ESP_LOGD("Decoder", "[0x10 is Unknown : not implemented]");
+        //this->getAutoModeStateFromResponsePacket();
+        break;
+
     case 0x20:
     case 0x22: {
         ESP_LOGD("Decoder", "[Packet Functions 0x20 et 0x22]");
@@ -264,7 +315,7 @@ void CN105Climate::getDataFromResponsePacket() {
              break;
 
     default:
-        ESP_LOGW("Decoder", "type de packet [%02X] <-- inconnu et inattendu", data[0]);
+        ESP_LOGW("Decoder", "packet type [%02X] <-- unknown and unexpected", data[0]);
         //this->last_received_packet_sensor->publish_state("0x62-> ?? : Data -> Unknown");
         break;
     }
@@ -548,7 +599,7 @@ void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings) {
             } else if (strcmp(currentSettings.mode, "FAN") == 0) {
                 this->mode = climate::CLIMATE_MODE_FAN_ONLY;
             } else if (strcmp(currentSettings.mode, "AUTO") == 0) {
-                this->mode = climate::CLIMATE_MODE_HEAT_COOL;
+                this->mode = climate::CLIMATE_MODE_AUTO;
             } else {
                 ESP_LOGW(
                     TAG,

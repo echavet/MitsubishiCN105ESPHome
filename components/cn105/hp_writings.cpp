@@ -271,17 +271,30 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
 
             ESP_LOGD(TAG, "buildAndSendRequestsInfoPackets: sending 3 request packet at interval: %d", interval_max);
 
-            ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
+            ESP_LOGD("Decoder", "sending a request for settings packet (0x02)");
             this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
-            this->set_timeout("2ndPacket", interval_max, [this, interval_max]() {
-                ESP_LOGD(TAG, "sending a request room temp packet (0x03)");
+            this->set_timeout("2ndPacket", interval_max, [this, interval_max]()
+                {
+                ESP_LOGD("Decoder", "sending a request room temp packet (0x03)");
                 this->buildAndSendRequestPacket(RQST_PKT_ROOM_TEMP);
-                this->set_timeout("3rdPacket", interval_max, [this]() {
-                    ESP_LOGD(TAG, "sending a request status paquet (0x06)");
+                this->set_timeout("3rdPacket", interval_max, [this, interval_max]()
+                    {
+                    ESP_LOGD("Decoder", "sending a request status paquet (0x06)");
                     this->buildAndSendRequestPacket(RQST_PKT_STATUS);
+                    this->set_timeout("4thPacket", interval_max, [this, interval_max]()
+                        {
+                        ESP_LOGD("Decoder", "sending an additional info (0x09)");
+                        this->buildAndSendRequestPacket(RQST_PKT_STANDBY);
+                        }); 
                     });
                 });
 
+            //this->set_timeout("4thPacket", interval_max, [this, interval_max]() {
+            //    ESP_LOGD("Decoder", "sending a request room temp packet (0x04)");
+            //    this->buildAndSendRequestPacket(RQST_PKT_UNKNOWN);
+            //    });
+
+//RQST_PKT_STANDBY
         } else {
             ESP_LOGE(TAG, "sync impossible: heatpump not connected");
             //this->setupUART();

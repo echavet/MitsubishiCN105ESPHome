@@ -16,7 +16,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
 
     this->traits_.set_supported_modes({
-        //climate::CLIMATE_MODE_AUTO,
+        //climate::CLIMATE_MODE_HEAT_COOL,
         climate::CLIMATE_MODE_COOL,
         climate::CLIMATE_MODE_DRY,
         climate::CLIMATE_MODE_FAN_ONLY,
@@ -25,6 +25,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
     this->traits_.set_supported_fan_modes({
         climate::CLIMATE_FAN_AUTO,
+        climate::CLIMATE_FAN_MIDDLE,
         climate::CLIMATE_FAN_QUIET,
         climate::CLIMATE_FAN_LOW,
         climate::CLIMATE_FAN_HIGH,
@@ -32,11 +33,10 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
 
     this->traits_.set_supported_swing_modes({
-        //climate::CLIMATE_SWING_BOTH,
-        //climate::CLIMATE_SWING_HORIZONTAL,
+        climate::CLIMATE_SWING_BOTH,
+        climate::CLIMATE_SWING_HORIZONTAL,
         climate::CLIMATE_SWING_VERTICAL,
         climate::CLIMATE_SWING_OFF });
-
 
     this->isConnected_ = false;
     this->tempMode = false;
@@ -61,8 +61,6 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->generateExtraComponents();
 
 }
-
-
 
 
 

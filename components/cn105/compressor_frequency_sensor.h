@@ -10,11 +10,8 @@ namespace esphome {
     public:
         CompressorFrequencySensor() {
             this->set_unit_of_measurement("Hz");
-            this->set_accuracy_decimals(0);
+            this->set_accuracy_decimals(1);
         }
-
-
-
     };
 
 }
