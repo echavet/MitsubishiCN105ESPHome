@@ -119,12 +119,12 @@ uart:
   rx_pin: GPIO16
 ```
 
-### Step 4: Configure the heatpump library
+### Step 4: Configure the climate component
 
 Add these sections to load the external component, setup logging, and enable the climate entity.
 
 ```yaml
-# External component library
+# External component reference
 external_components:
   - source: github://echavet/MitsubishiCN105ESPHome
 
