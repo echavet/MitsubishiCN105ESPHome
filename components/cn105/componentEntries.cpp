@@ -45,7 +45,7 @@ void CN105Climate::loop() {
                     this->buildAndSendRequestsInfoPackets();
                 }
             } else {
-                if ((CUSTOM_MILLIS - this->lastRequestInfo) > 2 * this->update_interval_ + 3000) {
+                if ((CUSTOM_MILLIS - this->lastRequestInfo) > (5 * this->update_interval_) + 4000) {
                     ESP_LOGW(TAG, "Cycle timeout, reseting cycle...");
                     cycleRunning = false;
                 }

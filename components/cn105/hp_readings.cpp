@@ -354,10 +354,9 @@ void CN105Climate::processCommand() {
     case 0x7a:
         ESP_LOGI(TAG, "--> Heatpump did reply: connection success! <--");
         this->isHeatpumpConnected_ = true;
-        //this->last_received_packet_sensor->publish_state("0x7A: Connection success");
-        // programUpdateInterval();        // we know a check in this method is done on autoupdate value        
+        // let's say that the last complete cycle was over now
+        this->lastCompleteCycle = CUSTOM_MILLIS;
 
-        this->buildAndSendRequestsInfoPackets();
         break;
     default:
         break;

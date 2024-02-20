@@ -14,7 +14,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->traits_.set_visual_max_temperature(ESPMHP_MAX_TEMPERATURE);
     this->traits_.set_visual_temperature_step(ESPMHP_TEMPERATURE_STEP);
 
-
+    /*
     this->traits_.set_supported_modes({
         //climate::CLIMATE_MODE_HEAT_COOL,
         climate::CLIMATE_MODE_COOL,
@@ -36,7 +36,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
         climate::CLIMATE_SWING_BOTH,
         climate::CLIMATE_SWING_HORIZONTAL,
         climate::CLIMATE_SWING_VERTICAL,
-        climate::CLIMATE_SWING_OFF });
+        climate::CLIMATE_SWING_OFF });*/
 
     this->isConnected_ = false;
     this->tempMode = false;
@@ -57,7 +57,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->compressor_frequency_sensor_ = nullptr;
 
     this->remote_temp_timeout_ = 4294967295;    // uint32_t max
-    this->lastCompleteCycle = 0;
+    this->lastCompleteCycle = CUSTOM_MILLIS;
     this->generateExtraComponents();
     this->cycleRunning = false;
     this->wantedSettings.resetSettings();

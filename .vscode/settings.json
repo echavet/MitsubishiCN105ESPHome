@@ -1,3 +1,8 @@
 {
-    "files.autoSave": "afterDelay"
+    "files.autoSave": "afterDelay",
+    "files.associations": {
+        "regex": "cpp",
+        "vector": "cpp",
+        "*.tcc": "cpp"
+    }
 }

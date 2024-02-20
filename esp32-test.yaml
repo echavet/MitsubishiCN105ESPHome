@@ -188,9 +188,19 @@ climate:
       name: Orientation de la Vane Horizontale
     isee_sensor:
       name: ISEE Sensor
+    auto_sub_mode_sensor:
+      name: auto-submode sensor
+    sub_mode_sensor:
+      name: submode sensor
+    stage_sensor:
+      name: stage sensor      
     remote_temperature_timeout: 15min
     update_interval: 2s         # shouldn't be less than 1 second
     debounce_delay : 100ms       # delay to prevent bouncing 
+    supports:
+      mode: [COOL, HEAT, FAN_ONLY, DRY]
+      fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
+      swing_mode: ["OFF", VERTICAL]
     visual:
       min_temperature: 17
       max_temperature: 23

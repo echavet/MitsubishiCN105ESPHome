@@ -275,7 +275,13 @@ void CN105Climate::sendWantedSettings() {
             this->sendWantedSettingsDelegate();
 #else            
             this->emulateMutex("WRITE_SETTINGS", std::bind(&CN105Climate::sendWantedSettingsDelegate, this));
+
 #endif    
+            // as we've just sent a packet to the heatpump, we let it time for process
+            // this might not be necessary but, we give it a try because of issue #32
+            // https://github.com/echavet/MitsubishiCN105ESPHome/issues/32
+            this->deferCycle();
+
         } else {
             ESP_LOGD(TAG, "will sendWantedSettings later because we've sent one too recently...");
         }
