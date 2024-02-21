@@ -119,12 +119,12 @@ uart:
   rx_pin: GPIO16
 ```
 
-### Step 4: Configure the heatpump library
+### Step 4: Configure the climate component
 
 Add these sections to load the external component, setup logging, and enable the climate entity.
 
 ```yaml
-# External component library
+# External component reference
 external_components:
   - source: github://echavet/MitsubishiCN105ESPHome
 
@@ -538,6 +538,30 @@ sensor:
         then:
           - lambda: 'id(use_your_name).set_remote_temperature(x);'
 ```
+
+### Additional Sensors (somehwhat experimental)
+
+The below sensors were added recently based on the work of others in sorting out other messages and bytes. The names are likely to change as we work to determine exactly what the units are doing.
+
+```yaml
+    stage_sensor:
+      name: Stage Sensor
+    sub_mode_sensor:
+      name: Sub Mode Sensor
+    auto_sub_mode_sensor:
+      name: Auto Sub Mode Sensor
+```
+- stage_sensor is the actual fan speed of the indoor unit. This is called stage in some of the documentation, even though the name isnt clear. This sensor is important because of how units act when they are in AUTO mode.
+
+- AUTO mode is standard mode where the unit will acept a single setpoint and keep with in +/- 2 degrees C of that set point.
+
+- auto_sub_mode_sensor is that indicates what actual mode the unit is in when in AUTO; AUTO OFF means AUTO is not enabled, otherwise AUTO COOL means the unit is in AUTO and currently cooling to say within the +/- 2C from the setpoint.
+
+- sub_mode_sensor indicates if the unit is in PREHEAT, DEFROST, STANBY or LEADER submode. These are usful in knowing the day by day life of your unit. If it is in one of these modes too much this is an indication of a problem. NORMAL is just the NORMAL running sub mode. LEADER is the odd ball and it is not completely clear if this is the right name. What this indicates is that in a multi-head unit one id the leader and gets to pick the HEAT/COOL mode that the other must follow.
+
+Some examples of how these all fit together: Unit 1 is in AUTO set to 20C and Unit 2 is in AUTO and set to 20C. Unit 1 senses that the room is 24C and tries to enter AUTO COOL. If Unit 2 wants to heat the room it is in, it will enter STANDBY (and in the case of a few units tested, this mean it will go to "sleep" as if it is off, but not really be off) making Unit 1 enter LEADER sub mode. In future releases, it is planned to make the ACTION in HA match these modes. But at this time this is not implemented.
+
+It is also important to note that the Kumo adapter has many more settings that impact the behaviour above (such as thermal fan behaviour) and if you have set these the exact actions the untis take in these modes/submodes/stages is determined by those. Some of these can also be set by remotes and other devices. The setup you have will dictate the exact actions you see. If you have permutations, please share!
 
 ### Update external temperature using a HomeAssistant automation blueprint
 
