@@ -356,7 +356,7 @@ void CN105Climate::processCommand() {
         this->isHeatpumpConnected_ = true;
         // let's say that the last complete cycle was over now
         this->lastCompleteCycle = CUSTOM_MILLIS;
-
+        this->currentSettings.resetSettings();      // each time we connect, we need to reset current setting to force a complete sync with ha component state and receievdSettings 
         break;
     default:
         break;
@@ -426,7 +426,7 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
     this->debugSettings("wanted", this->wantedSettings);
     this->debugClimate("climate");
 
-    if (currentSettings != settings) {
+    if (this->currentSettings != settings) {
         this->publishStateToHA(settings);
     }
 
