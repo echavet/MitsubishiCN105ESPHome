@@ -14,29 +14,6 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->traits_.set_visual_max_temperature(ESPMHP_MAX_TEMPERATURE);
     this->traits_.set_visual_temperature_step(ESPMHP_TEMPERATURE_STEP);
 
-    /*
-    this->traits_.set_supported_modes({
-        //climate::CLIMATE_MODE_HEAT_COOL,
-        climate::CLIMATE_MODE_COOL,
-        climate::CLIMATE_MODE_DRY,
-        climate::CLIMATE_MODE_FAN_ONLY,
-        climate::CLIMATE_MODE_HEAT,
-        climate::CLIMATE_MODE_OFF });
-
-    this->traits_.set_supported_fan_modes({
-        climate::CLIMATE_FAN_AUTO,
-        climate::CLIMATE_FAN_MIDDLE,
-        climate::CLIMATE_FAN_QUIET,
-        climate::CLIMATE_FAN_LOW,
-        climate::CLIMATE_FAN_HIGH,
-        climate::CLIMATE_FAN_MEDIUM });
-
-
-    this->traits_.set_supported_swing_modes({
-        climate::CLIMATE_SWING_BOTH,
-        climate::CLIMATE_SWING_HORIZONTAL,
-        climate::CLIMATE_SWING_VERTICAL,
-        climate::CLIMATE_SWING_OFF });*/
 
     this->isConnected_ = false;
     this->tempMode = false;
