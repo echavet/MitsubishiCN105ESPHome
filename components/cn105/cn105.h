@@ -186,38 +186,12 @@ protected:
     void setWideVaneSetting(const char* setting);
     void setFanSpeed(const char* setting);
 
-    bool isCycleRunning() {
-        return cycleRunning;
-    }
-
-    void deferCycle() {
-
-#if ESPHOME_LOG_LEVEL >= ESPHOME_LOG_LEVEL_DEBUG
-        uint32_t delay = DEFER_SCHEDULE_UPDATE_LOOP_DELAY * 3;
-#else
-        uint32_t delay = DEFER_SCHEDULE_UPDATE_LOOP_DELAY;
-#endif
-
-        ESP_LOGI(LOG_CYCLE_TAG, "Defering cycle trigger of %d ms", delay);
-        // forces the lastCompleteCycle offset of delay ms to allow a longer rest time
-        this->lastCompleteCycle += delay;
-
-    }
-    void cycleStarted() {
-        ESP_LOGI(LOG_CYCLE_TAG, "1: Cycle start");
-        this->lastRequestInfo = CUSTOM_MILLIS;
-        cycleRunning = true;
-    }
-    void cycleEnded() {
-        ESP_LOGI(LOG_CYCLE_TAG, "6: Cycle ends");
-        cycleRunning = false;
-        // a complete cycle is done
-        this->lastCompleteCycle = CUSTOM_MILLIS;
-    }
-
-    bool hasUpdateIntervalPassed() {
-        return (CUSTOM_MILLIS - this->lastCompleteCycle) > this->update_interval_;
-    }
+    void cycleStarted();
+    void cycleEnded();
+    bool hasUpdateIntervalPassed();
+    bool didCycleTimeOut();
+    bool isCycleRunning();
+    void deferCycle();
 
 private:
     const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
