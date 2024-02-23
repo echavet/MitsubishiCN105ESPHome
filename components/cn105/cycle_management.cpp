@@ -2,6 +2,16 @@
 #include "cn105.h"
 #include "Globals.h"
 
+
+
+void cycleManagement::checkTimeout(unsigned int update_interval) {
+    if (doesCycleTimeOut(update_interval)) {                          // does it last too long ?                    
+        ESP_LOGW(TAG, "Cycle timeout, reseting cycle...");
+        cycleEnded(true);
+    }
+}
+
+
 bool cycleManagement::isCycleRunning() {
     return cycleRunning;
 }

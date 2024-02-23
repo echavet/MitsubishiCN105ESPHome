@@ -13,4 +13,6 @@ struct cycleManagement {
     bool doesCycleTimeOut(unsigned int update_interval);
     bool isCycleRunning();
     void deferCycle();
+    void checkTimeout(unsigned int update_interval);
+
 };

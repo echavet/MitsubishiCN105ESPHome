@@ -67,6 +67,7 @@ public:
 
     void setup() override;
     void loop() override;
+
     void set_baud_rate(int baud_rate);
     void set_tx_rx_pins(uint8_t tx_pin, uint8_t rx_pin);
     //void set_wifi_connected_state(bool state);

@@ -29,25 +29,21 @@ void CN105Climate::setup() {
 }
 
 
-
 /**
  * @brief Executes the main loop for the CN105Climate component.
  * This function is called repeatedly in the main program loop.
  */
 void CN105Climate::loop() {
-    if (!this->processInput()) {                            // if we don't get an input: no read op
+    if (!this->processInput()) {                                            // if we don't get an input: no read op
         if ((this->wantedSettings.hasChanged) && (!this->loopCycle.isCycleRunning())) {
             this->checkPendingWantedSettings();
         } else {
-            if (!this->loopCycle.isCycleRunning()) {                  // if we are not already running an update cycle
+            if (this->loopCycle.isCycleRunning()) {                         // if we are  running an update cycle
+                this->loopCycle.checkTimeout(this->update_interval_);
+            } else { // we are not running a cycle
                 if (this->loopCycle.hasUpdateIntervalPassed(this->update_interval_)) {
                     ESP_LOGD(LOG_UPD_INT_TAG, "triggering infopacket because of update interval tick");
                     this->buildAndSendRequestsInfoPackets();            // initiate an update cycle with this->cycleStarted();
-                }
-            } else {                                                    // a cycle in running
-                if (this->loopCycle.doesCycleTimeOut(this->update_interval_)) {                          // does it last too long ?                    
-                    ESP_LOGW(TAG, "Cycle timeout, reseting cycle...");
-                    this->loopCycle.cycleEnded(true);
                 }
             }
         }
