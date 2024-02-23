@@ -14,7 +14,7 @@ void cycleManagement::init() {
 void cycleManagement::deferCycle() {
 
 #if ESPHOME_LOG_LEVEL >= ESPHOME_LOG_LEVEL_DEBUG
-    uint32_t delay = DEFER_SCHEDULE_UPDATE_LOOP_DELAY * 3;
+    uint32_t delay = DEFER_SCHEDULE_UPDATE_LOOP_DELAY * 2;
 #else
     uint32_t delay = DEFER_SCHEDULE_UPDATE_LOOP_DELAY;
 #endif
