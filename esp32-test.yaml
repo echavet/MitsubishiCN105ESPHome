@@ -33,7 +33,7 @@ logger:
     EVT_SETS : DEBUG
     WIFI : INFO
     MQTT : INFO
-    WRITE_SETTINGS : INFO
+    WRITE_SETTINGS : DEBUG
     SETTINGS : DEBUG
     STATUS : INFO
     CN105Climate: WARN
@@ -43,14 +43,13 @@ logger:
     chkSum : INFO
     WRITE : WARN
     READ : WARN
-    ACK : DEBUG
+    Update-ACK : ERROR
     Header: INFO
     Decoder : INFO
     CONTROL_WANTED_SETTINGS: INFO    
     testMutex: DEBUG
     UPDT_ITVL: DEBUG
     CYCLE: DEBUG
-
 
 
 # Enable Home Assistant API
@@ -76,7 +75,6 @@ api:
         - logger.log: "Test de la fonction mutex..."
         - lambda: |-
             id(esp32_clim).testMutex();
-
   encryption:
     key: !secret encryption_key
 

@@ -27,13 +27,10 @@ static const char* DEFER_SHEDULER_INTERVAL_SYNC_NAME = "hp->sync_defer"; // name
 static const char* SHEDULER_REMOTE_TEMP_TIMEOUT = "->remote_temp_timeout";
 
 // defering delay for update_interval when we've just sent a wentedSettings
-static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 650;
+static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 750;
 
 static const int PACKET_LEN = 22;
-static const int PACKET_SENT_INTERVAL_MS = 1000;
-static const int PACKET_INFO_INTERVAL_MS = 2000;
 static const int PACKET_TYPE_DEFAULT = 99;
-static const int AUTOUPDATE_GRACE_PERIOD_IGNORE_EXTERNAL_UPDATES_MS = 30000;
 
 static const int CONNECT_LEN = 8;
 static const uint8_t CONNECT[CONNECT_LEN] = { 0xfc, 0x5a, 0x01, 0x30, 0x02, 0xca, 0x01, 0xa8 };
