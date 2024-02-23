@@ -419,7 +419,7 @@ void CN105Climate::publishStateToHA(heatpumpSettings settings) {
 
 void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
     // settings correponds to current settings 
-    ESP_LOGV(LOG_ACTION_EVT_TAG, "Settings received");
+    ESP_LOGV(LOG_SETTINGS_TAG, "Settings received");
 
     this->debugSettings("current", this->currentSettings);
     this->debugSettings("received", settings);
@@ -427,13 +427,14 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
     this->debugClimate("climate");
 
     if (this->currentSettings != settings) {
+        ESP_LOGD(LOG_SETTINGS_TAG, "Settings changed, updating HA states");
         this->publishStateToHA(settings);
     }
 
 }
 
 
-void CN105Climate::checkVaneSettings(heatpumpSettings& settings) {
+void CN105Climate::checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
 
     /* ******** HANDLE MITSUBISHI VANE CHANGES ********
      * VANE_MAP[7]        = {"AUTO", "1", "2", "3", "4", "5", "SWING"};
@@ -445,19 +446,19 @@ void CN105Climate::checkVaneSettings(heatpumpSettings& settings) {
         ESP_LOGI(TAG, "vane or widevane setting changed");
 
         // here I hope that the vane and widevane are always sent together
-
-        currentSettings.vane = settings.vane;
-        currentSettings.wideVane = settings.wideVane;
-
-        if (strcmp(currentSettings.vane, "SWING") == 0) {
-            if (strcmp(currentSettings.wideVane, "SWING") == 0) {
+        if (updateCurrentSettings) {
+            currentSettings.vane = settings.vane;
+            currentSettings.wideVane = settings.wideVane;
+        }
+        if (strcmp(settings.vane, "SWING") == 0) {
+            if (strcmp(settings.wideVane, "SWING") == 0) {
                 this->swing_mode = climate::CLIMATE_SWING_BOTH;
             } else {
                 this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
             }
 
         } else {
-            if (strcmp(currentSettings.wideVane, "SWING") == 0) {
+            if (strcmp(settings.wideVane, "SWING") == 0) {
                 this->swing_mode = climate::CLIMATE_SWING_HORIZONTAL;
             } else {
                 this->swing_mode = climate::CLIMATE_SWING_OFF;
@@ -487,7 +488,7 @@ void CN105Climate::updateExtraSelectComponents(heatpumpSettings& settings) {
         }
     }
 }
-void CN105Climate::checkFanSettings(heatpumpSettings& settings) {
+void CN105Climate::checkFanSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
     /*
          * ******* HANDLE FAN CHANGES ********
          *
@@ -497,16 +498,18 @@ void CN105Climate::checkFanSettings(heatpumpSettings& settings) {
 
     if (this->hasChanged(currentSettings.fan, settings.fan, "fan")) { // fan setting change ?
         ESP_LOGI(TAG, "fan setting changed");
-        currentSettings.fan = settings.fan;
+        if (updateCurrentSettings) {
+            currentSettings.fan = settings.fan;
+        }
         if (strcmp(currentSettings.fan, "QUIET") == 0) {
             this->fan_mode = climate::CLIMATE_FAN_QUIET;
-        } else if (strcmp(currentSettings.fan, "1") == 0) {
+        } else if (strcmp(settings.fan, "1") == 0) {
             this->fan_mode = climate::CLIMATE_FAN_LOW;
-        } else if (strcmp(currentSettings.fan, "2") == 0) {
+        } else if (strcmp(settings.fan, "2") == 0) {
             this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
-        } else if (strcmp(currentSettings.fan, "3") == 0) {
+        } else if (strcmp(settings.fan, "3") == 0) {
             this->fan_mode = climate::CLIMATE_FAN_MIDDLE;
-        } else if (strcmp(currentSettings.fan, "4") == 0) {
+        } else if (strcmp(settings.fan, "4") == 0) {
             this->fan_mode = climate::CLIMATE_FAN_HIGH;
         } else { //case "AUTO" or default:
             this->fan_mode = climate::CLIMATE_FAN_AUTO;
@@ -518,35 +521,36 @@ void CN105Climate::checkFanSettings(heatpumpSettings& settings) {
         }
     }
 }
-void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings) {
+void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
     // currentSettings.power== NULL is true when it is the first time we get en answer from hp
     if (this->hasChanged(currentSettings.power, settings.power, "power") ||
         this->hasChanged(currentSettings.mode, settings.mode, "mode")) {           // mode or power change ?
 
         ESP_LOGI(TAG, "power or mode changed");
-        currentSettings.power = settings.power;
-        currentSettings.mode = settings.mode;
-
-        if (strcmp(currentSettings.power, "ON") == 0) {
-            if (strcmp(currentSettings.mode, "HEAT") == 0) {
+        if (updateCurrentSettings) {
+            currentSettings.power = settings.power;
+            currentSettings.mode = settings.mode;
+        }
+        if (strcmp(settings.power, "ON") == 0) {
+            if (strcmp(settings.mode, "HEAT") == 0) {
                 this->mode = climate::CLIMATE_MODE_HEAT;
-            } else if (strcmp(currentSettings.mode, "DRY") == 0) {
+            } else if (strcmp(settings.mode, "DRY") == 0) {
                 this->mode = climate::CLIMATE_MODE_DRY;
-            } else if (strcmp(currentSettings.mode, "COOL") == 0) {
+            } else if (strcmp(settings.mode, "COOL") == 0) {
                 this->mode = climate::CLIMATE_MODE_COOL;
                 /*if (cool_setpoint != currentSettings.temperature) {
                     cool_setpoint = currentSettings.temperature;
                     save(currentSettings.temperature, cool_storage);
                 }*/
-            } else if (strcmp(currentSettings.mode, "FAN") == 0) {
+            } else if (strcmp(settings.mode, "FAN") == 0) {
                 this->mode = climate::CLIMATE_MODE_FAN_ONLY;
-            } else if (strcmp(currentSettings.mode, "AUTO") == 0) {
+            } else if (strcmp(settings.mode, "AUTO") == 0) {
                 this->mode = climate::CLIMATE_MODE_AUTO;
             } else {
                 ESP_LOGW(
                     TAG,
                     "Unknown climate mode value %s received from HeatPump",
-                    currentSettings.mode
+                    settings.mode
                 );
             }
         } else {

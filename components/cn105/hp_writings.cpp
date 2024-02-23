@@ -209,12 +209,12 @@ void CN105Climate::createPacket(uint8_t* packet) {
 void CN105Climate::publishWantedSettingsStateToHA() {
 
     if ((this->wantedSettings.mode != nullptr) || (this->wantedSettings.mode != nullptr)) {
-        checkPowerAndModeSettings(this->wantedSettings);
+        checkPowerAndModeSettings(this->wantedSettings, false);
         this->updateAction();       // update action info on HA climate component
     }
 
     if (this->wantedSettings.fan != nullptr) {
-        checkFanSettings(this->wantedSettings);
+        checkFanSettings(this->wantedSettings, false);
     }
 
 
@@ -226,14 +226,14 @@ void CN105Climate::publishWantedSettingsStateToHA() {
             this->wantedSettings.wideVane = this->currentSettings.wideVane;
         }
 
-        checkVaneSettings(this->wantedSettings);
+        checkVaneSettings(this->wantedSettings, false);
     }
 
     // HA Temp
 
     if (this->wantedSettings.temperature != -1.0f) {
         this->target_temperature = this->wantedSettings.temperature;
-        this->currentSettings.temperature = this->wantedSettings.temperature;
+        //this->currentSettings.temperature = this->wantedSettings.temperature;
     }
 
 
@@ -258,6 +258,11 @@ void CN105Climate::sendWantedSettingsDelegate() {
 
     // as soon as the packet is sent, we reset the settings
     wantedSettings.resetSettings();
+
+    // as we've just sent a packet to the heatpump, we let it time for process
+    // this might not be necessary but, we give it a try because of issue #32
+    // https://github.com/echavet/MitsubishiCN105ESPHome/issues/32
+    this->deferCycle();
 }
 
 /**
@@ -276,11 +281,7 @@ void CN105Climate::sendWantedSettings() {
 #else            
             this->emulateMutex("WRITE_SETTINGS", std::bind(&CN105Climate::sendWantedSettingsDelegate, this));
 
-#endif    
-            // as we've just sent a packet to the heatpump, we let it time for process
-            // this might not be necessary but, we give it a try because of issue #32
-            // https://github.com/echavet/MitsubishiCN105ESPHome/issues/32
-            this->deferCycle();
+#endif                
 
         } else {
             ESP_LOGD(TAG, "will sendWantedSettings later because we've sent one too recently...");

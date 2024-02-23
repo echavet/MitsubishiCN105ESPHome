@@ -26,7 +26,9 @@ static const char* SHEDULER_INTERVAL_SYNC_NAME = "hp->sync"; // name of the sche
 static const char* DEFER_SHEDULER_INTERVAL_SYNC_NAME = "hp->sync_defer"; // name of the scheduler to prpgram hp updates
 static const char* SHEDULER_REMOTE_TEMP_TIMEOUT = "->remote_temp_timeout";
 
-static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 500;
+// defering delay for update_interval when we've just sent a wentedSettings
+static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 650;
+
 static const int PACKET_LEN = 22;
 static const int PACKET_SENT_INTERVAL_MS = 1000;
 static const int PACKET_INFO_INTERVAL_MS = 2000;
@@ -92,9 +94,9 @@ static const char* TIMER_MODE_MAP[4] = { "NONE", "OFF", "ON", "BOTH" };
 static const uint8_t STAGE[6] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
 static const char* STAGE_MAP[6] = { "STAGE 0", "STAGE 1", "STAGE 2", "STAGE 3", "STAGE 4", "STAGE 5" };
 static const uint8_t SUB_MODE[4] = { 0x00, 0x02, 0x04, 0x08 };
-static const char* SUB_MODE_MAP[4] = { "NORMAL", "DEFROST", "PREHEAT", "STANDBY"};
+static const char* SUB_MODE_MAP[4] = { "NORMAL", "DEFROST", "PREHEAT", "STANDBY" };
 static const uint8_t AUTO_SUB_MODE[4] = { 0x00, 0x01, 0x02, 0x03 };
-static const char* AUTO_SUB_MODE_MAP[4] = { "AUTO_OFF","AUTO_COOL", "AUTO_HEAT", "AUTO_LEADER"};
+static const char* AUTO_SUB_MODE_MAP[4] = { "AUTO_OFF","AUTO_COOL", "AUTO_HEAT", "AUTO_LEADER" };
 
 static const int TIMER_INCREMENT_MINUTES = 10;
 

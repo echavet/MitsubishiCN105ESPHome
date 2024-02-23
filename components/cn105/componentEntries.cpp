@@ -35,19 +35,19 @@ void CN105Climate::setup() {
  * This function is called repeatedly in the main program loop.
  */
 void CN105Climate::loop() {
-    if (!this->processInput()) {
+    if (!this->processInput()) {                                // if we don't get an input: no read op
         if (this->wantedSettings.hasChanged) {
             this->checkPendingWantedSettings();
         } else {
-            if (!this->isCycleRunning()) {
+            if (!this->isCycleRunning()) {                      // if we are not already running an update cycle
                 if (this->hasUpdateIntervalPassed()) {
                     ESP_LOGD(LOG_UPD_INT_TAG, "triggering infopacket because of update interval tic");
-                    this->buildAndSendRequestsInfoPackets();
+                    this->buildAndSendRequestsInfoPackets();    // initiate an update cycle
                 }
-            } else {
-                if (this->didCycleTimeOut()) {
+            } else {                                            // a cycle in running
+                if (this->didCycleTimeOut()) {                  // does it last too long ?
                     ESP_LOGW(TAG, "Cycle timeout, reseting cycle...");
-                    cycleRunning = false;
+                    cycleRunning = false;                       // too long so we presume sync failed
                 }
             }
         }
