@@ -36,7 +36,7 @@ void CN105Climate::setup() {
  */
 void CN105Climate::loop() {
     if (!this->processInput()) {                            // if we don't get an input: no read op
-        if (this->wantedSettings.hasChanged) {
+        if ((this->wantedSettings.hasChanged) && (!this->loopCycle.isCycleRunning())) {
             this->checkPendingWantedSettings();
         } else {
             if (!this->loopCycle.isCycleRunning()) {                  // if we are not already running an update cycle
