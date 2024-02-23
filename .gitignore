@@ -1,0 +1,12 @@
+.DS_Store
+.vscode
+components/cn105/.DS_Store
+components/.DS_Store
+esp01-test.yaml
+.esphome
+__pycache__
+hp-chambres.yaml
+hp-preflash.yml
+hp-seb.yaml
+secrets.yaml
+components/.DS_Store
