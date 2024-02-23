@@ -21,7 +21,7 @@ void cycleManagement::deferCycle() {
 
     ESP_LOGI(LOG_CYCLE_TAG, "Defering cycle trigger of %d ms", delay);
     // forces the lastCompleteCycle offset of delay ms to allow a longer rest time
-    lastCompleteCycleMs += delay;
+    lastCompleteCycleMs = CUSTOM_MILLIS + delay;
 
 }
 void cycleManagement::cycleStarted() {

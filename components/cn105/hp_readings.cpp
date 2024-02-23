@@ -344,7 +344,7 @@ void CN105Climate::updateSuccess() {
 void CN105Climate::processCommand() {
     switch (this->command) {
     case 0x61:  /* last update was successful */
-        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "ACK");
+        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "Update-ACK");
         this->updateSuccess();
         break;
 

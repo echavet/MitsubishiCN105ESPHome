@@ -43,7 +43,7 @@ logger:
     chkSum : INFO
     WRITE : WARN
     READ : WARN
-    ACK : DEBUG
+    Update-ACK : ERROR
     Header: INFO
     Decoder : INFO
     CONTROL_WANTED_SETTINGS: INFO    
