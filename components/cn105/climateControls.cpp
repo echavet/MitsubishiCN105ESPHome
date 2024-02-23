@@ -14,10 +14,22 @@ void CN105Climate::checkPendingWantedSettings() {
     this->sendWantedSettings();
 }
 
+void logCheckWantedSettingsMutex(wantedHeatpumpSettings settings) {
 
+    if (settings.hasBeenSent) {
+        ESP_LOGE("control", "Mutex lock faillure: wantedSettings should be locked while sending.");
+        ESP_LOGD("control", "-- This is an assertion test on wantedSettings.hasBeenSent");
+        ESP_LOGD("control", "-- wantedSettings.hasBeenSent = true is unexpected");
+        ESP_LOGD("control", "-- should be false because mutex should prevent running this while sending");
+        ESP_LOGD("control", "-- and mutex should be released only when hasBeenSent is false");
+    }
+
+}
 void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
     ESP_LOGD("control", "espHome control() interface method called...");
     bool updated = false;
+
+    logCheckWantedSettingsMutex(this->wantedSettings);
 
     // Traiter les commandes de climatisation ici
     if (call.get_mode().has_value()) {
@@ -68,6 +80,7 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
 
     if (updated) {
         ESP_LOGD(LOG_ACTION_EVT_TAG, "clim.control() -> User changed something...");
+        logCheckWantedSettingsMutex(this->wantedSettings);
         this->wantedSettings.hasChanged = true;
         this->wantedSettings.hasBeenSent = false;
         this->wantedSettings.lastChange = CUSTOM_MILLIS;
@@ -236,7 +249,7 @@ void CN105Climate::updateAction() {
     case climate::CLIMATE_MODE_AUTO:
         //this->setActionIfOperatingAndCompressorIsActiveTo(
         this->setActionIfOperatingTo(
-            (this->current_temperature > this->target_temperature  ?
+            (this->current_temperature > this->target_temperature ?
                 climate::CLIMATE_ACTION_COOLING :
                 climate::CLIMATE_ACTION_HEATING));
         break;
