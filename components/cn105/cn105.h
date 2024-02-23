@@ -9,6 +9,8 @@
 #include "sub_mode_sensor.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
+#include "cycle_management.h"
+
 #ifdef USE_ESP32
 #include <mutex>
 #endif
@@ -65,6 +67,7 @@ public:
 
     void setup() override;
     void loop() override;
+
     void set_baud_rate(int baud_rate);
     void set_tx_rx_pins(uint8_t tx_pin, uint8_t rx_pin);
     //void set_wifi_connected_state(bool state);
@@ -167,7 +170,6 @@ protected:
     void getRoomTemperatureFromResponsePacket();
     void getOperatingAndCompressorFreqFromResponsePacket();
 
-    void programUpdateInterval();
     void updateSuccess();
     void processCommand();
     bool checkSum();
@@ -185,13 +187,6 @@ protected:
     void setVaneSetting(const char* setting);
     void setWideVaneSetting(const char* setting);
     void setFanSpeed(const char* setting);
-
-    void cycleStarted();
-    void cycleEnded();
-    bool hasUpdateIntervalPassed();
-    bool didCycleTimeOut();
-    bool isCycleRunning();
-    void deferCycle();
 
 private:
     const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
@@ -240,6 +235,7 @@ private:
     void createInfoPacket(uint8_t* packet, uint8_t packetType);
     heatpumpSettings currentSettings{};
     wantedHeatpumpSettings wantedSettings{};
+    cycleManagement loopCycle{};
 
 #ifdef USE_ESP32
     std::mutex wantedSettingsMutex;
@@ -262,10 +258,6 @@ private:
     //HardwareSerial* _HardSerial{ nullptr };
     unsigned long lastSend;
 
-    unsigned long lastRequestInfo;
-
-    unsigned long lastCompleteCycle;
-
     uint8_t storedInputData[MAX_DATA_BYTES]; // multi-byte data
     uint8_t* data;
 
@@ -273,7 +265,6 @@ private:
     heatpumpStatus currentStatus{ 0, false, {TIMER_MODE_MAP[0], 0, 0, 0, 0}, 0 };
     heatpumpFunctions functions;
 
-    bool cycleRunning = false;
     bool tempMode = false;
     bool wideVaneAdj;
     bool autoUpdate;

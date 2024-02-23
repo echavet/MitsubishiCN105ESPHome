@@ -61,14 +61,14 @@ void CN105Climate::set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_se
     this->iSee_sensor_ = iSee_sensor;
 }
 
-void CN105Climate::set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor) { 
+void CN105Climate::set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor) {
     this->Stage_sensor_ = Stage_sensor;
 }
 
-void CN105Climate::set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor) { 
+void CN105Climate::set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor) {
     this->Sub_mode_sensor_ = Sub_mode_sensor;
 }
 
-void CN105Climate::set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor) { 
+void CN105Climate::set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor) {
     this->Auto_sub_mode_sensor_ = Auto_sub_mode_sensor;
 }

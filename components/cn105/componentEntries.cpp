@@ -29,54 +29,30 @@ void CN105Climate::setup() {
 }
 
 
-
 /**
  * @brief Executes the main loop for the CN105Climate component.
  * This function is called repeatedly in the main program loop.
  */
 void CN105Climate::loop() {
-    if (!this->processInput()) {                                // if we don't get an input: no read op
-        if (this->wantedSettings.hasChanged) {
+    if (!this->processInput()) {                                            // if we don't get an input: no read op
+        if ((this->wantedSettings.hasChanged) && (!this->loopCycle.isCycleRunning())) {
             this->checkPendingWantedSettings();
         } else {
-            if (!this->isCycleRunning()) {                      // if we are not already running an update cycle
-                if (this->hasUpdateIntervalPassed()) {
-                    ESP_LOGD(LOG_UPD_INT_TAG, "triggering infopacket because of update interval tic");
-                    this->buildAndSendRequestsInfoPackets();    // initiate an update cycle
-                }
-            } else {                                            // a cycle in running
-                if (this->didCycleTimeOut()) {                  // does it last too long ?
-                    ESP_LOGW(TAG, "Cycle timeout, reseting cycle...");
-                    cycleRunning = false;                       // too long so we presume sync failed
+            if (this->loopCycle.isCycleRunning()) {                         // if we are  running an update cycle
+                this->loopCycle.checkTimeout(this->update_interval_);
+            } else { // we are not running a cycle
+                if (this->loopCycle.hasUpdateIntervalPassed(this->get_update_interval())) {
+                    ESP_LOGD(LOG_UPD_INT_TAG, "triggering infopacket because of update interval tick");
+                    this->buildAndSendRequestsInfoPackets();            // initiate an update cycle with this->cycleStarted();
                 }
             }
         }
     }
 }
 
-
-/**
- * Programs the sending of a request
-*/
-void CN105Climate::programUpdateInterval() {
-    if (autoUpdate) {
-        ESP_LOGD(TAG, "Autoupdate is ON --> creating a loop for reccurent updates...");
-        ESP_LOGD(TAG, "Programming update interval : %d", this->get_update_interval());
-
-        this->cancel_timeout(SHEDULER_INTERVAL_SYNC_NAME);     // in case a loop is already programmed
-
-
-        this->set_timeout(SHEDULER_INTERVAL_SYNC_NAME, this->get_update_interval(), [this]() {
-
-            this->buildAndSendRequestsInfoPackets();
-
-
-            });
-    }
-}
-
 uint32_t CN105Climate::get_update_interval() const { return this->update_interval_; }
 void CN105Climate::set_update_interval(uint32_t update_interval) {
+    ESP_LOGD(TAG, "Setting update interval to %d", update_interval);
     this->update_interval_ = update_interval;
     this->autoUpdate = (update_interval != 0);
 }

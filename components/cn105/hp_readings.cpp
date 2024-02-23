@@ -262,7 +262,7 @@ void CN105Climate::getDataFromResponsePacket() {
 
     switch (this->data[0]) {
     case 0x02:             /* setting information */
-        ESP_LOGD(LOG_CYCLE_TAG, "2d: Receiving settings response");
+        ESP_LOGD(LOG_CYCLE_TAG, "2b: Receiving settings response");
         this->getSettingsFromResponsePacket();
         // next step is to get the room temperature case 0x03        
         ESP_LOGD(LOG_CYCLE_TAG, "3a: Sending room °C request (0x03)");
@@ -302,8 +302,8 @@ void CN105Climate::getDataFromResponsePacket() {
         /* Power */
         ESP_LOGD(LOG_CYCLE_TAG, "5b: Receiving Power/Standby response");
         this->getPowerFromResponsePacket();
-        //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50             
-        this->cycleEnded();
+        //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50                     
+        this->loopCycle.cycleEnded();
         break;
 
     case 0x10:
@@ -344,7 +344,7 @@ void CN105Climate::updateSuccess() {
 void CN105Climate::processCommand() {
     switch (this->command) {
     case 0x61:  /* last update was successful */
-        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "ACK");
+        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "Update-ACK");
         this->updateSuccess();
         break;
 
@@ -354,8 +354,8 @@ void CN105Climate::processCommand() {
     case 0x7a:
         ESP_LOGI(TAG, "--> Heatpump did reply: connection success! <--");
         this->isHeatpumpConnected_ = true;
-        // let's say that the last complete cycle was over now
-        this->lastCompleteCycle = CUSTOM_MILLIS;
+        // let's say that the last complete cycle was over now        
+        this->loopCycle.lastCompleteCycleMs = CUSTOM_MILLIS;
         this->currentSettings.resetSettings();      // each time we connect, we need to reset current setting to force a complete sync with ha component state and receievdSettings 
         break;
     default:
