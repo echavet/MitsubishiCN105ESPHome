@@ -19,7 +19,7 @@ Here the last release, labeled ["Optimistic strategy with pessimistic pattern"](
 
 ```yaml
 external_components:
-  - source: github://echavet/MitsubishiCN105ESPHome@v1.2.1  
+  - source: github://echavet/MitsubishiCN105ESPHome@v1.2.2
 ```
 
 Previous one, without the big redesign was: 
