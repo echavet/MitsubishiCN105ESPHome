@@ -33,10 +33,9 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->vertical_vane_select_ = nullptr;
     this->compressor_frequency_sensor_ = nullptr;
 
-    this->remote_temp_timeout_ = 4294967295;    // uint32_t max
-    this->lastCompleteCycle = CUSTOM_MILLIS;
+    this->remote_temp_timeout_ = 4294967295;    // uint32_t max    
     this->generateExtraComponents();
-    this->cycleRunning = false;
+    this->loopCycle.init();
     this->wantedSettings.resetSettings();
 #ifndef USE_ESP32
     this->wantedSettingsMutex = false;

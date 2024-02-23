@@ -257,12 +257,12 @@ void CN105Climate::sendWantedSettingsDelegate() {
     this->publishWantedSettingsStateToHA();
 
     // as soon as the packet is sent, we reset the settings
-    wantedSettings.resetSettings();
+    this->wantedSettings.resetSettings();
 
     // as we've just sent a packet to the heatpump, we let it time for process
     // this might not be necessary but, we give it a try because of issue #32
     // https://github.com/echavet/MitsubishiCN105ESPHome/issues/32
-    this->deferCycle();
+    this->loopCycle.deferCycle();
 }
 
 /**
@@ -307,8 +307,7 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
 
         ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
 
-        this->cycleStarted();
-
+        this->loopCycle.cycleStarted();
         ESP_LOGD(LOG_CYCLE_TAG, "2a: Sending settings request (0x02)");
         this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
     } else {

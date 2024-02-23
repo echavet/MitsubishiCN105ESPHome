@@ -52,7 +52,6 @@ logger:
     CYCLE: DEBUG
 
 
-
 # Enable Home Assistant API
 api:
   services:    
@@ -76,7 +75,6 @@ api:
         - logger.log: "Test de la fonction mutex..."
         - lambda: |-
             id(esp32_clim).testMutex();
-
   encryption:
     key: !secret encryption_key
 
