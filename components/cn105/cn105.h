@@ -170,7 +170,6 @@ protected:
     void getRoomTemperatureFromResponsePacket();
     void getOperatingAndCompressorFreqFromResponsePacket();
 
-    void programUpdateInterval();
     void updateSuccess();
     void processCommand();
     bool checkSum();

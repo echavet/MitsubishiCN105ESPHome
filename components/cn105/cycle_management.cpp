@@ -53,9 +53,11 @@ void cycleManagement::cycleEnded(bool timedOut) {
 }
 
 bool cycleManagement::hasUpdateIntervalPassed(unsigned int update_interval) {
+    if (CUSTOM_MILLIS < lastCompleteCycleMs) return false;      // must be checked because operands are they are unsigned
     return (CUSTOM_MILLIS - lastCompleteCycleMs) > update_interval;
 }
 
 bool cycleManagement::doesCycleTimeOut(unsigned int update_interval) {
-    return (CUSTOM_MILLIS - lastCycleStartMs) > (5 * update_interval) + 6000;
+    if (CUSTOM_MILLIS < lastCycleStartMs) return false;         // must be checked because operands are they are unsigned
+    return (CUSTOM_MILLIS - lastCycleStartMs) > (3 * update_interval) + 1000;
 }
