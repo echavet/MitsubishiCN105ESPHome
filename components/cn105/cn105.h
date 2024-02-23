@@ -211,9 +211,9 @@ private:
     void statusChanged(heatpumpStatus status);
 
     void checkPendingWantedSettings();
-    void checkPowerAndModeSettings(heatpumpSettings& settings);
-    void checkFanSettings(heatpumpSettings& settings);
-    void checkVaneSettings(heatpumpSettings& settings);
+    void checkPowerAndModeSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
+    void checkFanSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
+    void checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
     void updateExtraSelectComponents(heatpumpSettings& settings);
 
     //void statusChanged();
