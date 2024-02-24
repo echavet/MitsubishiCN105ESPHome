@@ -494,7 +494,9 @@ climate:
     visual:
       min_temperature: 15
       max_temperature: 31
-      temperature_step: 1.0
+      temperature_step:
+        target_temperature: 1
+        current_temperature: 0.1
     compressor_frequency_sensor:
       name: ${name} Compressor Frequency
     vertical_vane_select:
