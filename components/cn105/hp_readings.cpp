@@ -428,9 +428,8 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
 
     if (this->currentSettings != settings) {
         ESP_LOGD(LOG_SETTINGS_TAG, "Settings changed, updating HA states");
-        this->publishStateToHA(settings);
     }
-
+    this->publishStateToHA(settings);
 }
 
 
