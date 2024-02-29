@@ -35,7 +35,7 @@ void CN105Climate::sendFirstConnectionPacket() {
             });
 
     } else {
-        ESP_LOGE(TAG, "Vous devez dabord connecter l'appareil via l'UART");
+        ESP_LOGE(TAG, "You should connect the heatpump through UART");
     }
 }
 
@@ -315,8 +315,9 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
         this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
     } else {
         ESP_LOGE(TAG, "sync impossible: heatpump not connected");
-        //this->setupUART();
-        //this->sendFirstConnectionPacket();
+        ESP_LOGI(TAG, "Trying to connect again");
+        //this->setupUART(); not necessary because UART is managed by esphome
+        this->sendFirstConnectionPacket();
     }
 }
 
