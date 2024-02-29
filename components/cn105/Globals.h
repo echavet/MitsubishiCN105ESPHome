@@ -88,8 +88,9 @@ static const uint8_t TIMER_MODE[4] = { 0x00,  0x01,  0x02, 0x03 };
 static const char* TIMER_MODE_MAP[4] = { "NONE", "OFF", "ON", "BOTH" };
 
 //added NET to work with additional data
-static const uint8_t STAGE[6] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
-static const char* STAGE_MAP[6] = { "STAGE 0", "STAGE 1", "STAGE 2", "STAGE 3", "STAGE 4", "STAGE 5" };
+static const uint8_t STAGE[7] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
+static const char* STAGE_MAP[7] = { "IDLE", "LOW", "GENTLE", "MEDIUM", "MODERATE", "HIGH", "DIFFUSE" };
+
 static const uint8_t SUB_MODE[4] = { 0x00, 0x02, 0x04, 0x08 };
 static const char* SUB_MODE_MAP[4] = { "NORMAL", "DEFROST", "PREHEAT", "STANDBY" };
 static const uint8_t AUTO_SUB_MODE[4] = { 0x00, 0x01, 0x02, 0x03 };
