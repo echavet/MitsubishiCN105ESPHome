@@ -14,7 +14,6 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->traits_.set_visual_max_temperature(ESPMHP_MAX_TEMPERATURE);
     this->traits_.set_visual_temperature_step(ESPMHP_TEMPERATURE_STEP);
 
-
     this->isConnected_ = false;
     this->tempMode = false;
     this->wideVaneAdj = false;
