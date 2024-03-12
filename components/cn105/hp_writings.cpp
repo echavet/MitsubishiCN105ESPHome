@@ -86,9 +86,9 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
 
     } else {
         ESP_LOGW(TAG, "could not write as asked, because UART is not connected");
-        this->disconnectUART();
-        this->setupUART();
-        this->sendFirstConnectionPacket();
+        // this->disconnectUART();
+        // this->setupUART();
+        // this->sendFirstConnectionPacket();
 
         ESP_LOGW(TAG, "delaying packet writing because we need to reconnect first...");
         this->set_timeout("write", 500, [this, packet, length]() { this->writePacket(packet, length); });
