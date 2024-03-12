@@ -24,14 +24,13 @@ void CN105Climate::sendFirstConnectionPacket() {
 
         this->lastSend = CUSTOM_MILLIS;
 
-        // we wait for a 4s timeout to check if the hp has replied to connection packet
-        this->set_timeout("checkFirstConnection", 4000, [this]() {
+        // we wait for a 10s timeout to check if the hp has replied to connection packet
+        this->set_timeout("checkFirstConnection", 10000, [this]() {
             if (!this->isHeatpumpConnected_) {
                 ESP_LOGE(TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
-            } else {
-                // not usefull because the response has been processed in processCommand()
+                ESP_LOGI(TAG, "Trying to connect again...");
+                this->sendFirstConnectionPacket();
             }
-
             });
 
     } else {
@@ -303,21 +302,14 @@ void CN105Climate::buildAndSendRequestPacket(int packetType) {
 
 
 void CN105Climate::buildAndSendRequestsInfoPackets() {
-
-    ESP_LOGD("CONTROL_WANTED_SETTINGS", "hasChanged is %s", wantedSettings.hasChanged ? "true" : "false");
-
     if (this->isHeatpumpConnected_) {
+        ESP_LOGV(LOG_UPD_INT_TAG, "triggering infopacket because of update interval tick");
+        ESP_LOGV("CONTROL_WANTED_SETTINGS", "hasChanged is %s", wantedSettings.hasChanged ? "true" : "false");
 
         ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
-
         this->loopCycle.cycleStarted();
         ESP_LOGD(LOG_CYCLE_TAG, "2a: Sending settings request (0x02)");
         this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
-    } else {
-        ESP_LOGE(TAG, "sync impossible: heatpump not connected");
-        ESP_LOGI(TAG, "Trying to connect again");
-        //this->setupUART(); not necessary because UART is managed by esphome
-        this->sendFirstConnectionPacket();
     }
 }
 

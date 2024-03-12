@@ -42,7 +42,6 @@ void CN105Climate::loop() {
                 this->loopCycle.checkTimeout(this->update_interval_);
             } else { // we are not running a cycle
                 if (this->loopCycle.hasUpdateIntervalPassed(this->get_update_interval())) {
-                    ESP_LOGD(LOG_UPD_INT_TAG, "triggering infopacket because of update interval tick");
                     this->buildAndSendRequestsInfoPackets();            // initiate an update cycle with this->cycleStarted();
                 }
             }
