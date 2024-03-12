@@ -10,3 +10,6 @@ hp-preflash.yml
 hp-seb.yaml
 secrets.yaml
 components/.DS_Store
+esp01-clim.yaml
+esp32-clim-chambres.yaml
+hp-sejour.yaml
