@@ -77,6 +77,7 @@ public:
     void buildAndSendRequestsInfoPackets();
     void buildAndSendRequestPacket(int packetType);
     bool isHeatpumpConnectionActive();
+    void reconnectIfConnectionLost();
 
     void sendWantedSettings();
     void sendWantedSettingsDelegate();
@@ -245,6 +246,7 @@ private:
 
     unsigned long lastResponseMs;
 
+
     uint32_t remote_temp_timeout_;
     uint32_t debounce_delay_;
 
@@ -252,11 +254,12 @@ private:
     int tx_pin_ = -1;
     int rx_pin_ = -1;
 
-    bool isConnected_ = false;
+    bool isUARTConnected_ = false;
     bool isHeatpumpConnected_ = false;
 
     //HardwareSerial* _HardSerial{ nullptr };
     unsigned long lastSend;
+    unsigned long lastConnectRqTimeMs;
 
     uint8_t storedInputData[MAX_DATA_BYTES]; // multi-byte data
     uint8_t* data;
