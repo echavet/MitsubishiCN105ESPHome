@@ -14,7 +14,8 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->traits_.set_visual_max_temperature(ESPMHP_MAX_TEMPERATURE);
     this->traits_.set_visual_temperature_step(ESPMHP_TEMPERATURE_STEP);
 
-    this->isConnected_ = false;
+
+    this->isUARTConnected_ = false;
     this->tempMode = false;
     this->wideVaneAdj = false;
     this->functions = heatpumpFunctions();
@@ -23,6 +24,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->externalUpdate = false;
     this->lastSend = 0;
     this->infoMode = 0;
+    this->lastConnectRqTimeMs = 0;
     this->currentStatus.operating = false;
     this->currentStatus.compressorFrequency = -1;
     this->tx_pin_ = -1;
@@ -91,7 +93,7 @@ void CN105Climate::setupUART() {
     ESP_LOGI(TAG, "setupUART() with baudrate %d", this->parent_->get_baud_rate());
 
     this->isHeatpumpConnected_ = false;
-    this->isConnected_ = false;
+    this->isUARTConnected_ = false;
 
     // just for debugging purpose, a way to use a button i, yaml to trigger a reconnect
     this->uart_setup_switch = true;
@@ -100,7 +102,7 @@ void CN105Climate::setupUART() {
         this->parent_->get_parity() == uart::UART_CONFIG_PARITY_EVEN &&
         this->parent_->get_stop_bits() == 1) {
         ESP_LOGD("CustomComponent", "UART est configuré en SERIAL_8E1");
-        this->isConnected_ = true;
+        this->isUARTConnected_ = true;
         this->initBytePointer();
     } else {
         ESP_LOGW("CustomComponent", "UART n'est pas configuré en SERIAL_8E1");
@@ -114,9 +116,8 @@ void CN105Climate::disconnectUART() {
     this->uart_setup_switch = false;
 
     this->isHeatpumpConnected_ = false;
-    this->isConnected_ = false;
+    this->isUARTConnected_ = false;
     this->firstRun = true;
-    this->cancel_timeout(SHEDULER_INTERVAL_SYNC_NAME);
     this->publish_state();
 
 }
@@ -128,12 +129,30 @@ void CN105Climate::reconnectUART() {
     this->sendFirstConnectionPacket();
 }
 
+
+void CN105Climate::reconnectIfConnectionLost() {
+    if (!this->isHeatpumpConnectionActive()) {
+        long connectTimeMs = CUSTOM_MILLIS - this->lastConnectRqTimeMs;
+        if (connectTimeMs > this->update_interval_) {
+            long lrTimeMs = CUSTOM_MILLIS - this->lastResponseMs;
+            ESP_LOGW(TAG, "Heatpump has not replied for %ld s", lrTimeMs / 1000);
+            ESP_LOGI(TAG, "We think Heatpump is not connected anymore..");
+            this->disconnectUART();
+            this->setupUART();
+            this->sendFirstConnectionPacket();
+        }
+    }
+}
+
 bool CN105Climate::isHeatpumpConnectionActive() {
     long lrTimeMs = CUSTOM_MILLIS - this->lastResponseMs;
 
     if (lrTimeMs > MAX_DELAY_RESPONSE_FACTOR * this->update_interval_) {
-        ESP_LOGW(TAG, "Heatpump has not replied for %ld s", lrTimeMs / 1000);
-        ESP_LOGI(TAG, "We think Heatpump is not connected anymore..");
+        ESP_LOGV(TAG, "Heatpump has not replied for %ld s", lrTimeMs / 1000);
+        ESP_LOGV(TAG, "We think Heatpump is not connected anymore..");
+        this->disconnectUART();
+        // this->setupUART();
+        // this->sendFirstConnectionPacket();
     }
 
     return  (lrTimeMs < MAX_DELAY_RESPONSE_FACTOR * this->update_interval_);

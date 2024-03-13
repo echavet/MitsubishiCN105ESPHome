@@ -22,8 +22,6 @@ static const char* LOG_CYCLE_TAG = "CYCLE";         // loop cycles logs
 static const char* LOG_UPD_INT_TAG = "UPDT_ITVL";   // update interval logging
 
 
-static const char* SHEDULER_INTERVAL_SYNC_NAME = "hp->sync"; // name of the scheduler to prpgram hp updates
-static const char* DEFER_SHEDULER_INTERVAL_SYNC_NAME = "hp->sync_defer"; // name of the scheduler to prpgram hp updates
 static const char* SHEDULER_REMOTE_TEMP_TIMEOUT = "->remote_temp_timeout";
 
 // defering delay for update_interval when we've just sent a wentedSettings

@@ -12,7 +12,8 @@ uint8_t CN105Climate::checkSum(uint8_t bytes[], int len) {
 
 
 void CN105Climate::sendFirstConnectionPacket() {
-    if (this->isConnected_) {
+    if (this->isUARTConnected_) {
+
         this->isHeatpumpConnected_ = false;
 
         ESP_LOGD(TAG, "Envoi du packet de connexion...");
@@ -23,6 +24,7 @@ void CN105Climate::sendFirstConnectionPacket() {
         this->writePacket(packet, CONNECT_LEN, false);      // checkIsActive=false because it's the first packet and we don't have any reply yet
 
         this->lastSend = CUSTOM_MILLIS;
+        this->lastConnectRqTimeMs = CUSTOM_MILLIS;
 
         // we wait for a 10s timeout to check if the hp has replied to connection packet
         this->set_timeout("checkFirstConnection", 10000, [this]() {
@@ -30,11 +32,13 @@ void CN105Climate::sendFirstConnectionPacket() {
                 ESP_LOGE(TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
                 ESP_LOGI(TAG, "Trying to connect again...");
                 this->sendFirstConnectionPacket();
-            }
-            });
+            }});
 
     } else {
-        ESP_LOGE(TAG, "You should connect the heatpump through UART");
+        ESP_LOGE(TAG, "UART doesn't seem to be connected...");
+        this->setupUART();
+        // this delay to prevent a logging flood should never happen
+        CUSTOM_DELAY(750);
     }
 }
 
@@ -74,7 +78,7 @@ void CN105Climate::prepareSetPacket(uint8_t* packet, int length) {
 
 void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) {
 
-    if ((this->isConnected_) &&
+    if ((this->isUARTConnected_) &&
         (this->isHeatpumpConnectionActive() || (!checkIsActive))) {
 
         ESP_LOGD(TAG, "writing packet...");
@@ -91,7 +95,7 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
         // this->sendFirstConnectionPacket();
 
         ESP_LOGW(TAG, "delaying packet writing because we need to reconnect first...");
-        this->set_timeout("write", 500, [this, packet, length]() { this->writePacket(packet, length); });
+        this->set_timeout("write", 1000, [this, packet, length]() { this->writePacket(packet, length); });
     }
 }
 
@@ -267,12 +271,11 @@ void CN105Climate::sendWantedSettingsDelegate() {
 
 /**
  * builds and send all an update packet to the heatpump
- * SHEDULER_INTERVAL_SYNC_NAME scheduler is canceled
  *
  *
 */
 void CN105Climate::sendWantedSettings() {
-    if (this->isHeatpumpConnectionActive() && this->isConnected_) {
+    if (this->isHeatpumpConnectionActive() && this->isUARTConnected_) {
         if (CUSTOM_MILLIS - this->lastSend > 300) {        // we don't want to send too many packets
 
             //this->cycleEnded();   // only if we let the cycle be interrupted to send wented settings
@@ -305,11 +308,12 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
     if (this->isHeatpumpConnected_) {
         ESP_LOGV(LOG_UPD_INT_TAG, "triggering infopacket because of update interval tick");
         ESP_LOGV("CONTROL_WANTED_SETTINGS", "hasChanged is %s", wantedSettings.hasChanged ? "true" : "false");
-
         ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
         this->loopCycle.cycleStarted();
         ESP_LOGD(LOG_CYCLE_TAG, "2a: Sending settings request (0x02)");
         this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
+    } else {
+        this->reconnectIfConnectionLost();
     }
 }
 
