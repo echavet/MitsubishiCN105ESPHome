@@ -15,7 +15,7 @@ This is an unofficial implementation of the reverse-engineered Mitsubishi protoc
 #### Warning: a big redesign has been released
 
 Thank you all for your feedbacks, openning issues is the key to reach a good stability as quick as possible. Don't hesitate! 
-Here the last release, labeled ["Optimistic strategy with pessimistic pattern"](https://github.com/echavet/MitsubishiCN105ESPHome/releases/tag/v1.2.1)
+Here the last release, labeled ["Stable Build"](https://github.com/echavet/MitsubishiCN105ESPHome/releases/tag/v1.3)
 
 ```yaml
 external_components:
