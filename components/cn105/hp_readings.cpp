@@ -304,6 +304,7 @@ void CN105Climate::getDataFromResponsePacket() {
         this->getPowerFromResponsePacket();
         //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50                     
         this->loopCycle.cycleEnded();
+        this->nbCompleteCycles_++;
         break;
 
     case 0x10:
@@ -353,7 +354,8 @@ void CN105Climate::processCommand() {
         break;
     case 0x7a:
         ESP_LOGI(TAG, "--> Heatpump did reply: connection success! <--");
-        this->isHeatpumpConnected_ = true;
+        //this->isHeatpumpConnected_ = true;
+        this->setHeatpumpConnected(true);
         // let's say that the last complete cycle was over now        
         this->loopCycle.lastCompleteCycleMs = CUSTOM_MILLIS;
         this->currentSettings.resetSettings();      // each time we connect, we need to reset current setting to force a complete sync with ha component state and receievdSettings 

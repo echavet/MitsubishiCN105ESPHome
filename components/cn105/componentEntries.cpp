@@ -20,6 +20,11 @@ void CN105Climate::setup() {
     this->initBytePointer();
     this->lastResponseMs = CUSTOM_MILLIS;
 
+    // initialize diagnostic stats
+    this->nbCompleteCycles_ = 0;
+    this->nbCycles_ = 0;
+    this->nbHeatpumpConnections_ = 0;
+
     ESP_LOGI(TAG, "tx_pin: %d rx_pin: %d", this->tx_pin_, this->rx_pin_);
     ESP_LOGI(TAG, "remote_temp_timeout is set to %d", this->remote_temp_timeout_);
     ESP_LOGI(TAG, "debounce_delay is set to %d", this->debounce_delay_);
