@@ -251,7 +251,7 @@ climate:
     debounce_delay : 100ms       # delay to prevent bouncing 
     hp_uptime_connection_sensor:
       name: ${name} HP Uptime Connection
-      update_interval: 60s
+      update_interval: 10s
     supports:
       mode: [COOL, HEAT, FAN_ONLY, DRY]
       fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]

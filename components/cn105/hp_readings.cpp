@@ -304,6 +304,13 @@ void CN105Climate::getDataFromResponsePacket() {
         this->getPowerFromResponsePacket();
         //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50                     
         this->loopCycle.cycleEnded();
+
+        if (this->hp_uptime_connection_sensor_ != nullptr) {
+            // if the uptime connection sensor is configured
+            // we trigger  manual update at the end of a cycle.
+            this->hp_uptime_connection_sensor_->update();
+        }
+
         this->nbCompleteCycles_++;
         break;
 
