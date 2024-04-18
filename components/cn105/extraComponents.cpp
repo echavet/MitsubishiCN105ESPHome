@@ -72,3 +72,7 @@ void CN105Climate::set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mod
 void CN105Climate::set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor) {
     this->Auto_sub_mode_sensor_ = Auto_sub_mode_sensor;
 }
+
+void CN105Climate::set_hp_uptime_connection_sensor(uptime::HpUpTimeConnectionSensor* hp_up_connection_sensor) {
+    this->hp_uptime_connection_sensor_ = hp_up_connection_sensor;
+}
