@@ -20,7 +20,15 @@ from esphome.const import (
 )
 from esphome.core import CORE, coroutine
 
-AUTO_LOAD = ["climate", "sensor", "select", "binary_sensor", "text_sensor", "uart"]
+AUTO_LOAD = [
+    "climate",
+    "sensor",
+    "select",
+    "binary_sensor",
+    "text_sensor",
+    "uart",
+    "uptime",
+]
 
 CONF_SUPPORTS = "supports"
 # from https://github.com/wrouesnel/esphome-mitsubishiheatpump/blob/master/components/mitsubishi_heatpump/climate.py
