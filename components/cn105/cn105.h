@@ -273,6 +273,7 @@ private:
     //HardwareSerial* _HardSerial{ nullptr };
     unsigned long lastSend;
     unsigned long lastConnectRqTimeMs;
+    unsigned long lastReconnectTimeMs;
 
     uint8_t storedInputData[MAX_DATA_BYTES]; // multi-byte data
     uint8_t* data;
