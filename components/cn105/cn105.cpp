@@ -135,6 +135,7 @@ void CN105Climate::disconnectUART() {
 
 void CN105Climate::reconnectUART() {
     ESP_LOGD(TAG, "reconnectUART()");
+    this->lastReconnectTimeMs = CUSTOM_MILLIS;
     this->disconnectUART();
     this->setupUART();
     this->sendFirstConnectionPacket();
@@ -142,15 +143,20 @@ void CN105Climate::reconnectUART() {
 
 
 void CN105Climate::reconnectIfConnectionLost() {
+
+    long reconnectTimeMs = CUSTOM_MILLIS - this->lastReconnectTimeMs;
+
+    if (reconnectTimeMs < this->update_interval_) {
+        return;
+    }
+
     if (!this->isHeatpumpConnectionActive()) {
         long connectTimeMs = CUSTOM_MILLIS - this->lastConnectRqTimeMs;
         if (connectTimeMs > this->update_interval_) {
             long lrTimeMs = CUSTOM_MILLIS - this->lastResponseMs;
             ESP_LOGW(TAG, "Heatpump has not replied for %ld s", lrTimeMs / 1000);
             ESP_LOGI(TAG, "We think Heatpump is not connected anymore..");
-            this->disconnectUART();
-            this->setupUART();
-            this->sendFirstConnectionPacket();
+            this->reconnectUART();
         }
     }
 }
@@ -159,13 +165,11 @@ void CN105Climate::reconnectIfConnectionLost() {
 bool CN105Climate::isHeatpumpConnectionActive() {
     long lrTimeMs = CUSTOM_MILLIS - this->lastResponseMs;
 
-    if (lrTimeMs > MAX_DELAY_RESPONSE_FACTOR * this->update_interval_) {
-        ESP_LOGV(TAG, "Heatpump has not replied for %ld s", lrTimeMs / 1000);
-        ESP_LOGV(TAG, "We think Heatpump is not connected anymore..");
-        this->disconnectUART();
-        // this->setupUART();
-        // this->sendFirstConnectionPacket();
-    }
+    // if (lrTimeMs > MAX_DELAY_RESPONSE_FACTOR * this->update_interval_) {
+    //     ESP_LOGV(TAG, "Heatpump has not replied for %ld s", lrTimeMs / 1000);
+    //     ESP_LOGV(TAG, "We think Heatpump is not connected anymore..");
+    //     this->disconnectUART();        
+    // }
 
     return  (lrTimeMs < MAX_DELAY_RESPONSE_FACTOR * this->update_interval_);
 }
