@@ -13,8 +13,7 @@ uint8_t CN105Climate::checkSum(uint8_t bytes[], int len) {
 
 void CN105Climate::sendFirstConnectionPacket() {
     if (this->isUARTConnected_) {
-
-        //this->isHeatpumpConnected_ = false;
+        this->lastReconnectTimeMs = CUSTOM_MILLIS;          // marker to prevent to many reconnections
         this->setHeatpumpConnected(false);
         ESP_LOGD(TAG, "Envoi du packet de connexion...");
         uint8_t packet[CONNECT_LEN];
@@ -91,11 +90,7 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
 
     } else {
         ESP_LOGW(TAG, "could not write as asked, because UART is not connected");
-
-        // this->disconnectUART();
-        this->setupUART();
-        this->sendFirstConnectionPacket();
-
+        this->reconnectUART();
         ESP_LOGW(TAG, "delaying packet writing because we need to reconnect first...");
         this->set_timeout("write", 4000, [this, packet, length]() { this->writePacket(packet, length); });
     }
@@ -293,6 +288,8 @@ void CN105Climate::sendWantedSettings() {
         } else {
             ESP_LOGD(TAG, "will sendWantedSettings later because we've sent one too recently...");
         }
+    } else {
+        this->reconnectIfConnectionLost();
     }
 }
 
