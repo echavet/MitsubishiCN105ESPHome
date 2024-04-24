@@ -12,7 +12,7 @@
 #define MAX_DATA_BYTES     64         // max number of data bytes in incoming messages
 #define MAX_DELAY_RESPONSE_FACTOR 10  // update_interval*10 seconds max without response
 
-#define TEST_MODE
+//#define TEST_MODE
 
 static const char* LOG_ACTION_EVT_TAG = "EVT_SETS";
 static const char* TAG = "CN105"; // Logging tag
@@ -75,9 +75,9 @@ static const int TEMP_MAP[16] = { 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20
 static const uint8_t FAN[6] = { 0x00,  0x01,   0x02, 0x03, 0x05, 0x06 };
 static const char* FAN_MAP[6] = { "AUTO", "QUIET", "1", "2", "3", "4" };
 static const uint8_t VANE[7] = { 0x00,  0x01, 0x02, 0x03, 0x04, 0x05, 0x07 };
-static const char* VANE_MAP[7] = { "AUTO", "1", "2", "3", "4", "5", "SWING" };
+static const char* VANE_MAP[7] = { "AUTO", "⯭", "🠙", "—", "🠛", "⯯", "SWING" };
 static const uint8_t WIDEVANE[7] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x08, 0x0c };
-static const char* WIDEVANE_MAP[7] = { "<<", "<",  "|",  ">",  ">>", "<>", "SWING" };
+static const char* WIDEVANE_MAP[7] = { "⯬", "🠘",  "|",  "🠚",  "⯮", "🠘🠚", "SWING" };
 static const uint8_t ROOM_TEMP[32] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
                                   0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f };
 static const int ROOM_TEMP_MAP[32] = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,

@@ -2,6 +2,7 @@
 #include "Globals.h"
 #include "heatpumpFunctions.h"
 #include "van_orientation_select.h"
+#include "uptime_connection_sensor.h"
 #include "compressor_frequency_sensor.h"
 #include "auto_sub_mode_sensor.h"
 #include "isee_sensor.h"
@@ -34,6 +35,7 @@ public:
     void set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor);
     void set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor);
     void set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor);
+    void set_hp_uptime_connection_sensor(uptime::HpUpTimeConnectionSensor* hp_up_connection_sensor);
 
     //sensor::Sensor* compressor_frequency_sensor;
     binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
@@ -51,6 +53,8 @@ public:
     sensor::Sensor* compressor_frequency_sensor_ =
         nullptr;  // Sensor to store compressor frequency
 
+    // sensor to monitor heatpump connection time 
+    uptime::HpUpTimeConnectionSensor* hp_uptime_connection_sensor_ = nullptr;
 
     int get_compressor_frequency();
     bool is_operating();
@@ -111,6 +115,14 @@ public:
 
     /// le bouton de setup de l'UART
     bool uart_setup_switch;
+
+    bool isUARTConnected_ = false;
+    bool isHeatpumpConnected_ = false;
+
+    unsigned long nbCompleteCycles_ = 0;
+    unsigned long nbCycles_ = 0;
+    unsigned int nbHeatpumpConnections_ = 0;
+
 
     void sendFirstConnectionPacket();
 
@@ -189,6 +201,8 @@ protected:
     void setWideVaneSetting(const char* setting);
     void setFanSpeed(const char* setting);
 
+    void setHeatpumpConnected(bool state);
+
 private:
     const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
     int lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "");
@@ -254,12 +268,12 @@ private:
     int tx_pin_ = -1;
     int rx_pin_ = -1;
 
-    bool isUARTConnected_ = false;
-    bool isHeatpumpConnected_ = false;
+
 
     //HardwareSerial* _HardSerial{ nullptr };
     unsigned long lastSend;
     unsigned long lastConnectRqTimeMs;
+    unsigned long lastReconnectTimeMs;
 
     uint8_t storedInputData[MAX_DATA_BYTES]; // multi-byte data
     uint8_t* data;

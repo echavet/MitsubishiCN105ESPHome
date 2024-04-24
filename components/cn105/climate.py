@@ -12,10 +12,23 @@ from esphome.const import (
     CONF_FAN_MODE,
     CONF_SWING_MODE,
     CONF_UART_ID,
+    ENTITY_CATEGORY_DIAGNOSTIC,
+    STATE_CLASS_TOTAL_INCREASING,
+    UNIT_SECOND,
+    ICON_TIMER,
+    DEVICE_CLASS_DURATION,
 )
 from esphome.core import CORE, coroutine
 
-AUTO_LOAD = ["climate", "sensor", "select", "binary_sensor", "text_sensor", "uart"]
+AUTO_LOAD = [
+    "climate",
+    "sensor",
+    "select",
+    "binary_sensor",
+    "text_sensor",
+    "uart",
+    "uptime",
+]
 
 CONF_SUPPORTS = "supports"
 # from https://github.com/wrouesnel/esphome-mitsubishiheatpump/blob/master/components/mitsubishi_heatpump/climate.py
@@ -26,6 +39,7 @@ CONF_ISEE_SENSOR = "isee_sensor"
 CONF_STAGE_SENSOR = "stage_sensor"
 CONF_SUB_MODE_SENSOR = "sub_mode_sensor"
 CONF_AUTO_SUB_MODE_SENSOR = "auto_sub_mode_sensor"
+CONF_HP_UP_TIME_CONNECTION_SENSOR = "hp_uptime_connection_sensor"
 
 DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
@@ -48,7 +62,14 @@ CompressorFrequencySensor = cg.global_ns.class_(
 ISeeSensor = cg.global_ns.class_("ISeeSensor", binary_sensor.BinarySensor, cg.Component)
 StageSensor = cg.global_ns.class_("StageSensor", text_sensor.TextSensor, cg.Component)
 SubModSensor = cg.global_ns.class_("SubModSensor", text_sensor.TextSensor, cg.Component)
-AutoSubModSensor = cg.global_ns.class_("AutoSubModSensor", text_sensor.TextSensor, cg.Component)
+AutoSubModSensor = cg.global_ns.class_(
+    "AutoSubModSensor", text_sensor.TextSensor, cg.Component
+)
+
+uptime_ns = cg.esphome_ns.namespace("uptime")
+HpUpTimeConnectionSensor = uptime_ns.class_(
+    "HpUpTimeConnectionSensor", sensor.Sensor, cg.PollingComponent
+)
 
 
 def valid_uart(uart):
@@ -86,6 +107,17 @@ AUTO_SUB_MODE_SENSOR_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(AutoSubModSensor)}
 )
 
+
+HP_UP_TIME_CONNECTION_SENSOR_SCHEMA = sensor.sensor_schema(
+    HpUpTimeConnectionSensor,
+    unit_of_measurement=UNIT_SECOND,
+    icon=ICON_TIMER,
+    accuracy_decimals=0,
+    state_class=STATE_CLASS_TOTAL_INCREASING,
+    device_class=DEVICE_CLASS_DURATION,
+    entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+).extend(cv.polling_component_schema("60s"))
+
 CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(CN105Climate),
@@ -109,6 +141,9 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
             cv.update_interval
         ),
         cv.Optional(CONF_DEBOUNCE_DELAY, default="100ms"): cv.All(cv.update_interval),
+        cv.Optional(
+            CONF_HP_UP_TIME_CONNECTION_SENSOR
+        ): HP_UP_TIME_CONNECTION_SENSOR_SCHEMA,
         # Optionally override the supported ClimateTraits.
         cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
             {
@@ -198,8 +233,15 @@ def to_code(config):
         yield cg.register_component(tsensor_, conf)
         cg.add(var.set_auto_sub_mode_sensor(tsensor_))
 
+    if CONF_HP_UP_TIME_CONNECTION_SENSOR in config:
+        conf = config[CONF_HP_UP_TIME_CONNECTION_SENSOR]
+        hp_connection_sensor_ = yield sensor.new_sensor(conf)
+        yield cg.register_component(hp_connection_sensor_, conf)
+        cg.add(var.set_hp_uptime_connection_sensor(hp_connection_sensor_))
+
     yield cg.register_component(var, config)
     yield climate.register_climate(var, config)
+
 
 ## cg.add_library(
 ##    name="HeatPump",
