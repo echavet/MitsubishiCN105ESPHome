@@ -92,7 +92,7 @@ void CN105Climate::setupUART() {
 
     ESP_LOGI(TAG, "setupUART() with baudrate %d", this->parent_->get_baud_rate());
 
-    this->isHeatpumpConnected_ = false;
+    this->setHeatpumpConnected(false);
     this->isUARTConnected_ = false;
 
     // just for debugging purpose, a way to use a button i, yaml to trigger a reconnect
@@ -101,22 +101,33 @@ void CN105Climate::setupUART() {
     if (this->parent_->get_data_bits() == 8 &&
         this->parent_->get_parity() == uart::UART_CONFIG_PARITY_EVEN &&
         this->parent_->get_stop_bits() == 1) {
-        ESP_LOGD("CustomComponent", "UART est configuré en SERIAL_8E1");
+        ESP_LOGD(TAG, "UART est configuré en SERIAL_8E1");
         this->isUARTConnected_ = true;
         this->initBytePointer();
     } else {
-        ESP_LOGW("CustomComponent", "UART n'est pas configuré en SERIAL_8E1");
+        ESP_LOGW(TAG, "UART n'est pas configuré en SERIAL_8E1");
     }
 
 }
 
-
+void CN105Climate::setHeatpumpConnected(bool state) {
+    this->isHeatpumpConnected_ = state;
+    if (this->hp_uptime_connection_sensor_ != nullptr) {
+        if (state) {
+            this->hp_uptime_connection_sensor_->start();
+            ESP_LOGD(TAG, "starting hp_uptime_connection_sensor_ uptime chrono");
+        } else {
+            this->hp_uptime_connection_sensor_->stop();
+            ESP_LOGD(TAG, "stopping hp_uptime_connection_sensor_ uptime chrono");
+        }
+    }
+}
 void CN105Climate::disconnectUART() {
     ESP_LOGD(TAG, "disconnectUART()");
     this->uart_setup_switch = false;
-
-    this->isHeatpumpConnected_ = false;
-    this->isUARTConnected_ = false;
+    this->setHeatpumpConnected(false);
+    //this->isHeatpumpConnected_ = false;
+    //this->isUARTConnected_ = false;
     this->firstRun = true;
     this->publish_state();
 
@@ -143,6 +154,7 @@ void CN105Climate::reconnectIfConnectionLost() {
         }
     }
 }
+
 
 bool CN105Climate::isHeatpumpConnectionActive() {
     long lrTimeMs = CUSTOM_MILLIS - this->lastResponseMs;

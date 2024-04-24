@@ -14,8 +14,8 @@ uint8_t CN105Climate::checkSum(uint8_t bytes[], int len) {
 void CN105Climate::sendFirstConnectionPacket() {
     if (this->isUARTConnected_) {
 
-        this->isHeatpumpConnected_ = false;
-
+        //this->isHeatpumpConnected_ = false;
+        this->setHeatpumpConnected(false);
         ESP_LOGD(TAG, "Envoi du packet de connexion...");
         uint8_t packet[CONNECT_LEN];
         memcpy(packet, CONNECT, CONNECT_LEN);
@@ -25,6 +25,7 @@ void CN105Climate::sendFirstConnectionPacket() {
 
         this->lastSend = CUSTOM_MILLIS;
         this->lastConnectRqTimeMs = CUSTOM_MILLIS;
+        this->nbHeatpumpConnections_++;
 
         // we wait for a 10s timeout to check if the hp has replied to connection packet
         this->set_timeout("checkFirstConnection", 10000, [this]() {
@@ -90,12 +91,13 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
 
     } else {
         ESP_LOGW(TAG, "could not write as asked, because UART is not connected");
+
         // this->disconnectUART();
-        // this->setupUART();
-        // this->sendFirstConnectionPacket();
+        this->setupUART();
+        this->sendFirstConnectionPacket();
 
         ESP_LOGW(TAG, "delaying packet writing because we need to reconnect first...");
-        this->set_timeout("write", 1000, [this, packet, length]() { this->writePacket(packet, length); });
+        this->set_timeout("write", 4000, [this, packet, length]() { this->writePacket(packet, length); });
     }
 }
 
@@ -310,6 +312,7 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
         ESP_LOGV("CONTROL_WANTED_SETTINGS", "hasChanged is %s", wantedSettings.hasChanged ? "true" : "false");
         ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
         this->loopCycle.cycleStarted();
+        this->nbCycles_++;
         ESP_LOGD(LOG_CYCLE_TAG, "2a: Sending settings request (0x02)");
         this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
     } else {

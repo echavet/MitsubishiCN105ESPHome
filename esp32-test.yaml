@@ -14,7 +14,8 @@ esp32:
 
 
 mqtt:  
-  broker: homeassistant.local
+  #broker: homeassistant.local
+  broker: home-io.local           # if HA instance name is custom
   username: heatpumpSejour
   password: !secret mqtt_password
   discovery: true
@@ -70,13 +71,13 @@ api:
     - service: use_internal_temperature
       then:
         - lambda: 'id(esp32_clim).set_remote_temperature(0);'
-    - service: test-mutex
-      then:
-        - logger.log: "Test de la fonction mutex..."
-        - lambda: |-
-            id(esp32_clim).testMutex();
+    # - service: test-mutex
+    #   then:
+    #     - logger.log: "Test de la fonction mutex..."
+    #     - lambda: |-
+    #         id(esp32_clim).testMutex();
   encryption:
-    key: !secret encryption_key
+    key: !secret encryption_key_sejour
 
 ota:  
   password: !secret ota_pwd
@@ -100,9 +101,8 @@ wifi:
 
 captive_portal:
 
-# pas assez de place pour update ota 
-#web_server:
-#  port: 80
+web_server:
+  port: 80
   
 time:
   - platform: homeassistant
@@ -135,8 +135,62 @@ text_sensor:
       name: "Reset Reason"
 
 
+  
+
 # Sensors with general information.
 sensor:
+
+  - platform: template
+    name: "dg_uart_connected"
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (bool) id(esp32_clim).isUARTConnected_;
+    update_interval: 30s
+
+  - platform: template
+    name: "dg_hp_connected"
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (bool) id(esp32_clim).isUARTConnected_;
+    update_interval: 30s
+
+  - platform: template
+    name: "dg_complete_cycles"
+    entity_category: DIAGNOSTIC
+    accuracy_decimals: 0
+    lambda: |-
+      return (unsigned long) id(esp32_clim).nbCompleteCycles_;
+    update_interval: 60s
+
+  - platform: template
+    name: "dg_total_cycles"
+    accuracy_decimals: 0
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (unsigned long) id(esp32_clim).nbCycles_;
+    update_interval: 60s
+  - platform: template
+    name: "dg_nb_hp_connections"
+    accuracy_decimals: 0
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (unsigned int) id(esp32_clim).nbHeatpumpConnections_;
+    update_interval: 60s
+
+  - platform: template
+    name: "dg_complete_cycles_percent"
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    entity_category: DIAGNOSTIC
+    lambda: |-      
+      unsigned long nbCompleteCycles = id(esp32_clim).nbCompleteCycles_;
+      unsigned long nbCycles = id(esp32_clim).nbCycles_;
+      if (nbCycles == 0) {
+        return 0.0;
+      }
+      return (float) nbCompleteCycles / nbCycles * 100.0;
+    update_interval: 60s
+    
   - platform: debug
     free:
       name: "Heap Free"
@@ -195,6 +249,9 @@ climate:
     remote_temperature_timeout: 15min
     update_interval: 2s         # shouldn't be less than 1 second
     debounce_delay : 100ms       # delay to prevent bouncing 
+    hp_uptime_connection_sensor:
+      name: ${name} HP Uptime Connection
+      update_interval: 10s
     supports:
       mode: [COOL, HEAT, FAN_ONLY, DRY]
       fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
@@ -205,39 +262,3 @@ climate:
       temperature_step: 1.0
 
 
-# Configuration pour l'objet 'switch' (bouton)
-# switch:
-#   - platform: template
-#     name: ${name} UART Setup Switch
-#     id: uart_setup_switch
-#     entity_category: DIAGNOSTIC
-#     #setup_priority : -100.0 ## late
-#     optimistic: true
-#     turn_on_action:
-#       - lambda: |-
-#           // Appelle la méthode 'setupUART' quand le switch est activé
-#           id(esp32_clim).setupUART();
-#     turn_off_action:
-#       - lambda: |-
-#           // Appelle la méthode 'setupUART' quand le switch est activé
-#           id(esp32_clim).disconnectUART();
-
-#   - platform: template
-#     name: Send 1st packet to ${name}
-#     id: send_packet_switch
-#     entity_category: DIAGNOSTIC
-#     #setup_priority : -100.0 ## late
-#     optimistic: true
-#     turn_on_action:
-#       - lambda: |-          
-#           id(esp32_clim).sendFirstConnectionPacket();    
-  
-#   - platform: template
-#     name: Requests ${name} Synchro
-#     id: build_and_send_requests_info_packets
-#     entity_category: DIAGNOSTIC
-#     #setup_priority : -100.0 ## late
-#     optimistic: true    
-#     turn_on_action:
-#       - lambda: |-          
-#           id(esp32_clim).buildAndSendRequestsInfoPackets(); 
