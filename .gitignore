@@ -1,5 +1,6 @@
 .DS_Store
 .vscode
+.gitignore
 components/cn105/.DS_Store
 components/.DS_Store
 esp01-test.yaml
