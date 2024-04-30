@@ -6,7 +6,7 @@ The intended use case is for owners of a Mitsubishi Electric heat pump or air co
 The benefits include fully local control over your heat pump system, without reliance on a vendor network. Additional visibility, finer control, and even improved energy efficiency and comfort are possible when utilizing the remote temperature features.
 
 ### Warning: Use at your own risk.
-This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
+This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on the Swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
 
 ## What's New
 
@@ -31,6 +31,7 @@ external_components:
 #### Warning: esp-idf framework support feature has been merged to main branch
 
 This is a major change in UART configuration (I should have changed the major number of the version tag. Sorry I didn't!). But that's not so scary! If you upgrade to the head of main you will just have to change the way you configure the UART in your yaml files. Look at the Step 4 in this document.
+
 The reason is issue https://github.com/echavet/MitsubishiCN105ESPHome/issues/6. The old configuration did not allow to use ESP32 ESP-IDF framework, which improves reliability of the hardware UART.
 
 If you don't want this change you must configure your external_components to point to the [v1.0.3](https://github.com/echavet/MitsubishiCN105ESPHome/tree/v1.0.3) tree this way:
@@ -48,10 +49,11 @@ external_components:
 - Code is divided into distinct concerns for better readability.
 - Extensive logging for easier troubleshooting and development.
 - Ongoing refactoring to further improve the code quality.
+- Additional diagnostic sensors for understanding the behavior of the indoor units while in AUTO mode
 
 ### Retained Features
 
-This project maintains all functionalities of the original geoffdavis project, including:
+This project maintains all functionalities of the original [geoffdavis](https://github.com/geoffdavis/esphome-mitsubishiheatpump) project, including:
 
 - Wireless Mitsubishi Comfort HVAC equipment control via ESP8266 or ESP32, using the [ESPHome](https://esphome.io) framework.
 - Instant feedback of command changes via RF Remote to HomeAssistant or MQTT.
@@ -66,9 +68,10 @@ This project maintains all functionalities of the original geoffdavis project, i
 
 ## Supported Microcontrollers
 
+- Generic ESP32 Dev Kit (ESP32): tested
 - WeMos D1 Mini (ESP8266): tested
 - M5Stack ATOM Lite : tested
-- Generic ESP32 Dev Kit (ESP32): tested
+- M5Stack ATOM S3 Lite: tested w/ [modifications](https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
 
 ## Supported Mitsubishi Climate Units
 
@@ -79,6 +82,7 @@ Units tested by project contributors include:
 - `MSZ-SF50VE3`
 - `MSZ-SF35VE3`
 - `MSZ-GLxxNA`
+- `MSZ-AP20VGK` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
 
 ## Usage
 
@@ -334,7 +338,7 @@ captive_portal:
 ```
 </details>
 
-## Example Configuration - Complete:
+## Example Configuration - Complete
 
 This example includes all the bells and whistles, optional components, remote temperature sensing, reboot button, and additional sensors in HomeAssistant including uptime, the current wifi SSID, and signal strength. Note that you need to choose between the ESP32 and the ESP8266 sections to get the correct UART configuration. Utilizes a `secrets.yaml` file to store your credentials. Comment out or remote features your unit doesn't support (such as the isee sensor or horizontal vane). It doesn't hurt to try them, but if your unit doesn't support that feature then it will be inactive.
 
@@ -549,7 +553,9 @@ sensor:
           - lambda: 'id(use_your_name).set_remote_temperature(x);'
 ```
 
-### Additional Sensors (somehwhat experimental)
+## Diagnostic Sensors
+
+### Auto and Stage Sensors
 
 The below sensors were added recently based on the work of others in sorting out other messages and bytes. The names are likely to change as we work to determine exactly what the units are doing.
 
@@ -561,31 +567,83 @@ The below sensors were added recently based on the work of others in sorting out
     auto_sub_mode_sensor:
       name: Auto Sub Mode Sensor
 ```
-- stage_sensor is the actual fan speed of the indoor unit. This is called stage in some of the documentation, even though the name isnt clear. This sensor is important because of how units act when they are in AUTO mode.
+- `stage_sensor` is the actual fan speed of the indoor unit. This is called stage in some of the documentation, even though the name isnt clear. This sensor is important because of how units act when they are in AUTO mode. AUTO mode is standard mode where the unit will acept a single setpoint and keep with in +/- 2 degrees C of that set point.
 
-- AUTO mode is standard mode where the unit will acept a single setpoint and keep with in +/- 2 degrees C of that set point.
+- `auto_sub_mode_sensor` is that indicates what actual mode the unit is in when in AUTO; AUTO OFF means AUTO is not enabled, otherwise AUTO COOL means the unit is in AUTO and currently cooling to say within the +/- 2C from the setpoint.
 
-- auto_sub_mode_sensor is that indicates what actual mode the unit is in when in AUTO; AUTO OFF means AUTO is not enabled, otherwise AUTO COOL means the unit is in AUTO and currently cooling to say within the +/- 2C from the setpoint.
-
-- sub_mode_sensor indicates if the unit is in PREHEAT, DEFROST, STANBY or LEADER submode. These are usful in knowing the day by day life of your unit. If it is in one of these modes too much this is an indication of a problem. NORMAL is just the NORMAL running sub mode. LEADER is the odd ball and it is not completely clear if this is the right name. What this indicates is that in a multi-head unit one id the leader and gets to pick the HEAT/COOL mode that the other must follow.
+- `sub_mode_sensor` indicates if the unit is in `PREHEAT`, `DEFROST`, `STANDBY` or `LEADER` submode. These are usful in knowing the day by day life of your unit. If it is in one of these modes too much this is an indication of a problem. NORMAL is just the NORMAL running sub mode. LEADER is the odd ball and it is not completely clear if this is the right name. What this indicates is that in a multi-head unit one id the leader and gets to pick the HEAT/COOL mode that the other must follow.
 
 Some examples of how these all fit together: Unit 1 is in AUTO set to 20C and Unit 2 is in AUTO and set to 20C. Unit 1 senses that the room is 24C and tries to enter AUTO COOL. If Unit 2 wants to heat the room it is in, it will enter STANDBY (and in the case of a few units tested, this mean it will go to "sleep" as if it is off, but not really be off) making Unit 1 enter LEADER sub mode. In future releases, it is planned to make the ACTION in HA match these modes. But at this time this is not implemented.
 
 It is also important to note that the Kumo adapter has many more settings that impact the behaviour above (such as thermal fan behaviour) and if you have set these the exact actions the untis take in these modes/submodes/stages is determined by those. Some of these can also be set by remotes and other devices. The setup you have will dictate the exact actions you see. If you have permutations, please share!
 
-### Update external temperature using a HomeAssistant automation blueprint
+### UART Diagnostic Sensors
+
+The following ESPHome sensors will not be needed by most users, but can be helpful in diagnosting problems with UART connectivity. Only implement if you are currently troubleshooting or developing new functionality.
+
+```yaml
+sensor:
+  - platform: template
+    name: "dg_uart_connected"
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (bool) id(hp).isUARTConnected_;
+    update_interval: 30s
+  - platform: template
+    name: "dg_hp_connected"
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (bool) id(hp).isUARTConnected_;
+    update_interval: 30s
+  - platform: template
+    name: "dg_complete_cycles"
+    entity_category: DIAGNOSTIC
+    accuracy_decimals: 0
+    lambda: |-
+      return (unsigned long) id(hp).nbCompleteCycles_;
+    update_interval: 60s
+  - platform: template
+    name: "dg_total_cycles"
+    accuracy_decimals: 0
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (unsigned long) id(hp).nbCycles_;
+    update_interval: 60s
+  - platform: template
+    name: "dg_nb_hp_connections"
+    accuracy_decimals: 0
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (unsigned int) id(hp).nbHeatpumpConnections_;
+    update_interval: 60s
+  - platform: template
+    name: "dg_complete_cycles_percent"
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    entity_category: DIAGNOSTIC
+    lambda: |-      
+      unsigned long nbCompleteCycles = id(hp).nbCompleteCycles_;
+      unsigned long nbCycles = id(hp).nbCycles_;
+      if (nbCycles == 0) {
+        return 0.0;
+      }
+      return (float) nbCompleteCycles / nbCycles * 100.0;
+    update_interval: 60s
+```
+
+## Update external temperature using a HomeAssistant automation blueprint
 
 Coming Soon.
 
 For more configuration options, see the provided [hp-debug.yaml](https://github.com/echavet/MitsubishiCN105ESPHome/blob/main/hp-debug.yaml) and [hp-sejour.yaml](https://github.com/echavet/MitsubishiCN105ESPHome/blob/main/hp-sejour.yaml) examples or refer to the original project.
 
-## Other Implementations:
+## Other Implementations
 
 - [esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump) - The original esphome project from which this one is forked.
 - [gysmo38/mitsubishi2MQTT](https://github.com/gysmo38/mitsubishi2MQTT) - Direct MQTT controls, robust but with a less stable WiFi stack.
 - ESPHome's built-in [Mitsubishi](https://github.com/esphome/esphome/blob/dev/esphome/components/mitsubishi/mitsubishi.h) climate component - Uses IR Remote commands, lacks bi-directional communication.
 
-## Reference Documentation:
+## Reference Documentation
 
 Refer to these for further understanding:
 
