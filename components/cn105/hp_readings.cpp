@@ -492,7 +492,7 @@ void CN105Climate::updateExtraSelectComponents(heatpumpSettings& settings) {
         }
     }
     if (this->horizontal_vane_select_ != nullptr) {
-        if (this->hasChanged(this->horizontal_vane_select_->state.c_str(), settings.vane, "select wideVane")) {
+        if (this->hasChanged(this->horizontal_vane_select_->state.c_str(), settings.wideVane, "select wideVane")) {
             ESP_LOGI(TAG, "widevane setting (extra select component) changed");
             this->horizontal_vane_select_->publish_state(currentSettings.wideVane);
         }
