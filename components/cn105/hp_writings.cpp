@@ -374,9 +374,13 @@ void CN105Climate::set_remote_temperature(float setting) {
     packet[21] = chkSum;
     ESP_LOGD(TAG, "sending remote temperature packet...");
     writePacket(packet, PACKET_LEN);
-    // optimistic
-    this->currentStatus.roomTemperature = setting;
 
     // this resets the timeout
     this->setExternalTemperatureCheckout();
+
+    // optimistic
+    // this->currentStatus.roomTemperature = setting;
+    // this->current_temperature = this->currentStatus.roomTemperature;
+    // forces the UI component sync
+    // this->publish_state();
 }
