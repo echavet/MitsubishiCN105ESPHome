@@ -224,6 +224,7 @@ private:
     void checkPowerAndModeSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
     void checkFanSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
     void checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
+    void checkWideVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
     void updateExtraSelectComponents(heatpumpSettings& settings);
 
     //void statusChanged();
