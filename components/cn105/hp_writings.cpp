@@ -350,20 +350,25 @@ void CN105Climate::createInfoPacket(uint8_t* packet, uint8_t packetType) {
     uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
 }
-void CN105Climate::set_remote_temperature(float setting) {
+
+
+void CN105Climate::sendRemoteTemperature() {
+
+    this->shouldSendExternalTemperature_ = false;
+
     uint8_t packet[PACKET_LEN] = {};
 
     prepareSetPacket(packet, PACKET_LEN);
 
     packet[5] = 0x07;
-    if (setting > 0) {
+    if (this->remoteTemperature_ > 0) {
         packet[6] = 0x01;
-        setting = setting * 2;
-        setting = round(setting);
-        setting = setting / 2;
-        float temp1 = 3 + ((setting - 10) * 2);
+        this->remoteTemperature_ = this->remoteTemperature_ * 2;
+        this->remoteTemperature_ = round(this->remoteTemperature_);
+        this->remoteTemperature_ = this->remoteTemperature_ / 2;
+        float temp1 = 3 + ((this->remoteTemperature_ - 10) * 2);
         packet[7] = (int)temp1;
-        float temp2 = (setting * 2) + 128;
+        float temp2 = (this->remoteTemperature_ * 2) + 128;
         packet[8] = (int)temp2;
     } else {
         packet[6] = 0x00;
@@ -376,11 +381,7 @@ void CN105Climate::set_remote_temperature(float setting) {
     writePacket(packet, PACKET_LEN);
 
     // this resets the timeout
-    this->setExternalTemperatureCheckout();
+    this->pingExternalTemperature();
 
-    // optimistic
-    // this->currentStatus.roomTemperature = setting;
-    // this->current_temperature = this->currentStatus.roomTemperature;
-    // forces the UI component sync
-    // this->publish_state();
+
 }

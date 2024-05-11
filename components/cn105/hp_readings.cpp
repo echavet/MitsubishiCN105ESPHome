@@ -303,6 +303,11 @@ void CN105Climate::getDataFromResponsePacket() {
         ESP_LOGD(LOG_CYCLE_TAG, "5b: Receiving Power/Standby response");
         this->getPowerFromResponsePacket();
         //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50                     
+
+        if (this->shouldSendExternalTemperature_) {
+            this->sendRemoteTemperature();
+        }
+
         this->loopCycle.cycleEnded();
 
         if (this->hp_uptime_connection_sensor_ != nullptr) {
@@ -312,6 +317,9 @@ void CN105Climate::getDataFromResponsePacket() {
         }
 
         this->nbCompleteCycles_++;
+
+
+
         break;
 
     case 0x10:

@@ -50,6 +50,7 @@ void cycleManagement::cycleEnded(bool timedOut) {
 
     ESP_LOGI(LOG_CYCLE_TAG, "6: Cycle ended in %.1f seconds (with timeout?: %s)",
         (lastCompleteCycleMs - lastCycleStartMs) / 1000.0, timedOut ? "YES" : " NO");
+
 }
 
 bool cycleManagement::hasUpdateIntervalPassed(unsigned int update_interval) {

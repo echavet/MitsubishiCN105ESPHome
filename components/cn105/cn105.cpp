@@ -57,7 +57,7 @@ void CN105Climate::set_tx_rx_pins(uint8_t tx_pin, uint8_t rx_pin) {
 
 }
 
-void CN105Climate::setExternalTemperatureCheckout() {
+void CN105Climate::pingExternalTemperature() {
     this->set_timeout(SHEDULER_REMOTE_TEMP_TIMEOUT, this->remote_temp_timeout_, [this]() {
         ESP_LOGW(LOG_ACTION_EVT_TAG, "Remote temperature timeout occured, fall back to internal temperature!");
         this->set_remote_temperature(0);
@@ -70,7 +70,7 @@ void CN105Climate::set_remote_temp_timeout(uint32_t timeout) {
         ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to never.");
     } else {
         ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to %d", timeout);
-        this->setExternalTemperatureCheckout();
+        this->pingExternalTemperature();
     }
 }
 

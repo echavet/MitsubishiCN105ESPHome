@@ -88,13 +88,14 @@ public:
     // Use the temperature from an external sensor. Use
     // set_remote_temp(0) to switch back to the internal sensor.
     void set_remote_temperature(float);
+    void sendRemoteTemperature();
 
     void set_remote_temp_timeout(uint32_t timeout);
 
     void set_debounce_delay(uint32_t delay);
 
     // this is the ping or heartbeat of the setRemotetemperature for timeout management
-    void setExternalTemperatureCheckout();
+    void pingExternalTemperature();
 
     uint32_t get_update_interval() const;
     void set_update_interval(uint32_t update_interval);
@@ -118,6 +119,8 @@ public:
 
     bool isUARTConnected_ = false;
     bool isHeatpumpConnected_ = false;
+    bool shouldSendExternalTemperature_ = false;
+    float remoteTemperature_ = 0;
 
     unsigned long nbCompleteCycles_ = 0;
     unsigned long nbCycles_ = 0;
