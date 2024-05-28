@@ -72,6 +72,7 @@ This project maintains all functionalities of the original [geoffdavis](https://
 - WeMos D1 Mini (ESP8266): tested
 - M5Stack ATOM Lite : tested
 - M5Stack ATOM S3 Lite: tested w/ [modifications](https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
+- M5Stack StampS3
 
 ## Supported Mitsubishi Climate Units
 
