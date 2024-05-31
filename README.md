@@ -1,5 +1,10 @@
 # Mitsubishi CN105 ESPHome
-This component is an adaptation of [geoffdavis's esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump). Its purpose is to integrate the Mitsubishi heat pump protocol (enabled by the [SwiCago library](https://github.com/SwiCago/HeatPump)) directly into the ESPHome component classes for a more seamless integration.
+
+This project is a firmware for microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump through Home Assistant, a web interface, or any MQTT client.
+
+It uses the ESPHome framework and is compatible with the Arduino framework and ESP-IDF.
+
+This component version is an adaptation of [geoffdavis's esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump). Its purpose is to integrate the Mitsubishi heat pump protocol (enabled by the [SwiCago library](https://github.com/SwiCago/HeatPump)) directly into the ESPHome component classes for a more seamless integration.
 
 The intended use case is for owners of a Mitsubishi Electric heat pump or air conditioner that includes a CN105 communication port to directly control their air handler or indoor unit using local communication through a web browser, or most commonly, the [HomeAssistant](https://www.home-assistant.io/) home automation platform. Installation requires the use of a WiFi capable ESP32 or ESP8266 device, modified to include a 5 pin plug to connect to the heat pump indoor unit. ESPHome is used to load the custom firmware onto the device, and the web browser or HomeAssistant software is used to send temperature setpoints, external temperature references, and settings to the heat pump. Installation requires basic soldering skills, and basic skills in flashing a firmware to a microcontroller (though ESPHome makes this as painless as possible).
 
@@ -8,40 +13,7 @@ The benefits include fully local control over your heat pump system, without rel
 ### Warning: Use at your own risk.
 This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on the Swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
 
-## What's New
-
-### Breaking Changes
-
-#### Warning: a big redesign has been released
-
-Thank you all for your feedbacks, openning issues is the key to reach a good stability as quick as possible. Don't hesitate! 
-Here the last release, labeled ["Stable Build"](https://github.com/echavet/MitsubishiCN105ESPHome/releases/tag/v1.3)
-
-```yaml
-external_components:
-  - source: github://echavet/MitsubishiCN105ESPHome@v1.2.2
-```
-
-Previous one, without the big redesign was: 
-```yaml
-external_components:
-  - source: github://echavet/MitsubishiCN105ESPHome@v1.1.3  
-```
-
-#### Warning: esp-idf framework support feature has been merged to main branch
-
-This is a major change in UART configuration (I should have changed the major number of the version tag. Sorry I didn't!). But that's not so scary! If you upgrade to the head of main you will just have to change the way you configure the UART in your yaml files. Look at the Step 4 in this document.
-
-The reason is issue https://github.com/echavet/MitsubishiCN105ESPHome/issues/6. The old configuration did not allow to use ESP32 ESP-IDF framework, which improves reliability of the hardware UART.
-
-If you don't want this change you must configure your external_components to point to the [v1.0.3](https://github.com/echavet/MitsubishiCN105ESPHome/tree/v1.0.3) tree this way:
-
-```yaml
-external_components:
-  - source: github://echavet/MitsubishiCN105ESPHome@v1.0.3
-```
-
-### Other New Features
+### New Features
 - Additional components for supported units: vane orientation (fully supporting the Swicago map), compressor frequency for energy monitoring, and i-see sensor.
 - Enhanced UART communication with the Heatpump to eliminate delays in the ESPHome loop(), which was a limitation of the original [SwiCago library](https://github.com/SwiCago/HeatPump).
 - Byte-by-byte reading within the loop() function ensures no data loss or lag, as the component continuously reads without blocking ESPHome.
@@ -99,7 +71,7 @@ Add a new device in your ESPHome dashboard. Create a yaml configuration file for
 - [Getting Started with ESPHome and HomeAssistant](https://esphome.io/guides/getting_started_hassio)
 - [Installing ESPHome Locally](https://esphome.io/guides/installing_esphome)
 
-Note: This code utilizes features in ESPHome 1.18.0, including various Fan modes and [external components](https://esphome.io/components/external_components.html).
+Note: This code uses the ESPHome [external components](https://esphome.io/components/external_components.html) integration feature. This means the project is not part of the ESPHome framework. It is an external component. 
 
 ### Step 3: Configure the board and UART settings
 
@@ -120,7 +92,7 @@ uart:
 #### For ESP32-based Devices
 ```yaml
 esp32:
-  board: esp32doit-devkit-v1
+  board: esp32doit-devkit-v1      #or esp32-s3-devkitc-1
   framework:
     type: esp-idf   
 
@@ -144,13 +116,24 @@ external_components:
 climate:
   - platform: cn105
     name: "My Heat Pump"
-    update_interval: 4s
+    update_interval: 4s        # update interval can be ajusted after a first run and logs monitoring* 
 
 # Default logging level
 logger:
   hardware_uart: UART1 # This line can be removed for ESP32 devices
   level: INFO
 ```
+(*): Adjusting the `update_interval`:
+An ESPHome firmware implements the esphome::Component interface to be integrated into the Inversion Of Control mechanism of the ESPHome framework.
+The main method of this process is the `loop()` method. MitsubishiCN105ESPHome performs a series of exchanges with the heat pump through a cycle. This cycle is timed, and its duration is displayed in the logs, provided the `CYCLE` logger is set to at least `INFO`.
+
+If this is the case, you will see logs in the form:
+```
+[09:48:36][I][CYCLE:052]: 6: Cycle ended in 1.2 seconds (with timeout?: NO)
+```
+
+This will give you a good idea of your microcontroller's performance in completing an entire cycle. It is unnecessary to set the `update_interval` below this value.
+In this example, setting an `update_interval` to 1500ms could be a fine tunning.
 
 ### Step 5: Optional components and variables
 
