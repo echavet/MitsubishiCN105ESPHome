@@ -128,7 +128,7 @@ public:
 
 
     void sendFirstConnectionPacket();
-
+    void terminateCycle();
     //bool can_proceed() override;
 
 
@@ -296,6 +296,8 @@ private:
     // counter for status request for checking heatpump is still connected
     // is the counter > MAX_NON_RESPONSE_REQ then we conclude uart is not connected anymore
     int nonResponseCounter = 0;
+
+    int powerRequestWithoutResponses = 0;
 
     bool isReading = false;
     bool isWriting = false;

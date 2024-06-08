@@ -247,11 +247,11 @@ climate:
     stage_sensor:
       name: stage sensor      
     remote_temperature_timeout: 15min
-    update_interval: 2s         # shouldn't be less than 1 second
-    debounce_delay : 100ms       # delay to prevent bouncing 
+    update_interval: 2500ms         # shouldn't be less than 1 second
+    debounce_delay : 120ms       # delay to prevent bouncing 
     hp_uptime_connection_sensor:
       name: ${name} HP Uptime Connection
-      update_interval: 10s
+      update_interval: 30s
     supports:
       mode: [COOL, HEAT, FAN_ONLY, DRY]
       fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
@@ -259,6 +259,9 @@ climate:
     visual:
       min_temperature: 17
       max_temperature: 23
-      temperature_step: 1.0
+      temperature_step:
+        target_temperature: 0.5
+        current_temperature: 0.1
+
 
 

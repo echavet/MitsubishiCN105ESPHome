@@ -231,12 +231,7 @@ void CN105Climate::publishWantedSettingsStateToHA() {
     }
 
     // HA Temp
-
-    if (this->wantedSettings.temperature != -1.0f) {
-        this->target_temperature = this->wantedSettings.temperature;
-        //this->currentSettings.temperature = this->wantedSettings.temperature;
-    }
-
+    this->target_temperature = this->getTemperatureSetting();
 
     // publish to HA
     this->publish_state();
