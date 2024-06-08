@@ -34,6 +34,8 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->vertical_vane_select_ = nullptr;
     this->compressor_frequency_sensor_ = nullptr;
 
+    this->powerRequestWithoutResponses = 0;     // power request is not supported by all heatpump #112
+
     this->remote_temp_timeout_ = 4294967295;    // uint32_t max    
     this->generateExtraComponents();
     this->loopCycle.init();

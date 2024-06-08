@@ -260,6 +260,21 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
     this->statusChanged(receivedStatus);
 }
 
+void CN105Climate::terminateCycle() {
+    if (this->shouldSendExternalTemperature_) {
+        this->sendRemoteTemperature();
+    }
+
+    this->loopCycle.cycleEnded();
+
+    if (this->hp_uptime_connection_sensor_ != nullptr) {
+        // if the uptime connection sensor is configured
+        // we trigger  manual update at the end of a cycle.
+        this->hp_uptime_connection_sensor_->update();
+    }
+
+    this->nbCompleteCycles_++;
+}
 void CN105Climate::getDataFromResponsePacket() {
 
     switch (this->data[0]) {
@@ -296,8 +311,19 @@ void CN105Climate::getDataFromResponsePacket() {
         /* status */
         ESP_LOGD(LOG_CYCLE_TAG, "4b: Receiving status response");
         this->getOperatingAndCompressorFreqFromResponsePacket();
-        ESP_LOGD(LOG_CYCLE_TAG, "5a: Sending power request (0x09)");
-        this->buildAndSendRequestPacket(RQST_PKT_STANDBY);
+
+        if (this->powerRequestWithoutResponses < 3) {         // if more than 3 requests are without reponse, we desactivate the power request (0x09)
+            ESP_LOGD(LOG_CYCLE_TAG, "5a: Sending power request (0x09)");
+            this->buildAndSendRequestPacket(RQST_PKT_STANDBY);
+            this->powerRequestWithoutResponses++;
+        } else {
+            if (this->powerRequestWithoutResponses != 4) {
+                this->powerRequestWithoutResponses = 4;
+                ESP_LOGW(LOG_CYCLE_TAG, "power request (0x09) disabled (not supported)");
+            }
+            // in this case, the cycle ends up now
+            this->terminateCycle();
+        }
         break;
 
     case 0x09:
@@ -305,23 +331,10 @@ void CN105Climate::getDataFromResponsePacket() {
         ESP_LOGD(LOG_CYCLE_TAG, "5b: Receiving Power/Standby response");
         this->getPowerFromResponsePacket();
         //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50                     
+        // reset the powerRequestWithoutResponses to 0 as we had a response
+        this->powerRequestWithoutResponses = 0;
 
-        if (this->shouldSendExternalTemperature_) {
-            this->sendRemoteTemperature();
-        }
-
-        this->loopCycle.cycleEnded();
-
-        if (this->hp_uptime_connection_sensor_ != nullptr) {
-            // if the uptime connection sensor is configured
-            // we trigger  manual update at the end of a cycle.
-            this->hp_uptime_connection_sensor_->update();
-        }
-
-        this->nbCompleteCycles_++;
-
-
-
+        this->terminateCycle();
         break;
 
     case 0x10:
