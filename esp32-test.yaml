@@ -110,9 +110,10 @@ time:
 
 # this setting is for local component (code is not on github)
 external_components:
- - source:
-     type: local
-     path: components 
+  - source: github://echavet/MitsubishiCN105ESPHome
+#  - source:
+#      type: local
+#      path: components 
 
         # Text sensors with general information.
 text_sensor:
