@@ -1,6 +1,6 @@
 # Mitsubishi CN105 ESPHome
 
-This project is a firmware for microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump through Home Assistant, a web interface, or any MQTT client.
+This project is a firmware for ESP32 microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump through Home Assistant, a web interface, or any MQTT client.
 
 It uses the ESPHome framework and is compatible with the Arduino framework and ESP-IDF.
 
@@ -40,11 +40,13 @@ This project maintains all functionalities of the original [geoffdavis](https://
 
 ## Supported Microcontrollers
 
+**Caution:** ESP8266 boards such as the WeMos D1 Mini clones (LOLIN in particular) tend to be unreliable in this application, and may require an external voltage regulator to work. While some users have successfully used ESP8266 based devices, if you are purchasing new hardware for use with this project, it is recommended to focus on the more modern and powerful ESP32-S3 based devices.
+
 - Generic ESP32 Dev Kit (ESP32): tested
-- WeMos D1 Mini (ESP8266): tested
 - M5Stack ATOM Lite : tested
 - M5Stack ATOM S3 Lite: tested w/ [modifications](https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
 - M5Stack StampS3
+- WeMos D1 Mini Pro (ESP8266): tested
 
 ## Supported Mitsubishi Climate Units
 
@@ -71,7 +73,7 @@ Add a new device in your ESPHome dashboard. Create a yaml configuration file for
 - [Getting Started with ESPHome and HomeAssistant](https://esphome.io/guides/getting_started_hassio)
 - [Installing ESPHome Locally](https://esphome.io/guides/installing_esphome)
 
-Note: This code uses the ESPHome [external components](https://esphome.io/components/external_components.html) integration feature. This means the project is not part of the ESPHome framework. It is an external component. 
+Note: This code uses the ESPHome [external components](https://esphome.io/components/external_components.html) integration feature. This means the project is not part of the ESPHome framework, it is an external component. 
 
 ### Step 3: Configure the board and UART settings
 
@@ -133,7 +135,7 @@ If this is the case, you will see logs in the form:
 ```
 
 This will give you a good idea of your microcontroller's performance in completing an entire cycle. It is unnecessary to set the `update_interval` below this value.
-In this example, setting an `update_interval` to 1500ms could be a fine tunning.
+In this example, setting an `update_interval` to 1500ms could be a fine tuned value.
 
 ### Step 5: Optional components and variables
 
@@ -308,6 +310,7 @@ api:
     key: !secret api_key
 
 ota:
+  platform: esphome # Required for ESPhome 2024.6.0 and greater
   password: !secret ota_password
 
 wifi:
@@ -437,6 +440,7 @@ api:
         - lambda: 'id(hp).set_remote_temperature(0);'
 
 ota:
+  platform: esphome # Required for ESPhome 2024.6.0 and greater
 
 # Enable Web server.
 web_server:
@@ -570,12 +574,6 @@ The following ESPHome sensors will not be needed by most users, but can be helpf
 sensor:
   - platform: template
     name: "dg_uart_connected"
-    entity_category: DIAGNOSTIC
-    lambda: |-
-      return (bool) id(hp).isUARTConnected_;
-    update_interval: 30s
-  - platform: template
-    name: "dg_hp_connected"
     entity_category: DIAGNOSTIC
     lambda: |-
       return (bool) id(hp).isUARTConnected_;
