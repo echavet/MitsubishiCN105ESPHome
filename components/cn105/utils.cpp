@@ -42,7 +42,7 @@ const char* CN105Climate::getIfNotNull(const char* what, const char* defaultValu
     return what;
 }
 
-void CN105Climate::debugSettings(const char* settingName, wantedHeatpumpSettings settings) {
+void CN105Climate::debugSettings(const char* settingName, wantedHeatpumpSettings& settings) {
 #ifdef USE_ESP32
     ESP_LOGD(LOG_ACTION_EVT_TAG, "[%s]-> [power: %s, target °C: %.1f, mode: %s, fan: %s, vane: %s, wvane: %s, hasChanged ? -> %s, hasBeenSent ? -> %s]",
         getIfNotNull(settingName, "unnamed"),
@@ -85,7 +85,7 @@ void CN105Climate::debugClimate(const char* settingName) {
 
 
 
-void CN105Climate::debugSettings(const char* settingName, heatpumpSettings settings) {
+void CN105Climate::debugSettings(const char* settingName, heatpumpSettings& settings) {
 #ifdef USE_ESP32
     ESP_LOGD(LOG_SETTINGS_TAG, "[%s]-> [power: %s, target °C: %.1f, mode: %s, fan: %s, vane: %s, wvane: %s]",
         getIfNotNull(settingName, "unnamed"),
