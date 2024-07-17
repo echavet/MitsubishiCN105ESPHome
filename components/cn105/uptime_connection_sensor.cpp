@@ -9,7 +9,7 @@ namespace esphome {
         static const char* const TAG = "uptime.connection.sensor";
         void HpUpTimeConnectionSensor::update() {
             if (connected_) {
-                UptimeSensor::update();
+                UptimeSecondsSensor::update();
             } else {
                 this->uptime_ = 0;
                 this->publish_state(0);
