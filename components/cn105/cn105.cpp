@@ -71,14 +71,17 @@ void CN105Climate::set_remote_temp_timeout(uint32_t timeout) {
     if (timeout == 4294967295) {
         ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to never.");
     } else {
-        ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to %lu", timeout);
+        //ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to %lu", timeout);        
+        log_info_uint32(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to ", timeout);
+
         this->pingExternalTemperature();
     }
 }
 
 void CN105Climate::set_debounce_delay(uint32_t delay) {
     this->debounce_delay_ = delay;
-    ESP_LOGI(LOG_ACTION_EVT_TAG, "set_debounce_delay is set to %lu", delay);
+    //ESP_LOGI(LOG_ACTION_EVT_TAG, "set_debounce_delay is set to %lu", delay);
+    log_info_uint32(LOG_ACTION_EVT_TAG, "set_debounce_delay is set to ", delay);
 }
 
 int CN105Climate::get_compressor_frequency() {
@@ -92,8 +95,8 @@ bool CN105Climate::is_operating() {
 // SERIAL_8E1
 void CN105Climate::setupUART() {
 
-    ESP_LOGI(TAG, "setupUART() with baudrate %lu", this->parent_->get_baud_rate());
-
+    //ESP_LOGI(TAG, "setupUART() with baudrate %lu", this->parent_->get_baud_rate());
+    log_info_uint32(TAG, "setupUART() with baudrate ", this->parent_->get_baud_rate());
     this->setHeatpumpConnected(false);
     this->isUARTConnected_ = false;
 
