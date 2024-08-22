@@ -82,7 +82,7 @@ api:
 
 ota:  
   password: !secret ota_pwd
-
+  platform: esphome
 wifi:
   #ssid: !secret wifi_ssid
   #password: !secret wifi_password

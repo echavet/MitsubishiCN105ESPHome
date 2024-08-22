@@ -26,8 +26,10 @@ void CN105Climate::setup() {
     this->nbHeatpumpConnections_ = 0;
 
     ESP_LOGI(TAG, "tx_pin: %d rx_pin: %d", this->tx_pin_, this->rx_pin_);
-    ESP_LOGI(TAG, "remote_temp_timeout is set to %d", this->remote_temp_timeout_);
-    ESP_LOGI(TAG, "debounce_delay is set to %d", this->debounce_delay_);
+    //ESP_LOGI(TAG, "remote_temp_timeout is set to %lu", this->remote_temp_timeout_);
+    log_info_uint32(TAG, "remote_temp_timeout is set to ", this->remote_temp_timeout_);
+    //ESP_LOGI(TAG, "debounce_delay is set to %lu", this->debounce_delay_);
+    log_info_uint32(TAG, "debounce_delay is set to ", this->debounce_delay_);
 
     this->setupUART();
     this->sendFirstConnectionPacket();
@@ -39,7 +41,7 @@ void CN105Climate::setup() {
  * This function is called repeatedly in the main program loop.
  */
 void CN105Climate::loop() {
-    if (!this->processInput()) {                                            // if we don't get an input: no read op
+    if (!this->processInput()) {                                            // if we don't get any input: no read op
         if ((this->wantedSettings.hasChanged) && (!this->loopCycle.isCycleRunning())) {
             this->checkPendingWantedSettings();
         } else {
@@ -56,7 +58,9 @@ void CN105Climate::loop() {
 
 uint32_t CN105Climate::get_update_interval() const { return this->update_interval_; }
 void CN105Climate::set_update_interval(uint32_t update_interval) {
-    ESP_LOGD(TAG, "Setting update interval to %d", update_interval);
+    //ESP_LOGD(TAG, "Setting update interval to %lu", update_interval);
+    log_debug_uint32(TAG, "Setting update interval to ", update_interval);
+
     this->update_interval_ = update_interval;
     this->autoUpdate = (update_interval != 0);
 }
