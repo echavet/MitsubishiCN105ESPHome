@@ -2,8 +2,6 @@
 #include <esphome.h>
 #include "esphome/components/uart/uart.h"
 
-using namespace esphome;
-
 #if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
 #endif
