@@ -178,7 +178,7 @@ int CN105Climate::lookupByteMapIndex(const int valuesMap[], int len, int lookupV
         }
     }
     ESP_LOGW("lookup", "%s caution value %d not found, returning -1", debugInfo, lookupValue);
-    esphome::delay(200);
+    //esphome::delay(200);
     return -1;
 }
 int CN105Climate::lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue, const char* debugInfo) {
@@ -188,7 +188,7 @@ int CN105Climate::lookupByteMapIndex(const char* valuesMap[], int len, const cha
         }
     }
     ESP_LOGW("lookup", "%s caution value %s not found, returning -1", debugInfo, lookupValue);
-    esphome::delay(200);
+    //esphome::delay(200);
     return -1;
 }
 const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo, const char* defaultValue) {
