@@ -50,6 +50,7 @@ api:
     key: !secret encryption_key
 
 ota:  
+- platform: esphome
   password: !secret ota_pwd
 
 wifi:
@@ -115,13 +116,17 @@ text_sensor:
 #    name: ${name} WiFi Signal
 #    update_interval: 60s
 
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+
 # Configuration pour l'objet 'climate'
 climate:
   - platform: cn105  # remplis avec la plateforme de ton choix
     name: "Clim Seb"
     id: "clim_seb"
-    baud_rate: 0
-    hardware_uart: UART0
     update_interval: 4s
     # Ajoute d'autres paramètres spécifiques à ton matériel et tes besoins
     
@@ -196,4 +201,4 @@ switch:
     optimistic: true    
     turn_on_action:
       - lambda: |-          
-          id(clim_seb).buildAndSendRequestsInfoPackets(); 
+          id(clim_seb).buildAndSendRequestsInfoPackets();

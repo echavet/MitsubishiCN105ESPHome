@@ -1,0 +1,42 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  test:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        version: [dev, 2024.8]
+        variant: [esp32-test, hp-debug]
+    container:
+      image: ghcr.io/esphome/esphome:${{ matrix.version }}
+    env:
+      USERNAME: test
+      PASSWORD: github-run
+    steps:
+    - uses: actions/checkout@v4
+    - name: Generate random secret
+      env:
+        keys: >-
+          mqtt_password ota_pwd
+          wifi_ssid wifi_password wifi_ssid3 wifi_password3
+        enc_keys: encryption_key_sejour encryption_key
+      run: |
+        for key in $keys ; do
+          value=`head -c 100 /dev/urandom | base64 | cut -c 1-24 | head -n1`
+          echo "${key}: ${value}" >> secrets.yaml
+        done
+        for key in $enc_keys ; do
+          value=`head -c 32 /dev/urandom | base64`
+          echo "${key}: ${value}" >> secrets.yaml
+        done
+    - run: esphome compile ${{ matrix.variant }}.yaml
