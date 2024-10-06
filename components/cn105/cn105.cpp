@@ -178,4 +178,3 @@ bool CN105Climate::isHeatpumpConnectionActive() {
 
     return  (lrTimeMs < MAX_DELAY_RESPONSE_FACTOR * this->update_interval_);
 }
-

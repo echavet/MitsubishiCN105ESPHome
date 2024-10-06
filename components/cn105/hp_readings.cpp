@@ -228,6 +228,18 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
     //ESP_LOGD("Decoder", "[0x03 room temperature]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");        
+    //                 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+    // FC 62 01 30 10 03 00 00 0E 00 94 B0 B0 FE 42 00 01 0A 64 00 00 A9
+    //                         RT    OT RT SP ?? ?? ??    CT CT
+    // RT = room temperature (in old format and in new format)
+    // OT = outside air temperature
+    // SP = room setpoint temperature?
+    // CT = increasing counter (unknown function)
+
+    if (data[5] != 0x00)
+	receivedStatus.outsideAirTemperature = (float)(data[5] - 128) / 2;
+    else
+	receivedStatus.outsideAirTemperature = -1;
 
     if (data[6] != 0x00) {
         int temp = data[6];
@@ -236,7 +248,9 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
     } else {
         receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
     }
+
     ESP_LOGD("Decoder", "[Room °C: %f]", receivedStatus.roomTemperature);
+    ESP_LOGD("Decoder", "[OAT  °C: %f]", receivedStatus.outsideAirTemperature);
 
     // no change with this packet to currentStatus for operating and compressorFrequency
     receivedStatus.operating = currentStatus.operating;
@@ -257,6 +271,7 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
 
     // no change with this packet to roomTemperature
     receivedStatus.roomTemperature = currentStatus.roomTemperature;
+    receivedStatus.outsideAirTemperature = currentStatus.outsideAirTemperature;
     this->statusChanged(receivedStatus);
 }
 
@@ -406,6 +421,7 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->currentStatus.operating = status.operating;
         this->currentStatus.compressorFrequency = status.compressorFrequency;
         this->currentStatus.roomTemperature = status.roomTemperature;
+        this->currentStatus.outsideAirTemperature = status.outsideAirTemperature;
         this->current_temperature = currentStatus.roomTemperature;
 
         this->updateAction();       // update action info on HA climate component        
@@ -413,6 +429,10 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
 
         if (this->compressor_frequency_sensor_ != nullptr) {
             this->compressor_frequency_sensor_->publish_state(currentStatus.compressorFrequency);
+        }
+
+        if (this->outside_air_temperature_sensor_ != nullptr) {
+            this->outside_air_temperature_sensor_->publish_state(currentStatus.outsideAirTemperature);
         }
     } // else no change
 }
@@ -622,4 +642,3 @@ void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings, bool up
         }
     }
 }
-

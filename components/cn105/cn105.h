@@ -4,6 +4,7 @@
 #include "van_orientation_select.h"
 #include "uptime_connection_sensor.h"
 #include "compressor_frequency_sensor.h"
+#include "outside_air_temperature_sensor.h"
 #include "auto_sub_mode_sensor.h"
 #include "isee_sensor.h"
 #include "stage_sensor.h"
@@ -33,6 +34,7 @@ public:
     void set_vertical_vane_select(VaneOrientationSelect* vertical_vane_select);
     void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select);
     void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);
+    void set_outside_air_temperature_sensor(esphome::sensor::Sensor* outside_air_temperature_sensor);
     void set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_sensor);
     void set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor);
     void set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor);
@@ -54,6 +56,8 @@ public:
         nullptr;  // Select to store manual position of horizontal swing
     sensor::Sensor* compressor_frequency_sensor_ =
         nullptr;  // Sensor to store compressor frequency
+    sensor::Sensor* outside_air_temperature_sensor_ =
+	nullptr;  // Outside air temperature
 
     // sensor to monitor heatpump connection time 
     uptime::HpUpTimeConnectionSensor* hp_uptime_connection_sensor_ = nullptr;
@@ -285,7 +289,7 @@ private:
     uint8_t* data;
 
     // initialise to all off, then it will update shortly after connect;
-    heatpumpStatus currentStatus{ 0, false, {TIMER_MODE_MAP[0], 0, 0, 0, 0}, 0 };
+    heatpumpStatus currentStatus{ 0, 0, false, {TIMER_MODE_MAP[0], 0, 0, 0, 0}, 0 };
     heatpumpFunctions functions;
 
     bool tempMode = false;
