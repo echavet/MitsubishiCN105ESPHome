@@ -55,10 +55,10 @@ public:
     sensor::Sensor* compressor_frequency_sensor_ =
         nullptr;  // Sensor to store compressor frequency
 
-    // sensor to monitor heatpump connection time 
+    // sensor to monitor heatpump connection time
     uptime::HpUpTimeConnectionSensor* hp_uptime_connection_sensor_ = nullptr;
 
-    int get_compressor_frequency();
+    float get_compressor_frequency();
     bool is_operating();
 
     // checks if the field has changed

@@ -118,7 +118,7 @@ void CN105Climate::processDataPacket() {
 
     if (this->checkSum()) {
         // checkPoint of a heatpump response
-        this->lastResponseMs = CUSTOM_MILLIS;    //esphome::CUSTOM_MILLIS;        
+        this->lastResponseMs = CUSTOM_MILLIS;    //esphome::CUSTOM_MILLIS;
 
         // processing the specific command
         processCommand();
@@ -172,7 +172,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
     heatpumpSettings receivedSettings{};
     ESP_LOGD("Decoder", "[0x02 is settings]");
     //02 00 00 01 08 0A 00 07 00 00 03 AA 00 00 00 00 94
-    //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");        
+    //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");
     receivedSettings.connected = true;      // we're here so we're connected (actually not used property)
     receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3], "power reading");
     receivedSettings.iSee = data[4] > 0x08 ? true : false;
@@ -227,7 +227,7 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
     heatpumpStatus receivedStatus{};
 
     //ESP_LOGD("Decoder", "[0x03 room temperature]");
-    //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");        
+    //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");
 
     if (data[6] != 0x00) {
         int temp = data[6];
@@ -246,6 +246,14 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 }
 void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
     //FC 62 01 30 10 06 00 00 1A 01 00 00 00 00 00 00 00 00 00 00 00 3C
+    //MSZ-RW25VGHZ-SC1 / MUZ-RW25VGHZ-SC1
+    //FC 62 01 30 10 06 00 00 00 01 00 08 05 50 00 00 42 00 00 00 00 B7
+    //                           OP CF CF ?? CT       ??
+    // OP = operating status (1 = compressor running, 0 = standby)
+    // CF = compressor frequency in 16-bit integer, 1 decimal accuracy
+    //      (frequency in float = value / 10)
+    // CT = slowly increasing counter, unknown function
+    // ?? = unknown bytes that appear to have a fixed/constant value
     heatpumpStatus receivedStatus{};
     ESP_LOGD("Decoder", "[0x06 is status]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x06: Data -> Heatpump Status");
@@ -253,7 +261,10 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
     // reset counter (because a reply indicates it is connected)
     this->nonResponseCounter = 0;
     receivedStatus.operating = data[4];
-    receivedStatus.compressorFrequency = data[3];
+    if (data[5] || data[6])
+        receivedStatus.compressorFrequency = (float)((data[5] << 8) | data[6]) / 10;
+    else
+        receivedStatus.compressorFrequency = (float)data[3];
 
     // no change with this packet to roomTemperature
     receivedStatus.roomTemperature = currentStatus.roomTemperature;
@@ -281,7 +292,7 @@ void CN105Climate::getDataFromResponsePacket() {
     case 0x02:             /* setting information */
         ESP_LOGD(LOG_CYCLE_TAG, "2b: Receiving settings response");
         this->getSettingsFromResponsePacket();
-        // next step is to get the room temperature case 0x03        
+        // next step is to get the room temperature case 0x03
         ESP_LOGD(LOG_CYCLE_TAG, "3a: Sending room °C request (0x03)");
         this->buildAndSendRequestPacket(RQST_PKT_ROOM_TEMP);
         break;
@@ -290,7 +301,7 @@ void CN105Climate::getDataFromResponsePacket() {
         /* room temperature reading */
         ESP_LOGD(LOG_CYCLE_TAG, "3b: Receiving room °C response");
         this->getRoomTemperatureFromResponsePacket();
-        // next step is to get the heatpump status (operating and compressor frequency) case 0x06        
+        // next step is to get the heatpump status (operating and compressor frequency) case 0x06
         ESP_LOGD(LOG_CYCLE_TAG, "4a: Sending status request (0x06)");
         this->buildAndSendRequestPacket(RQST_PKT_STATUS);
         break;
@@ -330,7 +341,7 @@ void CN105Climate::getDataFromResponsePacket() {
         /* Power */
         ESP_LOGD(LOG_CYCLE_TAG, "5b: Receiving Power/Standby response");
         this->getPowerFromResponsePacket();
-        //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50                     
+        //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50
         // reset the powerRequestWithoutResponses to 0 as we had a response
         this->powerRequestWithoutResponses = 0;
 
@@ -386,9 +397,9 @@ void CN105Climate::processCommand() {
         ESP_LOGI(TAG, "--> Heatpump did reply: connection success! <--");
         //this->isHeatpumpConnected_ = true;
         this->setHeatpumpConnected(true);
-        // let's say that the last complete cycle was over now        
+        // let's say that the last complete cycle was over now
         this->loopCycle.lastCompleteCycleMs = CUSTOM_MILLIS;
-        this->currentSettings.resetSettings();      // each time we connect, we need to reset current setting to force a complete sync with ha component state and receievdSettings 
+        this->currentSettings.resetSettings();      // each time we connect, we need to reset current setting to force a complete sync with ha component state and receievdSettings
         break;
     default:
         break;
@@ -408,7 +419,7 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->currentStatus.roomTemperature = status.roomTemperature;
         this->current_temperature = currentStatus.roomTemperature;
 
-        this->updateAction();       // update action info on HA climate component        
+        this->updateAction();       // update action info on HA climate component
         this->publish_state();
 
         if (this->compressor_frequency_sensor_ != nullptr) {
@@ -420,7 +431,7 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
 
 void CN105Climate::publishStateToHA(heatpumpSettings settings) {
 
-    if ((this->wantedSettings.mode == nullptr) && (this->wantedSettings.power == nullptr)) {        // to prevent overwriting a user demand 
+    if ((this->wantedSettings.mode == nullptr) && (this->wantedSettings.power == nullptr)) {        // to prevent overwriting a user demand
         checkPowerAndModeSettings(settings);
     }
 
@@ -454,7 +465,7 @@ void CN105Climate::publishStateToHA(heatpumpSettings settings) {
 
 
 void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
-    // settings correponds to current settings 
+    // settings correponds to current settings
     ESP_LOGV(LOG_SETTINGS_TAG, "Settings received");
 
     this->debugSettings("current", this->currentSettings);
@@ -622,4 +633,3 @@ void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings, bool up
         }
     }
 }
-

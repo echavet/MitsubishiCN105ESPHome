@@ -189,7 +189,7 @@ struct wantedHeatpumpSettings : heatpumpSettings {
         hasChanged = false;
         hasBeenSent = false;
         //nb_deffered_requests = 0;
-        //lastChange = 0; 
+        //lastChange = 0;
     }
 
     wantedHeatpumpSettings& operator=(const wantedHeatpumpSettings& other) {
@@ -203,7 +203,7 @@ struct wantedHeatpumpSettings : heatpumpSettings {
 
     wantedHeatpumpSettings& operator=(const heatpumpSettings& other) {
         if (this != &other) { // self-assignment protection
-            heatpumpSettings::operator=(other); // Copie des membres de base                        
+            heatpumpSettings::operator=(other); // Copie des membres de base
         }
         return *this;
     }
@@ -246,7 +246,7 @@ struct heatpumpStatus {
     float roomTemperature;
     bool operating; // if true, the heatpump is operating to reach the desired temperature
     heatpumpTimers timers;
-    int compressorFrequency;
+    float compressorFrequency;
 
     bool operator==(const heatpumpStatus& other) const {
         return roomTemperature == other.roomTemperature &&
