@@ -36,7 +36,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
     this->powerRequestWithoutResponses = 0;     // power request is not supported by all heatpump #112
 
-    this->remote_temp_timeout_ = 4294967295;    // uint32_t max    
+    this->remote_temp_timeout_ = 4294967295;    // uint32_t max
     this->generateExtraComponents();
     this->loopCycle.init();
     this->wantedSettings.resetSettings();
@@ -71,7 +71,7 @@ void CN105Climate::set_remote_temp_timeout(uint32_t timeout) {
     if (timeout == 4294967295) {
         ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to never.");
     } else {
-        //ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to %lu", timeout);        
+        //ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to %lu", timeout);
         log_info_uint32(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to ", timeout);
 
         this->pingExternalTemperature();
@@ -84,7 +84,7 @@ void CN105Climate::set_debounce_delay(uint32_t delay) {
     log_info_uint32(LOG_ACTION_EVT_TAG, "set_debounce_delay is set to ", delay);
 }
 
-int CN105Climate::get_compressor_frequency() {
+float CN105Climate::get_compressor_frequency() {
     return currentStatus.compressorFrequency;
 }
 bool CN105Climate::is_operating() {
@@ -173,7 +173,7 @@ bool CN105Climate::isHeatpumpConnectionActive() {
     // if (lrTimeMs > MAX_DELAY_RESPONSE_FACTOR * this->update_interval_) {
     //     ESP_LOGV(TAG, "Heatpump has not replied for %ld s", lrTimeMs / 1000);
     //     ESP_LOGV(TAG, "We think Heatpump is not connected anymore..");
-    //     this->disconnectUART();        
+    //     this->disconnectUART();
     // }
 
     return  (lrTimeMs < MAX_DELAY_RESPONSE_FACTOR * this->update_interval_);

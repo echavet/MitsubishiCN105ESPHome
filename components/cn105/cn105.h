@@ -59,10 +59,10 @@ public:
     sensor::Sensor* outside_air_temperature_sensor_ =
 	nullptr;  // Outside air temperature
 
-    // sensor to monitor heatpump connection time 
+    // sensor to monitor heatpump connection time
     uptime::HpUpTimeConnectionSensor* hp_uptime_connection_sensor_ = nullptr;
 
-    int get_compressor_frequency();
+    float get_compressor_frequency();
     bool is_operating();
 
     // checks if the field has changed
