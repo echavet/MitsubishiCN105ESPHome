@@ -228,6 +228,7 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
     //ESP_LOGD("Decoder", "[0x03 room temperature]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");
+
     //                 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
     // FC 62 01 30 10 03 00 00 0E 00 94 B0 B0 FE 42 00 01 0A 64 00 00 A9
     //                         RT    OT RT SP ?? ?? ??    CT CT
@@ -236,10 +237,11 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
     // SP = room setpoint temperature?
     // CT = increasing counter (unknown function)
 
-    if (data[5] != 0x00)
-	receivedStatus.outsideAirTemperature = (float)(data[5] - 128) / 2;
-    else
-	receivedStatus.outsideAirTemperature = -1;
+    if (data[5] != 0x00) {
+  	  receivedStatus.outsideAirTemperature = (float)(data[5] - 128) / 2;
+    } else {
+  	  receivedStatus.outsideAirTemperature = -1;
+    }
 
     if (data[6] != 0x00) {
         int temp = data[6];
@@ -256,8 +258,8 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
     receivedStatus.operating = currentStatus.operating;
     receivedStatus.compressorFrequency = currentStatus.compressorFrequency;
     this->statusChanged(receivedStatus);
-
 }
+
 void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
     //FC 62 01 30 10 06 00 00 1A 01 00 00 00 00 00 00 00 00 00 00 00 3C
     //MSZ-RW25VGHZ-SC1 / MUZ-RW25VGHZ-SC1
