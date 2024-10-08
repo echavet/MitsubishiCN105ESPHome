@@ -600,7 +600,8 @@ void CN105Climate::checkFanSettings(heatpumpSettings& settings, bool updateCurre
         if (updateCurrentSettings) {
             currentSettings.fan = settings.fan;
         }
-        if (strcmp(currentSettings.fan, "QUIET") == 0) {
+
+        if (strcmp(settings.fan, "QUIET") == 0) {
             this->fan_mode = climate::CLIMATE_FAN_QUIET;
         } else if (strcmp(settings.fan, "1") == 0) {
             this->fan_mode = climate::CLIMATE_FAN_LOW;
