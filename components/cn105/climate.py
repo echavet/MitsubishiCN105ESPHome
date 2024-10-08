@@ -35,6 +35,9 @@ CONF_SUPPORTS = "supports"
 CONF_HORIZONTAL_SWING_SELECT = "horizontal_vane_select"
 CONF_VERTICAL_SWING_SELECT = "vertical_vane_select"
 CONF_COMPRESSOR_FREQUENCY_SENSOR = "compressor_frequency_sensor"
+CONF_INPUT_POWER_SENSOR = "input_power_sensor"
+CONF_KWH_SENSOR = "kwh_sensor"
+CONF_RUNTIME_HOURS_SENSOR = "runtime_hours_sensor"
 CONF_OUTSIDE_AIR_TEMPERATURE_SENSOR = "outside_air_temperature_sensor"
 CONF_ISEE_SENSOR = "isee_sensor"
 CONF_STAGE_SENSOR = "stage_sensor"
@@ -58,6 +61,18 @@ VaneOrientationSelect = cg.global_ns.class_(
 
 CompressorFrequencySensor = cg.global_ns.class_(
     "CompressorFrequencySensor", sensor.Sensor, cg.Component
+)
+
+InputPowerSensor = cg.global_ns.class_(
+    "InputPowerSensor", sensor.Sensor, cg.Component
+)
+
+kWhSensor = cg.global_ns.class_(
+    "kWhSensor", sensor.Sensor, cg.Component
+)
+
+RuntimeHoursSensor = cg.global_ns.class_(
+    "RuntimeHoursSensor", sensor.Sensor, cg.Component
 )
 
 OutsideAirTemperatureSensor = cg.global_ns.class_(
@@ -94,6 +109,18 @@ SELECT_SCHEMA = select.SELECT_SCHEMA.extend(
 
 COMPRESSOR_FREQUENCY_SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(CompressorFrequencySensor)}
+)
+
+INPUT_POWER_SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(InputPowerSensor)}
+)
+
+KWH_SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(kWhSensor)}
+)
+
+RUNTIME_HOURS_SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(RuntimeHoursSensor)}
 )
 
 OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
@@ -142,6 +169,9 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
         cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
         cv.Optional(CONF_VERTICAL_SWING_SELECT): SELECT_SCHEMA,
         cv.Optional(CONF_COMPRESSOR_FREQUENCY_SENSOR): COMPRESSOR_FREQUENCY_SENSOR_SCHEMA,
+        cv.Optional(CONF_INPUT_POWER_SENSOR): INPUT_POWER_SENSOR_SCHEMA,
+        cv.Optional(CONF_KWH_SENSOR): KWH_SENSOR_SCHEMA,
+        cv.Optional(CONF_RUNTIME_HOURS_SENSOR): RUNTIME_HOURS_SENSOR_SCHEMA,
         cv.Optional(CONF_OUTSIDE_AIR_TEMPERATURE_SENSOR): OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA,
         cv.Optional(CONF_ISEE_SENSOR): ISEE_SENSOR_SCHEMA,
         cv.Optional(CONF_STAGE_SENSOR): STAGE_SENSOR_SCHEMA,
@@ -218,6 +248,27 @@ def to_code(config):
         sensor_ = yield sensor.new_sensor(conf)
         yield cg.register_component(sensor_, conf)
         cg.add(var.set_compressor_frequency_sensor(sensor_))
+
+    if CONF_INPUT_POWER_SENSOR in config:
+        conf = config[CONF_INPUT_POWER_SENSOR]
+        conf["force_update"] = False
+        sensor_ = yield sensor.new_sensor(conf)
+        yield cg.register_component(sensor_, conf)
+        cg.add(var.set_input_power_sensor(sensor_))
+
+    if CONF_KWH_SENSOR in config:
+        conf = config[CONF_KWH_SENSOR]
+        conf["force_update"] = False
+        sensor_ = yield sensor.new_sensor(conf)
+        yield cg.register_component(sensor_, conf)
+        cg.add(var.set_kwh_sensor(sensor_))
+
+    if CONF_RUNTIME_HOURS_SENSOR in config:
+        conf = config[CONF_RUNTIME_HOURS_SENSOR]
+        conf["force_update"] = False
+        sensor_ = yield sensor.new_sensor(conf)
+        yield cg.register_component(sensor_, conf)
+        cg.add(var.set_runtime_hours_sensor(sensor_))
 
     if CONF_OUTSIDE_AIR_TEMPERATURE_SENSOR in config:
         conf = config[CONF_OUTSIDE_AIR_TEMPERATURE_SENSOR]

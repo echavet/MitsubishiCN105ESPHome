@@ -26,13 +26,19 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->infoMode = 0;
     this->lastConnectRqTimeMs = 0;
     this->currentStatus.operating = false;
-    this->currentStatus.compressorFrequency = -1;
+    this->currentStatus.compressorFrequency = NAN;
+    this->currentStatus.inputPower = NAN;
+    this->currentStatus.kWh = NAN;
+    this->currentStatus.runtimeHours = NAN;
     this->tx_pin_ = -1;
     this->rx_pin_ = -1;
 
     this->horizontal_vane_select_ = nullptr;
     this->vertical_vane_select_ = nullptr;
     this->compressor_frequency_sensor_ = nullptr;
+    this->input_power_sensor_ = nullptr;
+    this->kwh_sensor_ = nullptr;
+    this->runtime_hours_sensor_ = nullptr;
 
     this->powerRequestWithoutResponses = 0;     // power request is not supported by all heatpump #112
 
@@ -86,6 +92,15 @@ void CN105Climate::set_debounce_delay(uint32_t delay) {
 
 float CN105Climate::get_compressor_frequency() {
     return currentStatus.compressorFrequency;
+}
+float CN105Climate::get_input_power() {
+    return currentStatus.inputPower;
+}
+float CN105Climate::get_kwh() {
+    return currentStatus.kWh;
+}
+float CN105Climate::get_runtime_hours() {
+    return currentStatus.runtimeHours;
 }
 bool CN105Climate::is_operating() {
     return currentStatus.operating;

@@ -228,19 +228,18 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
     //ESP_LOGD("Decoder", "[0x03 room temperature]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x03: Data -> Room temperature");
-
     //                 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
     // FC 62 01 30 10 03 00 00 0E 00 94 B0 B0 FE 42 00 01 0A 64 00 00 A9
-    //                         RT    OT RT SP ?? ?? ??    CT CT
+    //                         RT    OT RT SP ?? ?? ?? RM RM RM
     // RT = room temperature (in old format and in new format)
     // OT = outside air temperature
     // SP = room setpoint temperature?
-    // CT = increasing counter (unknown function)
+    // RM = indoor unit operating time in minutes
 
-    if (data[5] != 0x00) {
-  	  receivedStatus.outsideAirTemperature = (float)(data[5] - 128) / 2;
+    if (data[5] > 1) {
+	receivedStatus.outsideAirTemperature = (float)(data[5] - 128) / 2;
     } else {
-  	  receivedStatus.outsideAirTemperature = -1;
+	receivedStatus.outsideAirTemperature = NAN;
     }
 
     if (data[6] != 0x00) {
@@ -251,12 +250,16 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
         receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
     }
 
+    receivedStatus.runtimeHours = float((data[11] << 16) | (data[12] << 8) | data[13]) / 60;
+
     ESP_LOGD("Decoder", "[Room °C: %f]", receivedStatus.roomTemperature);
     ESP_LOGD("Decoder", "[OAT  °C: %f]", receivedStatus.outsideAirTemperature);
 
     // no change with this packet to currentStatus for operating and compressorFrequency
     receivedStatus.operating = currentStatus.operating;
     receivedStatus.compressorFrequency = currentStatus.compressorFrequency;
+    receivedStatus.inputPower = currentStatus.inputPower;
+    receivedStatus.kWh = currentStatus.kWh;
     this->statusChanged(receivedStatus);
 }
 
@@ -264,11 +267,13 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
     //FC 62 01 30 10 06 00 00 1A 01 00 00 00 00 00 00 00 00 00 00 00 3C
     //MSZ-RW25VGHZ-SC1 / MUZ-RW25VGHZ-SC1
     //FC 62 01 30 10 06 00 00 00 01 00 08 05 50 00 00 42 00 00 00 00 B7
-    //                           OP CF CF ?? CT       ??
+    //                           OP IP IP EU EU       ??
     // OP = operating status (1 = compressor running, 0 = standby)
-    // CF = compressor frequency in 16-bit integer, 1 decimal accuracy
-    //      (frequency in float = value / 10)
-    // CT = slowly increasing counter, unknown function
+    // IP = Current input power in Watts (16-bit decimal)
+    // EU = energy usage
+    //      (used energy in kWh = value/10)
+    //      TODO: Currently the maximum size of the counter is not known and
+    //            if the counter extends to other bytes.
     // ?? = unknown bytes that appear to have a fixed/constant value
     heatpumpStatus receivedStatus{};
     ESP_LOGD("Decoder", "[0x06 is status]");
@@ -277,14 +282,14 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
     // reset counter (because a reply indicates it is connected)
     this->nonResponseCounter = 0;
     receivedStatus.operating = data[4];
-    if (data[5] || data[6])
-        receivedStatus.compressorFrequency = (float)((data[5] << 8) | data[6]) / 10;
-    else
-        receivedStatus.compressorFrequency = (float)data[3];
+    receivedStatus.compressorFrequency = data[3];
+    receivedStatus.inputPower = (data[5] << 8) | data[6];
+    receivedStatus.kWh = float((data[7] << 8) | data[8]) / 10;
 
     // no change with this packet to roomTemperature
     receivedStatus.roomTemperature = currentStatus.roomTemperature;
     receivedStatus.outsideAirTemperature = currentStatus.outsideAirTemperature;
+    receivedStatus.runtimeHours = currentStatus.runtimeHours;
     this->statusChanged(receivedStatus);
 }
 
@@ -435,6 +440,9 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
 
         this->currentStatus.operating = status.operating;
         this->currentStatus.compressorFrequency = status.compressorFrequency;
+        this->currentStatus.inputPower = status.inputPower;
+        this->currentStatus.kWh = status.kWh;
+        this->currentStatus.runtimeHours = status.runtimeHours;
         this->currentStatus.roomTemperature = status.roomTemperature;
         this->currentStatus.outsideAirTemperature = status.outsideAirTemperature;
         this->current_temperature = currentStatus.roomTemperature;
@@ -444,6 +452,18 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
 
         if (this->compressor_frequency_sensor_ != nullptr) {
             this->compressor_frequency_sensor_->publish_state(currentStatus.compressorFrequency);
+        }
+
+        if (this->input_power_sensor_ != nullptr) {
+            this->input_power_sensor_->publish_state(currentStatus.inputPower);
+        }
+
+        if (this->kwh_sensor_ != nullptr) {
+            this->kwh_sensor_->publish_state(currentStatus.kWh);
+        }
+
+        if (this->runtime_hours_sensor_ != nullptr) {
+            this->runtime_hours_sensor_->publish_state(currentStatus.runtimeHours);
         }
 
         if (this->outside_air_temperature_sensor_ != nullptr) {
