@@ -168,6 +168,8 @@ climate:
         current_temperature: 0.1
     compressor_frequency_sensor:
       name: ${name} Compressor Frequency
+    outside_air_temperature_sensor:
+      name: ${name} Outside Air Temperature
     vertical_vane_select:
       name: ${name} Vertical Vane
     horizontal_vane_select:
@@ -266,26 +268,26 @@ esphome:
   friendly_name: My Heatpump 1
 
 # For ESP8266 Devices
-esp8266:
-  board: d1_mini
-
-uart:
-  id: HP_UART
-  baud_rate: 2400
-  tx_pin: 1
-  rx_pin: 3
-
-# For ESP32 Devices
-#esp32:
-#  board: esp32doit-devkit-v1
-#  framework:
-#    type: esp-idf   
+#esp8266:
+#  board: d1_mini
 #
 #uart:
 #  id: HP_UART
 #  baud_rate: 2400
-#  tx_pin: GPIO17
-#  rx_pin: GPIO16
+#  tx_pin: 1
+#  rx_pin: 3
+
+# For ESP32 Devices
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: esp-idf   
+
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: GPIO17
+  rx_pin: GPIO16
 
 external_components:
   - source: github://echavet/MitsubishiCN105ESPHome
@@ -344,26 +346,26 @@ esphome:
   friendly_name: ${friendly_name}
   
 # For ESP8266 Devices
-esp8266:
-  board: d1_mini
-
-uart:
-  id: HP_UART
-  baud_rate: 2400
-  tx_pin: 1
-  rx_pin: 3
-
-# For ESP32 Devices
-#esp32:
-#  board: esp32doit-devkit-v1
-#  framework:
-#    type: esp-idf   
+#esp8266:
+#  board: d1_mini
 #
 #uart:
 #  id: HP_UART
 #  baud_rate: 2400
-#  tx_pin: GPIO17
-#  rx_pin: GPIO16
+#  tx_pin: 1
+#  rx_pin: 3
+
+# For ESP32 Devices
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: esp-idf   
+
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: GPIO17
+  rx_pin: GPIO16
 
 external_components:
   - source: github://echavet/MitsubishiCN105ESPHome
@@ -494,6 +496,8 @@ climate:
         current_temperature: 0.1
     compressor_frequency_sensor:
       name: ${name} Compressor Frequency
+    outside_air_temperature_sensor:
+      name: ${name} Outside Air Temperature
     vertical_vane_select:
       name: ${name} Vertical Vane
     horizontal_vane_select:
@@ -543,6 +547,28 @@ sensor:
 ```
 
 ## Diagnostic Sensors
+
+### Outside Air Temperature
+
+This sensor reads the outdoor unit's air temperature reading, in 1.0 degree C increments. Not all outdoor units support this sensor. Some outdoor units will send an accurate value while the unit is operating, or in heat/cool mode, but will send -63.5C when offline.
+
+```yaml
+    outside_air_temperature_sensor:
+      name: ${name} Outside Air Temperature
+```
+
+Compatible units (as reported by users):
+
+| Indoor          | Outdoor          | Temperature                             |
+|-----------------|------------------|-----------------------------------------|
+| MSZ-AP25VGD     | MXZ-4F80VGD      | Works                                   |
+| MSZ-AP35VGD     | MUZ-AP35VG       | Works but reports -63.5C when idle      |
+| MSZ-AP60VGD     | MUZ-AP60VG       | Works                                   |
+| MSZ-AP71VGD     | MUZ-AP71VG       | Works but reports -63.5C when idle      |
+| MSZ-GLxxNA      | MXZ-SM42NAMHZ    | Works                                   |
+| MSZ-RW25VG-SC1  | MUZ-RW25VGHZ-SC1 | Works                                   |
+|                 | MUZ-FD25NA       | Not working                             |
+| MSZ-LN35        | MUZ-LN35         | Not working                             |
 
 ### Auto and Stage Sensors
 
