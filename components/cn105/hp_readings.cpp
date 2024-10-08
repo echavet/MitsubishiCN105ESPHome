@@ -290,6 +290,8 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
 
 void CN105Climate::terminateCycle() {
     if (this->shouldSendExternalTemperature_) {
+	// We will receive ACK packet for this.
+	// Sending WantedSettings must be delayed in this case (lastSend timestamp updated).
         this->sendRemoteTemperature();
     }
 

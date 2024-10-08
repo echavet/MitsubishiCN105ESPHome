@@ -88,6 +88,9 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
             this->get_hw_serial_()->write_byte((uint8_t)packet[i]);
         }
 
+	// Prevent sending wantedSettings too soon after writing for example the remote temperature update packet
+        this->lastSend = CUSTOM_MILLIS;
+
     } else {
         ESP_LOGW(TAG, "could not write as asked, because UART is not connected");
         this->reconnectUART();
