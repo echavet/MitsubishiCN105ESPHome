@@ -248,13 +248,19 @@ struct heatpumpStatus {
     bool operating; // if true, the heatpump is operating to reach the desired temperature
     heatpumpTimers timers;
     float compressorFrequency;
+    float inputPower;
+    float kWh;
+    float runtimeHours;
 
     bool operator==(const heatpumpStatus& other) const {
         return roomTemperature == other.roomTemperature &&
 	    outsideAirTemperature == other.outsideAirTemperature &&
             operating == other.operating &&
             //timers == other.timers &&  // Assurez-vous que l'opérateur == est également défini pour heatpumpTimers
-            compressorFrequency == other.compressorFrequency;
+            compressorFrequency == other.compressorFrequency &&
+            inputPower == other.inputPower &&
+            kWh == other.kWh &&
+            runtimeHours == other.runtimeHours;
     }
 
     bool operator!=(const heatpumpStatus& other) const {
