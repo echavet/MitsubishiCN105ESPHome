@@ -432,11 +432,7 @@ api:
       variables:
         temperature: float
       then:
-# Select between the C version and the F version
-# Uncomment just ONE of the below lines. The top receives the temperature value in C,
-# the bottom receives the value in F, converting to C here.
         - lambda: 'id(hp).set_remote_temperature(temperature);'
-#        - lambda: 'id(hp).set_remote_temperature((temperature - 32.0) * (5.0 / 9.0));'
     - service: use_internal_temperature
       then:
         - lambda: 'id(hp).set_remote_temperature(0);'
@@ -524,8 +520,9 @@ sensor:
     internal: true
     on_value:
       then:
-        - lambda: |-
-            id(hp).set_remote_temperature(x);
+# Select between the C version and the F version
+        - lambda: 'id(hp).set_remote_temperature(x);'
+        #- lambda: 'id(hp).set_remote_temperature((x-32.0) * 5.0/9.0);'
 ```
 
 ### Get external temperature from a networked sensor with a throttle filter
