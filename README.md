@@ -15,13 +15,14 @@ This is an unofficial implementation of the reverse-engineered Mitsubishi protoc
 
 ### New Features
 - Additional components for supported units: vane orientation (fully supporting the Swicago map), compressor frequency for energy monitoring, and i-see sensor.
-- Enhanced UART communication with the Heatpump to eliminate delays in the ESPHome loop(), which was a limitation of the original [SwiCago library](https://github.com/SwiCago/HeatPump).
-- Byte-by-byte reading within the loop() function ensures no data loss or lag, as the component continuously reads without blocking ESPHome.
-- UART writes are followed by non-blocking reads. The responses are accumulated byte-by-byte in the loop() method and processed when complete, allowing command stacking without delays for a more responsive UI.
+- Additional diagnostic sensors for understanding the behavior of the indoor units while in AUTO mode
+- Additional sensors for power usage and outdoor temperature (not supported by all units)
 - Code is divided into distinct concerns for better readability.
 - Extensive logging for easier troubleshooting and development.
 - Ongoing refactoring to further improve the code quality.
-- Additional diagnostic sensors for understanding the behavior of the indoor units while in AUTO mode
+- Enhanced UART communication with the Heatpump to eliminate delays in the ESPHome loop(), which was a limitation of the original [SwiCago library](https://github.com/SwiCago/HeatPump).
+- Byte-by-byte reading within the loop() function ensures no data loss or lag, as the component continuously reads without blocking ESPHome.
+- UART writes are followed by non-blocking reads. The responses are accumulated byte-by-byte in the loop() method and processed when complete, allowing command stacking without delays for a more responsive UI.
 
 ### Retained Features
 
@@ -46,7 +47,7 @@ This project maintains all functionalities of the original [geoffdavis](https://
 - M5Stack ATOM Lite : tested
 - M5Stack ATOM S3 Lite: tested w/ [modifications](https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
 - M5Stack StampS3
-- WeMos D1 Mini Pro (ESP8266): tested
+- WeMos D1 Mini Pro (ESP8266): tested (but not currently recommended, see above)
 
 ## Supported Mitsubishi Climate Units
 
@@ -79,18 +80,6 @@ Note: This code uses the ESPHome [external components](https://esphome.io/compon
 
 Your ESPHome device configuration file starts with common defaults for ESPHome. To these defaults, add these minimum sections:
 
-#### For ESP8266-based Devices
-```yaml
-esp8266:
-  board: d1_mini
-
-uart:
-  id: HP_UART
-  baud_rate: 2400
-  tx_pin: 1
-  rx_pin: 3
-```
-
 #### For ESP32-based Devices
 ```yaml
 esp32:
@@ -105,6 +94,18 @@ uart:
   rx_pin: GPIO16
 ```
 
+#### For ESP8266-based Devices
+```yaml
+esp8266:
+  board: d1_mini
+
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: 1
+  rx_pin: 3
+```
+
 ### Step 4: Configure the climate component
 
 Add these sections to load the external component, setup logging, and enable the climate entity.
@@ -117,15 +118,17 @@ external_components:
 # Climate entity configuration
 climate:
   - platform: cn105
+    id: hp
     name: "My Heat Pump"
-    update_interval: 4s        # update interval can be ajusted after a first run and logs monitoring* 
+    update_interval: 4s        # update interval can be adjusted after a first run and logs monitoring 
 
 # Default logging level
 logger:
-  hardware_uart: UART1 # This line can be removed for ESP32 devices
+#  hardware_uart: UART1 # Uncomment this line for ESP8266 devices
   level: INFO
 ```
-(*): Adjusting the `update_interval`:
+
+#### Adjusting the `update_interval`
 An ESPHome firmware implements the esphome::Component interface to be integrated into the Inversion Of Control mechanism of the ESPHome framework.
 The main method of this process is the `loop()` method. MitsubishiCN105ESPHome performs a series of exchanges with the heat pump through a cycle. This cycle is timed, and its duration is displayed in the logs, provided the `CYCLE` logger is set to at least `INFO`.
 
@@ -165,45 +168,53 @@ climate:
       max_temperature: 31
       temperature_step:
         target_temperature: 1
-        current_temperature: 0.1
-    compressor_frequency_sensor:
-      name: ${name} Compressor Frequency
-    outside_air_temperature_sensor:
-      name: ${name} Outside Air Temperature
-    vertical_vane_select:
-      name: ${name} Vertical Vane
-    horizontal_vane_select:
-      name: ${name} Horizontal Vane
-    isee_sensor:
-      name: ${name} ISEE Sensor
+        current_temperature: 0.5
+    # Timeout and communication settings
     remote_temperature_timeout: 30min
-    debounce_delay : 500ms
     update_interval: 4s
+    debounce_delay : 100ms
+    # Various optional sensors, not all sensors are supported by all heatpumps
+    compressor_frequency_sensor:
+      name: Compressor Frequency
+      entity_category: diagnostic
+      disabled_by_default: true
+    outside_air_temperature_sensor:
+      name: Outside Air Temp
+      disabled_by_default: true
+    vertical_vane_select:
+      name: Vertical Vane
+      disabled_by_default: false
+    horizontal_vane_select:
+      name: Horizontal Vane
+      disabled_by_default: true
+    isee_sensor:
+      name: ISEE Sensor
+      disabled_by_default: true
+    stage_sensor:
+      name: Stage
+      entity_category: diagnostic
+      disabled_by_default: true
+    sub_mode_sensor:
+      name: Sub Mode
+      entity_category: diagnostic
+      disabled_by_default: true
+    auto_sub_mode_sensor:
+      name: Auto Sub Mode
+      entity_category: diagnostic
+      disabled_by_default: true
+    input_power_sensor:
+      name: Input Power
+      disabled_by_default: true
+    kwh_sensor:
+      name: Energy Usage
+      disabled_by_default: true
+    runtime_hours_sensor:
+      name: Runtime Hours
+      entity_category: diagnostic
+      disabled_by_default: true
 ```
 
 Note: An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
-
-#### External temperature support
-This example extends to default `api:` component to add a `set_remote_temperature` service that can be called from within HomeAssistant, allowing you to send a remote temperature value to the heat pump. This replaces the heat pump's internal temperature measurement with an external temperature measurement as the Mitsubishi wireless thermostats do, allowing you to more precisely control room comfort. You will need to include an automation in HomeAssistant to periodically call the service and update the temperature with `set_remote_temperature`, or disable remote temperature with `use_internal_temperature`. Example automations linked below.
-
-```yaml
-api:
-  encryption:
-    key: !secret api_key
-  services:
-    - service: set_remote_temperature
-      variables:
-        temperature: float
-      then:
-# Select between the C version and the F version
-# Uncomment just ONE of the below lines. The top receives the temperature value in C,
-# the bottom receives the value in F, converting to C here.
-        - lambda: 'id(hp).set_remote_temperature(temperature);'
-#        - lambda: 'id(hp).set_remote_temperature((temperature - 32.0) * (5.0 / 9.0));'
-    - service: use_internal_temperature
-      then:
-        - lambda: 'id(hp).set_remote_temperature(0);'
-```
 
 #### Logger granularity
 This firmware supports detailed log granularity for troubleshooting. Below is the full list of logger components and recommended defaults.
@@ -340,6 +351,7 @@ This example includes all the bells and whistles, optional components, remote te
 substitutions:
   name: heatpump-1
   friendly_name: My Heatpump 1
+  remote_temp_sensor: sensor.my_room_temperature # Homeassistant sensor providing remote temperature
 
 esphome:
   name: ${name}
@@ -427,19 +439,31 @@ logger:
 api:
   encryption:
     key: !secret api_key
-  services:
-    - service: set_remote_temperature
-      variables:
-        temperature: float
+
+sensor:
+  - platform: homeassistant
+    name: "Remote Temperature Sensor"
+    entity_id: ${remote_temp_sensor} # Replace with your HomeAssistant remote sensor entity id, or include in substitutions
+    internal: false
+    disabled_by_default: true
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    filters:
+    # Uncomment the lambda line to convert F to C on incoming temperature
+    #  - lambda: return (x - 32) * (5.0/9.0);
+      - clamp: # Limits values to range accepted by Mitsubishi units
+          min_value: 1
+          max_value: 40
+          ignore_out_of_range: true
+      - throttle: 30s
+    on_value:
       then:
-# Select between the C version and the F version
-# Uncomment just ONE of the below lines. The top receives the temperature value in C,
-# the bottom receives the value in F, converting to C here.
-        - lambda: 'id(hp).set_remote_temperature(temperature);'
-#        - lambda: 'id(hp).set_remote_temperature((temperature - 32.0) * (5.0 / 9.0));'
-    - service: use_internal_temperature
-      then:
-        - lambda: 'id(hp).set_remote_temperature(0);'
+        - logger.log:
+            level: INFO
+            format: "Remote temperature received from HA: %.1f C"
+            args: [ 'x' ]
+        - lambda: 'id(hp).set_remote_temperature(x);'
 
 ota:
   platform: esphome # Required for ESPhome 2024.6.0 and greater
@@ -457,25 +481,25 @@ time:
 text_sensor:
   # Expose ESPHome version as sensor.
   - platform: version
-    name: ${name} ESPHome Version
+    name: ESPHome Version
   # Expose WiFi information as sensors.
   - platform: wifi_info
     ip_address:
-      name: ${name} IP
+      name: IP
     ssid:
-      name: ${name} SSID
+      name: SSID
     bssid:
-      name: ${name} BSSID
+      name: BSSID
 
 # Sensors with general information.
 sensor:
   # Uptime sensor.
   - platform: uptime
-    name: ${name} Uptime
+    name: Uptime
 
   # WiFi Signal sensor.
   - platform: wifi_signal
-    name: ${name} WiFi Signal
+    name: WiFi Signal
     update_interval: 120s
 
 # Create a button to restart the unit from HomeAssistant. Rarely needed, but can be handy.
@@ -483,6 +507,12 @@ button:
   - platform: restart
     name: "Restart ${friendly_name}"
 
+# Creates the sensor used to receive the remote temperature from Home Assistant
+# Uses sensor selected in substitutions area at top of config
+# Customize the filters to your application:
+#   Uncomment the first line to convert F to C when remote temps are sent
+#   If you have a fast or noisy sensor, consider some of the other filter
+#   options such as throttle_average.
 climate:
   - platform: cn105
     id: hp
@@ -493,42 +523,93 @@ climate:
       max_temperature: 31
       temperature_step:
         target_temperature: 1
-        current_temperature: 0.1
-    compressor_frequency_sensor:
-      name: ${name} Compressor Frequency
-    outside_air_temperature_sensor:
-      name: ${name} Outside Air Temperature
-    vertical_vane_select:
-      name: ${name} Vertical Vane
-    horizontal_vane_select:
-      name: ${name} Horizontal Vane
-    isee_sensor:
-      name: ${name} ISEE Sensor
+        current_temperature: 0.5
+    # Timeout and communication settings
     remote_temperature_timeout: 30min
-    debounce_delay : 500ms
     update_interval: 4s
+    debounce_delay : 100ms
+    # Various optional sensors, not all sensors are supported by all heatpumps
+    compressor_frequency_sensor:
+      name: Compressor Frequency
+      entity_category: diagnostic
+      disabled_by_default: true
+    outside_air_temperature_sensor:
+      name: Outside Air Temp
+      disabled_by_default: true
+    vertical_vane_select:
+      name: Vertical Vane
+      disabled_by_default: false
+    horizontal_vane_select:
+      name: Horizontal Vane
+      disabled_by_default: true
+    isee_sensor:
+      name: ISEE Sensor
+      disabled_by_default: true
+    stage_sensor:
+      name: Stage
+      entity_category: diagnostic
+      disabled_by_default: true
+    sub_mode_sensor:
+      name: Sub Mode
+      entity_category: diagnostic
+      disabled_by_default: true
+    auto_sub_mode_sensor:
+      name: Auto Sub Mode
+      entity_category: diagnostic
+      disabled_by_default: true
+    input_power_sensor:
+      name: Input Power
+      disabled_by_default: true
+    kwh_sensor:
+      name: Energy Usage
+      disabled_by_default: true
+    runtime_hours_sensor:
+      name: Runtime Hours
+      entity_category: diagnostic
+      disabled_by_default: true
 ```
 </details>
 
 ## Methods for updating external temperature
 
-There are several methods for updating the unit with an remote temperature value.
+There are several methods for updating the unit with an remote temperature value. This replaces the heat pump's internal temperature measurement with an external temperature measurement as the Mitsubishi wireless thermostats do, allowing you to more precisely control room comfort and improve energy efficiency by increasing cycle length.
 
-### Get external temperature from a [HomeAssistant Sensor](https://esphome.io/components/sensor/homeassistant.html) through the HomeAssistant API
+### Recommended - Get external temperature from a [HomeAssistant Sensor](https://esphome.io/components/sensor/homeassistant.html) through the HomeAssistant API
+
+Creates the sensor used to receive the remote temperature from Home Assistant. Uses sensor selected in substitutions area at top of config or manually entered into the sensor configuration. When the HomeAssistant sensor updates, it will send the new value to the ESP device, which will update the heatpump's remote temperature value.
+ 
+Customize the filters to your application:
+- Uncomment the first line to convert F to C when remote temps are sent.
+- If you have a fast or noisy sensor, consider some of the other filter options such as throttle_average.
 
 ```yaml
 sensor:
   - platform: homeassistant
-    id: current_temp
-    entity_id: sensor.my_temperature_sensor
-    internal: true
+    name: "Remote Temperature Sensor"
+    entity_id: ${remote_temp_sensor} # Replace with your HomeAssistant remote sensor entity id, or include in substitutions
+    internal: false
+    disabled_by_default: true
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    filters:
+    # Uncomment the lambda line to convert F to C on incoming temperature
+    #  - lambda: return (x - 32) * (5.0/9.0);
+      - clamp: # Limits values to range accepted by Mitsubishi units
+          min_value: 1
+          max_value: 40
+          ignore_out_of_range: true
+      - throttle: 30s
     on_value:
       then:
-        - lambda: |-
-            id(hp).set_remote_temperature(x);
+        - logger.log:
+            level: INFO
+            format: "Remote temperature received from HA: %.1f C"
+            args: [ 'x' ]
+        - lambda: 'id(hp).set_remote_temperature(x);'
 ```
 
-### Get external temperature from a networked sensor with a throttle filter
+### Alternate - Get external temperature from a networked sensor with a throttle filter
 
 ```yaml
 sensor:
@@ -543,7 +624,30 @@ sensor:
         throttle_average: 90s
       on_value:
         then:
-          - lambda: 'id(use_your_name).set_remote_temperature(x);'
+          - lambda: 'id(hp).set_remote_temperature(x);'
+```
+
+### Alternate - HomeAssistant Action
+
+This example extends to default `api:` component to add a `set_remote_temperature` action that can be called from within HomeAssistant, allowing you to send a remote temperature value to the heat pump. You will need to include an automation in HomeAssistant to periodically call the action and update the temperature with `set_remote_temperature`, or disable remote temperature with `use_internal_temperature`. No longer recommended as the default method of updating remote temperature.
+
+```yaml
+api:
+  encryption:
+    key: !secret api_key
+  services:
+    - service: set_remote_temperature
+      variables:
+        temperature: float
+      then:
+# Select between the C version and the F version
+# Uncomment just ONE of the below lines. The top receives the temperature value in C,
+# the bottom receives the value in F, converting to C here.
+        - lambda: 'id(hp).set_remote_temperature(temperature);'
+#        - lambda: 'id(hp).set_remote_temperature((temperature - 32.0) * (5.0 / 9.0));'
+    - service: use_internal_temperature
+      then:
+        - lambda: 'id(hp).set_remote_temperature(0);'
 ```
 
 ## Diagnostic Sensors
@@ -554,7 +658,7 @@ This sensor reads the outdoor unit's air temperature reading, in 1.0 degree C in
 
 ```yaml
     outside_air_temperature_sensor:
-      name: ${name} Outside Air Temperature
+      name: Outside Air Temperature
 ```
 
 Compatible units (as reported by users):
@@ -639,12 +743,6 @@ sensor:
       return (float) nbCompleteCycles / nbCycles * 100.0;
     update_interval: 60s
 ```
-
-## Update external temperature using a HomeAssistant automation blueprint
-
-Coming Soon.
-
-For more configuration options, see the provided [hp-debug.yaml](https://github.com/echavet/MitsubishiCN105ESPHome/blob/main/hp-debug.yaml) and [hp-sejour.yaml](https://github.com/echavet/MitsubishiCN105ESPHome/blob/main/hp-sejour.yaml) examples or refer to the original project.
 
 ## Other Implementations
 
