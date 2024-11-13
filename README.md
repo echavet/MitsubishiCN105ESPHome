@@ -60,6 +60,7 @@ Units tested by project contributors include:
 - `MSZ-GLxxNA`
 - `MSZ-AP20VGK` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
 - `MSZ-AP42VGK`
+- `MSZ-AY35VGKP`
 
 ## Usage
 
@@ -669,6 +670,7 @@ Compatible units (as reported by users):
 | MSZ-AP35VGD     | MUZ-AP35VG       | Works but reports -63.5C when idle      |
 | MSZ-AP60VGD     | MUZ-AP60VG       | Works                                   |
 | MSZ-AP71VGD     | MUZ-AP71VG       | Works but reports -63.5C when idle      |
+| MSZ-AY35VGKP    | MUZ-AY35VG       | Works                                   |
 | MSZ-GLxxNA      | MXZ-SM42NAMHZ    | Works                                   |
 | MSZ-RW25VG-SC1  | MUZ-RW25VGHZ-SC1 | Works                                   |
 |                 | MUZ-FD25NA       | Not working                             |
