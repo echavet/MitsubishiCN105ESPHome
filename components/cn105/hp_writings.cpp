@@ -51,7 +51,7 @@ void CN105Climate::sendFirstConnectionPacket() {
 
 //     ESP_LOGD(TAG, "t°: %f", currentStatus.roomTemperature);
 //     ESP_LOGD(TAG, "operating: %d", currentStatus.operating);
-//     ESP_LOGD(TAG, "compressor freq: %d", currentStatus.compressorFrequency);
+//     ESP_LOGD(TAG, "compressor freq: %f", currentStatus.compressorFrequency);
 
 //     this->updateAction();
 //     this->publish_state();
@@ -87,6 +87,9 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
         for (int i = 0; i < length; i++) {
             this->get_hw_serial_()->write_byte((uint8_t)packet[i]);
         }
+
+	// Prevent sending wantedSettings too soon after writing for example the remote temperature update packet
+        this->lastSend = CUSTOM_MILLIS;
 
     } else {
         ESP_LOGW(TAG, "could not write as asked, because UART is not connected");
@@ -275,10 +278,10 @@ void CN105Climate::sendWantedSettings() {
 #ifdef USE_ESP32
             std::lock_guard<std::mutex> guard(wantedSettingsMutex);
             this->sendWantedSettingsDelegate();
-#else            
+#else
             this->emulateMutex("WRITE_SETTINGS", std::bind(&CN105Climate::sendWantedSettingsDelegate, this));
 
-#endif                
+#endif
 
         } else {
             ESP_LOGD(TAG, "will sendWantedSettings later because we've sent one too recently...");

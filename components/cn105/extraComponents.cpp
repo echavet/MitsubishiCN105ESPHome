@@ -57,6 +57,26 @@ void CN105Climate::set_compressor_frequency_sensor(
     this->compressor_frequency_sensor_ = compressor_frequency_sensor;
 }
 
+void CN105Climate::set_input_power_sensor(
+    sensor::Sensor* input_power_sensor) {
+    this->input_power_sensor_ = input_power_sensor;
+}
+
+void CN105Climate::set_kwh_sensor(
+    sensor::Sensor* kwh_sensor) {
+    this->kwh_sensor_ = kwh_sensor;
+}
+
+void CN105Climate::set_runtime_hours_sensor(
+    sensor::Sensor* runtime_hours_sensor) {
+    this->runtime_hours_sensor_ = runtime_hours_sensor;
+}
+
+void CN105Climate::set_outside_air_temperature_sensor(
+    sensor::Sensor* outside_air_temperature_sensor) {
+    this->outside_air_temperature_sensor_ = outside_air_temperature_sensor;
+}
+
 void CN105Climate::set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_sensor) {
     this->iSee_sensor_ = iSee_sensor;
 }

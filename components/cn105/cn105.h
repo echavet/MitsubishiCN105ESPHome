@@ -4,6 +4,10 @@
 #include "van_orientation_select.h"
 #include "uptime_connection_sensor.h"
 #include "compressor_frequency_sensor.h"
+#include "input_power_sensor.h"
+#include "kwh_sensor.h"
+#include "runtime_hours_sensor.h"
+#include "outside_air_temperature_sensor.h"
 #include "auto_sub_mode_sensor.h"
 #include "isee_sensor.h"
 #include "stage_sensor.h"
@@ -18,7 +22,9 @@
 
 using namespace esphome;
 
-//class VaneOrientationSelect;  // Déclaration anticipée, définie dans extraComponents
+
+void log_info_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix = "");
+void log_debug_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix = "");
 
 class CN105Climate : public climate::Climate, public Component, public uart::UARTDevice {
 
@@ -31,6 +37,10 @@ public:
     void set_vertical_vane_select(VaneOrientationSelect* vertical_vane_select);
     void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select);
     void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);
+    void set_input_power_sensor(esphome::sensor::Sensor* input_power_sensor);
+    void set_kwh_sensor(esphome::sensor::Sensor* kwh_sensor);
+    void set_runtime_hours_sensor(esphome::sensor::Sensor* runtime_hours_sensor);
+    void set_outside_air_temperature_sensor(esphome::sensor::Sensor* outside_air_temperature_sensor);
     void set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_sensor);
     void set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor);
     void set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor);
@@ -52,11 +62,22 @@ public:
         nullptr;  // Select to store manual position of horizontal swing
     sensor::Sensor* compressor_frequency_sensor_ =
         nullptr;  // Sensor to store compressor frequency
+    sensor::Sensor* input_power_sensor_ =
+        nullptr;  // Sensor to store compressor frequency
+    sensor::Sensor* kwh_sensor_ =
+        nullptr;  // Sensor to store compressor frequency
+    sensor::Sensor* runtime_hours_sensor_ =
+        nullptr;  // Sensor to store compressor frequency
+    sensor::Sensor* outside_air_temperature_sensor_ =
+	nullptr;  // Outside air temperature
 
-    // sensor to monitor heatpump connection time 
+    // sensor to monitor heatpump connection time
     uptime::HpUpTimeConnectionSensor* hp_uptime_connection_sensor_ = nullptr;
 
-    int get_compressor_frequency();
+    float get_compressor_frequency();
+    float get_input_power();
+    float get_kwh();
+    float get_runtime_hours();
     bool is_operating();
 
     // checks if the field has changed
@@ -283,7 +304,7 @@ private:
     uint8_t* data;
 
     // initialise to all off, then it will update shortly after connect;
-    heatpumpStatus currentStatus{ 0, false, {TIMER_MODE_MAP[0], 0, 0, 0, 0}, 0 };
+    heatpumpStatus currentStatus{ 0, 0, false, {TIMER_MODE_MAP[0], 0, 0, 0, 0}, 0, 0, 0, 0 };
     heatpumpFunctions functions;
 
     bool tempMode = false;

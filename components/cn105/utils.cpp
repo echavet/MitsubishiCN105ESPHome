@@ -1,7 +1,20 @@
 #include "cn105.h"
 #include "Globals.h"
 
-
+void log_info_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix) {
+#if __GNUC__ >= 11
+    ESP_LOGI(tag, "%s %lu %s", msg, (unsigned long)value, suffix);
+#else
+    ESP_LOGI(tag, "%s %u %s", msg, (unsigned int)value, suffix);
+#endif
+}
+void log_debug_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix) {
+#if __GNUC__ >= 11
+    ESP_LOGD(tag, "%s %lu %s", msg, (unsigned long)value, suffix);
+#else
+    ESP_LOGD(tag, "%s %u %s", msg, (unsigned int)value, suffix);
+#endif
+}
 
 bool CN105Climate::hasChanged(const char* before, const char* now, const char* field, bool checkNotNull) {
     if (now == NULL) {
@@ -112,13 +125,13 @@ void CN105Climate::debugSettings(const char* settingName, heatpumpSettings& sett
 
 void CN105Climate::debugStatus(const char* statusName, heatpumpStatus status) {
 #ifdef USE_ESP32
-    ESP_LOGI(LOG_STATUS_TAG, "[%s]-> [room C°: %.1f, operating: %s, compressor freq: %2d Hz]",
+    ESP_LOGI(LOG_STATUS_TAG, "[%s]-> [room C°: %.1f, operating: %s, compressor freq: %.1f Hz]",
         statusName,
         status.roomTemperature,
         status.operating ? "YES" : "NO ",
         status.compressorFrequency);
 #else
-    ESP_LOGI(LOG_STATUS_TAG, "[%-*s]-> [room C°: %.1f, operating: %-*s, compressor freq: %2d Hz]",
+    ESP_LOGI(LOG_STATUS_TAG, "[%-*s]-> [room C°: %.1f, operating: %-*s, compressor freq: %.1f Hz]",
         15, statusName,
         status.roomTemperature,
         3, status.operating ? "YES" : "NO ",
@@ -165,7 +178,7 @@ int CN105Climate::lookupByteMapIndex(const int valuesMap[], int len, int lookupV
         }
     }
     ESP_LOGW("lookup", "%s caution value %d not found, returning -1", debugInfo, lookupValue);
-    esphome::delay(200);
+    //esphome::delay(200);
     return -1;
 }
 int CN105Climate::lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue, const char* debugInfo) {
@@ -175,7 +188,7 @@ int CN105Climate::lookupByteMapIndex(const char* valuesMap[], int len, const cha
         }
     }
     ESP_LOGW("lookup", "%s caution value %s not found, returning -1", debugInfo, lookupValue);
-    esphome::delay(200);
+    //esphome::delay(200);
     return -1;
 }
 const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo, const char* defaultValue) {
@@ -267,7 +280,7 @@ void CN105Climate::logDelegate() {
     } else {
         ESP_LOGI("testMutex", "Mutex est déjà verrouillé");
     }
-#endif    
+#endif
 }
 
 void CN105Climate::testCase1() {
@@ -312,4 +325,5 @@ void CN105Climate::testMutex() {
     this->testCase1();
 
 }
+
 #endif
