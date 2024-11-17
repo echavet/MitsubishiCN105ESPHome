@@ -237,10 +237,10 @@ private:
     void prepareInfoPacket(uint8_t* packet, int length);
     void prepareSetPacket(uint8_t* packet, int length);
 
-    void publishStateToHA(heatpumpSettings settings);
+    void publishStateToHA(heatpumpSettings& settings);
     void publishWantedSettingsStateToHA();
 
-    void heatpumpUpdate(heatpumpSettings settings);
+    void heatpumpUpdate(heatpumpSettings& settings);
 
     void statusChanged(heatpumpStatus status);
 
@@ -257,8 +257,8 @@ private:
     void setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateAction action);
     void hpPacketDebug(uint8_t* packet, unsigned int length, const char* packetDirection);
 
-    void debugSettings(const char* settingName, heatpumpSettings settings);
-    void debugSettings(const char* settingName, wantedHeatpumpSettings settings);
+    void debugSettings(const char* settingName, heatpumpSettings& settings);
+    void debugSettings(const char* settingName, wantedHeatpumpSettings& settings);
     void debugStatus(const char* statusName, heatpumpStatus status);
     void debugSettingsAndStatus(const char* settingName, heatpumpSettings settings, heatpumpStatus status);
     void debugClimate(const char* settingName);

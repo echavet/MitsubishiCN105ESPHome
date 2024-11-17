@@ -14,7 +14,7 @@ void CN105Climate::checkPendingWantedSettings() {
     this->sendWantedSettings();
 }
 
-void logCheckWantedSettingsMutex(wantedHeatpumpSettings settings) {
+void logCheckWantedSettingsMutex(wantedHeatpumpSettings& settings) {
 
     if (settings.hasBeenSent) {
         ESP_LOGE("control", "Mutex lock faillure: wantedSettings should be locked while sending.");

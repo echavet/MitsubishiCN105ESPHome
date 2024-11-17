@@ -473,7 +473,7 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
 }
 
 
-void CN105Climate::publishStateToHA(heatpumpSettings settings) {
+void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
 
     if ((this->wantedSettings.mode == nullptr) && (this->wantedSettings.power == nullptr)) {        // to prevent overwriting a user demand
         checkPowerAndModeSettings(settings);
@@ -508,7 +508,7 @@ void CN105Climate::publishStateToHA(heatpumpSettings settings) {
 }
 
 
-void CN105Climate::heatpumpUpdate(heatpumpSettings settings) {
+void CN105Climate::heatpumpUpdate(heatpumpSettings& settings) {
     // settings correponds to current settings
     ESP_LOGV(LOG_SETTINGS_TAG, "Settings received");
 
