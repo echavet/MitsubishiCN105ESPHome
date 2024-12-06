@@ -675,6 +675,7 @@ Compatible units (as reported by users):
 | MSZ-AY35VGKP    | MUZ-AY35VG       | Works                                   |
 | MSZ-GLxxNA      | MXZ-SM42NAMHZ    | Works                                   |
 | MSZ-RW25VG-SC1  | MUZ-RW25VGHZ-SC1 | Works                                   |
+| MSZ-FSxxNA      | MXZ-4C36NA2      | Works                                   |
 |                 | MUZ-FD25NA       | Not working                             |
 | MSZ-LN35        | MUZ-LN35         | Not working                             |
 
