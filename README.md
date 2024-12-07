@@ -61,7 +61,8 @@ Units tested by project contributors include:
 - `MSZ-AP20VGK` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
 - `MSZ-AP42VGK`
 - `MSZ-AY35VGKP`
-- `MSZ-FSXXNA`
+- `MSZ-FSxxNA`
+- `MSZ-FHxxNA`
 
 ## Usage
 
@@ -674,6 +675,7 @@ Compatible units (as reported by users):
 | MSZ-AY35VGKP    | MUZ-AY35VG       | Works                                   |
 | MSZ-GLxxNA      | MXZ-SM42NAMHZ    | Works                                   |
 | MSZ-RW25VG-SC1  | MUZ-RW25VGHZ-SC1 | Works                                   |
+| MSZ-FSxxNA      | MXZ-4C36NA2      | Works                                   |
 |                 | MUZ-FD25NA       | Not working                             |
 | MSZ-LN35        | MUZ-LN35         | Not working                             |
 
