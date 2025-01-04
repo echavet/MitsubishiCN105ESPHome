@@ -157,13 +157,16 @@ void CN105Climate::getPowerFromResponsePacket() {
     ESP_LOGD("Decoder", "[Auto Mode Sub Mode  : %s]", receivedSettings.auto_sub_mode);
 
     //this->heatpumpUpdate(receivedSettings);
-    if (this->Stage_sensor_ != nullptr) {
+    if (this->Stage_sensor_ != nullptr && (!this->currentSettings.stage || strcmp(receivedSettings.stage, this->currentSettings.stage) != 0)) {
+        this->currentSettings.stage = receivedSettings.stage;
         this->Stage_sensor_->publish_state(receivedSettings.stage);
     }
-    if (this->Sub_mode_sensor_ != nullptr) {
+    if (this->Sub_mode_sensor_ != nullptr && (!this->currentSettings.sub_mode || strcmp(receivedSettings.sub_mode, this->currentSettings.sub_mode) != 0)) {
+        this->currentSettings.sub_mode = receivedSettings.sub_mode;
         this->Sub_mode_sensor_->publish_state(receivedSettings.sub_mode);
     }
-    if (this->Auto_sub_mode_sensor_ != nullptr) {
+    if (this->Auto_sub_mode_sensor_ != nullptr && (!this->currentSettings.sub_mode || strcmp(receivedSettings.auto_sub_mode, this->currentSettings.auto_sub_mode) != 0)) {
+        this->currentSettings.auto_sub_mode = receivedSettings.auto_sub_mode;
         this->Auto_sub_mode_sensor_->publish_state(receivedSettings.auto_sub_mode);
     }
 }
@@ -517,8 +520,8 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings& settings) {
 
     if (this->currentSettings != settings) {
         ESP_LOGD(LOG_SETTINGS_TAG, "Settings changed, updating HA states");
+        this->publishStateToHA(settings);
     }
-    this->publishStateToHA(settings);
 }
 
 void CN105Climate::checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
