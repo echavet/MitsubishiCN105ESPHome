@@ -212,7 +212,7 @@ void CN105Climate::createPacket(uint8_t* packet) {
 
 void CN105Climate::publishWantedSettingsStateToHA() {
 
-    if ((this->wantedSettings.mode != nullptr) || (this->wantedSettings.mode != nullptr)) {
+    if ((this->wantedSettings.mode != nullptr) || (this->wantedSettings.power != nullptr)) {
         checkPowerAndModeSettings(this->wantedSettings, false);
         this->updateAction();       // update action info on HA climate component
     }
