@@ -1,0 +1,102 @@
+
+sensor:
+  # # Sensors with general information.
+  - platform: template
+    name: "dg_uart_connected"
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (bool) id(atoms3_clim).isUARTConnected_;
+    update_interval: 30s
+
+  - platform: template
+    name: "dg_complete_cycles"
+    entity_category: DIAGNOSTIC
+    accuracy_decimals: 0
+    lambda: |-
+      return (unsigned long) id(atoms3_clim).nbCompleteCycles_;
+    update_interval: 60s
+
+  - platform: template
+    name: "dg_total_cycles"
+    accuracy_decimals: 0
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (unsigned long) id(atoms3_clim).nbCycles_;
+    update_interval: 60s
+  - platform: template
+    name: "dg_nb_hp_connections"
+    accuracy_decimals: 0
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (unsigned int) id(atoms3_clim).nbHeatpumpConnections_;
+    update_interval: 60s
+
+  - platform: template
+    name: "dg_complete_cycles_percent"
+    id: complete_cycles_percent
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    entity_category: DIAGNOSTIC
+    lambda: |-      
+      unsigned long nbCompleteCycles = id(atoms3_clim).nbCompleteCycles_;
+      unsigned long nbCycles = id(atoms3_clim).nbCycles_;
+      if (nbCycles == 0) {
+        return 0.0;
+      }
+      return (float) nbCompleteCycles / nbCycles * 100.0;
+    update_interval: 60s
+
+  - platform: debug
+    free:
+      name: "Heap Free"
+    # fragmentation:
+    #   name: "Heap Fragmentation"
+    # block:
+    #   name: "Heap Max Block"
+    # loop_time:
+    #   name: "Loop Time"
+    # psram:
+    #   name: "Free PSRAM"
+
+
+  # Uptime sensor.
+  - platform: uptime
+    name: ${name} Uptime
+
+  # WiFi Signal sensor.
+  - platform: wifi_signal
+    id: wifi_signal_dbm
+    name: ${name} WiFi Signal
+    update_interval: 60s
+
+  - platform: homeassistant
+    id: ha_cdeg_sejour_et_cuisine
+    entity_id: sensor.temperature_sejour
+    internal: true
+    on_value:
+      then:
+        - lambda: |-
+            id(atoms3_clim).set_remote_temperature(x);
+
+
+text_sensor:
+  # Expose ESPHome version as sensor.
+  - platform: version
+    name: ${name} ESPHome Version
+  # Expose WiFi information as sensors.
+  - platform: wifi_info
+    ip_address:
+      name: ${name} IP
+      id: wifi_ip  # ID pour référence dans l'écran
+    ssid:
+      name: ${name} SSID
+      id: wifi_ssid  # ID pour référence dans l'écran
+    bssid:
+      name: ${name} BSSID
+      id: wifi_bssid  # ID pour référence dans l'écran
+
+  - platform: debug
+    device:
+      name: "Device Info"
+    reset_reason:
+      name: "Reset Reason"
