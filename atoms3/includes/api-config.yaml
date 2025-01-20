@@ -1,0 +1,18 @@
+services:    
+    - service: reboot
+      then:
+        - logger.log: "Redémarrage en cours..."
+        - lambda: |-
+            esp_restart();
+    - service: set_remote_temperature
+      variables:
+        temperature: float
+      then:
+        - lambda: 'id(atoms3_clim).set_remote_temperature(temperature);'
+
+    - service: use_internal_temperature
+      then:
+        - lambda: 'id(atoms3_clim).set_remote_temperature(0);'
+    
+encryption:
+  key: !secret encryption_key
