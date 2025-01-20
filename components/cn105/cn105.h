@@ -69,7 +69,7 @@ public:
     sensor::Sensor* runtime_hours_sensor_ =
         nullptr;  // Sensor to store compressor frequency
     sensor::Sensor* outside_air_temperature_sensor_ =
-	nullptr;  // Outside air temperature
+        nullptr;  // Outside air temperature
 
     // sensor to monitor heatpump connection time
     uptime::HpUpTimeConnectionSensor* hp_uptime_connection_sensor_ = nullptr;
