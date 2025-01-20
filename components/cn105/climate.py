@@ -1,6 +1,15 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import climate, uart, select, sensor, binary_sensor, text_sensor
+from esphome.components import (
+    climate,
+    uart,
+    select,
+    sensor,
+    binary_sensor,
+    text_sensor,
+    uptime,
+)
+
 
 from esphome.components.logger import HARDWARE_UART_TO_SERIAL
 from esphome.components.uart import UARTParityOptions
@@ -63,13 +72,9 @@ CompressorFrequencySensor = cg.global_ns.class_(
     "CompressorFrequencySensor", sensor.Sensor, cg.Component
 )
 
-InputPowerSensor = cg.global_ns.class_(
-    "InputPowerSensor", sensor.Sensor, cg.Component
-)
+InputPowerSensor = cg.global_ns.class_("InputPowerSensor", sensor.Sensor, cg.Component)
 
-kWhSensor = cg.global_ns.class_(
-    "kWhSensor", sensor.Sensor, cg.Component
-)
+kWhSensor = cg.global_ns.class_("kWhSensor", sensor.Sensor, cg.Component)
 
 RuntimeHoursSensor = cg.global_ns.class_(
     "RuntimeHoursSensor", sensor.Sensor, cg.Component
@@ -168,11 +173,15 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
         cv.Optional(CONF_UPDATE_INTERVAL, default="2s"): cv.All(cv.update_interval),
         cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
         cv.Optional(CONF_VERTICAL_SWING_SELECT): SELECT_SCHEMA,
-        cv.Optional(CONF_COMPRESSOR_FREQUENCY_SENSOR): COMPRESSOR_FREQUENCY_SENSOR_SCHEMA,
+        cv.Optional(
+            CONF_COMPRESSOR_FREQUENCY_SENSOR
+        ): COMPRESSOR_FREQUENCY_SENSOR_SCHEMA,
         cv.Optional(CONF_INPUT_POWER_SENSOR): INPUT_POWER_SENSOR_SCHEMA,
         cv.Optional(CONF_KWH_SENSOR): KWH_SENSOR_SCHEMA,
         cv.Optional(CONF_RUNTIME_HOURS_SENSOR): RUNTIME_HOURS_SENSOR_SCHEMA,
-        cv.Optional(CONF_OUTSIDE_AIR_TEMPERATURE_SENSOR): OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA,
+        cv.Optional(
+            CONF_OUTSIDE_AIR_TEMPERATURE_SENSOR
+        ): OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA,
         cv.Optional(CONF_ISEE_SENSOR): ISEE_SENSOR_SCHEMA,
         cv.Optional(CONF_STAGE_SENSOR): STAGE_SENSOR_SCHEMA,
         cv.Optional(CONF_SUB_MODE_SENSOR): SUB_MODE_SENSOR_SCHEMA,
