@@ -39,4 +39,7 @@ jobs:
           value=`head -c 32 /dev/urandom | base64`
           echo "${key}: ${value}" >> secrets.yaml
         done
-    - run: esphome compile ${{ matrix.variant }}.yaml
+    - name: Clean build
+      run: esphome clean ${{ matrix.variant }}.yaml
+    - name: Compile
+      run: esphome compile ${{ matrix.variant }}.yaml
