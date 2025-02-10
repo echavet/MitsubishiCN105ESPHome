@@ -167,7 +167,7 @@ climate:
     name: "${friendly_name}"
     icon: mdi:heat-pump
     visual:
-      min_temperature: 15
+      min_temperature: 10 # Adjust to your unit's min temp. SmartSet units can go to 10C for heating
       max_temperature: 31
       temperature_step:
         target_temperature: 1
@@ -522,7 +522,7 @@ climate:
     name: "${friendly_name}"
     icon: mdi:heat-pump
     visual:
-      min_temperature: 15
+      min_temperature: 10 # Adjust to your unit's min temp. SmartSet units can go to 10C for heating
       max_temperature: 31
       temperature_step:
         target_temperature: 1
