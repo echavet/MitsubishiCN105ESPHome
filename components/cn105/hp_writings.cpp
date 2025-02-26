@@ -361,15 +361,10 @@ void CN105Climate::sendRemoteTemperature() {
     packet[5] = 0x07;
     if (this->remoteTemperature_ > 0) {
         packet[6] = 0x01;
-        this->remoteTemperature_ = this->remoteTemperature_ * 2;
-        this->remoteTemperature_ = round(this->remoteTemperature_);
-        this->remoteTemperature_ = this->remoteTemperature_ / 2;
-        float temp1 = 3 + ((this->remoteTemperature_ - 10) * 2);
-        packet[7] = (int)temp1;
-        float temp2 = (this->remoteTemperature_ * 2) + 128;
-        packet[8] = (int)temp2;
+        float temp = round(this->remoteTemperature_ * 2);
+        packet[7] = (byte)(temp - 16);
+        packet[8] = (byte)(temp + 128);
     } else {
-        packet[6] = 0x00;
         packet[8] = 0x80; //MHK1 send 80, even though it could be 00, since ControlByte is 00
     }
     // add the checksum
