@@ -1,0 +1,5 @@
+secrets.yaml
+atoms3/.DS_Store
+atoms3/.gitignore
+.esphome
+__pycache__

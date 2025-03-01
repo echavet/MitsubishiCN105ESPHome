@@ -6,7 +6,7 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
 
- 
+
 esp8266:
   board: esp01_1m
 
@@ -81,11 +81,10 @@ time:
 
 # Chemin vers les fichiers C++ personnalisés
 external_components:
- - source:
+ - source:  
      type: local
      path: components 
-
-
+ 
 #external_components:
 #  - source: github://echavet/MitsubishiCN105ESPHome
 #    refresh: 0s                ## to force refresh sources every compile time
@@ -106,10 +105,10 @@ text_sensor:
       name: ${name} BSSID
 
 # Sensors with general information.
-#sensor:
+sensor:
   # Uptime sensor.
-#  - platform: uptime
-#    name: ${name} Uptime
+  - platform: uptime
+    name: ${name} Uptime
 
   # WiFi Signal sensor.
 #  - platform: wifi_signal
@@ -127,8 +126,10 @@ climate:
   - platform: cn105  # remplis avec la plateforme de ton choix
     name: "Clim Seb"
     id: "clim_seb"
-    update_interval: 4s
-    # Ajoute d'autres paramètres spécifiques à ton matériel et tes besoins
+    update_interval: 4s    
+    hp_uptime_connection_sensor:
+      name: ${name} HP Uptime Connection
+      update_interval: 10s
     
 # Configuration pour l'objet 'select' pour choisir un baud_rate
 select:
