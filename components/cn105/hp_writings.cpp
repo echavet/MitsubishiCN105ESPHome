@@ -88,7 +88,7 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
             this->get_hw_serial_()->write_byte((uint8_t)packet[i]);
         }
 
-	// Prevent sending wantedSettings too soon after writing for example the remote temperature update packet
+        // Prevent sending wantedSettings too soon after writing for example the remote temperature update packet
         this->lastSend = CUSTOM_MILLIS;
 
     } else {
@@ -362,8 +362,8 @@ void CN105Climate::sendRemoteTemperature() {
     if (this->remoteTemperature_ > 0) {
         packet[6] = 0x01;
         float temp = round(this->remoteTemperature_ * 2);
-        packet[7] = (byte)(temp - 16);
-        packet[8] = (byte)(temp + 128);
+        packet[7] = static_cast<uint8_t>(temp - 16);
+        packet[8] = static_cast<uint8_t>(temp + 128);
     } else {
         packet[8] = 0x80; //MHK1 send 80, even though it could be 00, since ControlByte is 00
     }
