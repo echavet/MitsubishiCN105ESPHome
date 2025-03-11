@@ -16,6 +16,8 @@
 
 static const char* LOG_ACTION_EVT_TAG = "EVT_SETS";
 static const char* TAG = "CN105"; // Logging tag
+static const char* LOG_REMOTE_TEMP = "REMOTE_TEMP"; // Logging tag
+static const char* LOG_ACK = "ACK"; // Logging tag
 static const char* LOG_SETTINGS_TAG = "SETTINGS";   // Logging settings changes
 static const char* LOG_STATUS_TAG = "STATUS";       // Logging status changes
 static const char* LOG_CYCLE_TAG = "CYCLE";         // loop cycles logs

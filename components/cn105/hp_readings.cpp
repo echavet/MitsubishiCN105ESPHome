@@ -238,9 +238,9 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
     // RM = indoor unit operating time in minutes
 
     if (data[5] > 1) {
-	receivedStatus.outsideAirTemperature = (float)(data[5] - 128) / 2;
+        receivedStatus.outsideAirTemperature = (float)(data[5] - 128) / 2;
     } else {
-	receivedStatus.outsideAirTemperature = NAN;
+        receivedStatus.outsideAirTemperature = NAN;
     }
 
     if (data[6] != 0x00) {
@@ -296,8 +296,9 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
 
 void CN105Climate::terminateCycle() {
     if (this->shouldSendExternalTemperature_) {
-	// We will receive ACK packet for this.
-	// Sending WantedSettings must be delayed in this case (lastSend timestamp updated).
+        // We will receive ACK packet for this.
+        // Sending WantedSettings must be delayed in this case (lastSend timestamp updated).        
+        ESP_LOGD(LOG_REMOTE_TEMP, "Sending remote temperature...");
         this->sendRemoteTemperature();
     }
 
@@ -403,7 +404,7 @@ void CN105Climate::getDataFromResponsePacket() {
 }
 
 void CN105Climate::updateSuccess() {
-    ESP_LOGI(TAG, "Last heatpump data update successful!");
+    ESP_LOGD(LOG_ACK, "Last heatpump data update successful!");
     // nothing can be done here because we have no mean to know wether it is an external temp ack
     // or a wantedSettings update ack
 }

@@ -370,11 +370,9 @@ void CN105Climate::sendRemoteTemperature() {
     // add the checksum
     uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
-    ESP_LOGD(TAG, "sending remote temperature packet...");
+    ESP_LOGD(LOG_REMOTE_TEMP, "Sending remote temperature packet... -> %f", this->remoteTemperature_);
     writePacket(packet, PACKET_LEN);
 
     // this resets the timeout
     this->pingExternalTemperature();
-
-
 }
