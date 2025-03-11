@@ -9,7 +9,7 @@ spi:
   clk_pin: 17
   mosi_pin: 21
 
-display:
+display: 
   - platform: st7789v
     id: display_tft
     model: Custom
@@ -19,18 +19,20 @@ display:
     offset_height: 2
     offset_width: 1
     backlight_pin: 16
-    cs_pin: 15
-    dc_pin: 33 #RS/DC
+    cs_pin: 15    
+    dc_pin: 33   #RS/DC
     reset_pin: 34
     eightbitcolor: true
-    update_interval: 05s
+    update_interval: 5s
+    
     pages:
-      - id: page1 
-        lambda: |-          
-          Color color_orange(255, 165, 0);
-          Color color_blue(0, 0, 255);
-          Color color_yellow(255, 255, 0);
-          Color color_black(0, 0, 0);
+      - id: page1
+        lambda: |- 
+          
+          auto color_orange = Color(0xFF4500);  // Rouge-orange chaud
+          auto color_blue = Color(0x00008B);    // Bleu sombre
+          auto color_yellow = Color(0xFFFF00);  // Jaune
+          auto color_black = Color(0x000000);   // Noir
 
           // Changer la couleur de fond en fonction du mode du climatiseur
           if (id(atoms3_clim).mode == esphome::climate::CLIMATE_MODE_HEAT) {
@@ -50,7 +52,7 @@ display:
           it.printf(it.get_width() / 2, it.get_height() / 2 + 32, id(font_data), TextAlign::CENTER, "%.1f °C", id(atoms3_clim).current_temperature);
 
       - id: page2
-        lambda: |-
+        lambda: |-          
           it.rectangle(0, 0, it.get_width(), it.get_height());
           it.print(2, 2, id(font_title), "WiFi:");
           // En-tête pour l'IP
@@ -72,15 +74,17 @@ display:
       - id: page3
         lambda: |-
           it.rectangle(0, 0, it.get_width(), it.get_height());
-
+          
           // Section HA Integration
           it.print(2, 2, id(font_title), "HA Integration:");
           it.strftime(12, 22, id(font_data), "%H:%M:%S", id(ha_time).now());
           it.print(12, 36, id(font_data), "API & MQTT");
           it.printf(16, 48, id(font_data), "Status: %s", id(ha_api_status).state?"OK":"FAILED");
-
+          
 
           // Section Climate UART
           it.print(2, 66, id(font_title), "Climate UART:");
           it.print(2, 87, id(font_data), "Successful cycles:");
           it.printf(12, 100, id(font_data), "%.1f%%", id(complete_cycles_percent).state);
+
+    

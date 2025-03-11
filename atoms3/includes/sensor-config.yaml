@@ -53,8 +53,8 @@ sensor:
     #   name: "Heap Fragmentation"
     # block:
     #   name: "Heap Max Block"
-    # loop_time:
-    #   name: "Loop Time"
+    loop_time:
+      name: "Loop Time"
     # psram:
     #   name: "Free PSRAM"
 

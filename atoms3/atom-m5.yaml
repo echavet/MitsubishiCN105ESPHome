@@ -7,7 +7,7 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   min_version: 2024.6.0
-  name_add_mac_suffix: true
+  #name_add_mac_suffix: true
   project:
     name: esphome.clim_and_nt_proxy
     version: "24.7.4.1"
@@ -18,16 +18,41 @@ debug:
 # Enable logging
 logger:
   #hardware_uart: USB_CDC
-  level: INFO
-
+  baud_rate: 0
+  level: DEBUG
+  logs:
+    EVT_SETS : DEBUG
+    WIFI : INFO
+    MQTT : INFO
+    WRITE_SETTINGS : INFO
+    SETTINGS : DEBUG
+    STATUS : INFO
+    CN105Climate: WARN
+    CN105: INFO
+    climate: WARN
+    sensor: WARN
+    chkSum : INFO
+    WRITE : WARN
+    READ : WARN
+    ACK : DEBUG
+    REMOTE_TEMP : DEBUG
+    Header: INFO
+    Decoder : INFO
+    CONTROL_WANTED_SETTINGS: INFO    
+    control: INFO    
+    UPDT_ITVL: DEBUG
+    CYCLE: DEBUG    
+    esp32_ble_tracker: INFO
+    esp32_ble_client: INFO
+    esp-idf: INFO
 esp32:
   board: esp32-s3-devkitc-1
 
   #board: m5stack-cores3
   #variant: ESP32S3
   framework:
-    type: arduino
-    #type: esp-idf
+    #type: arduino
+    type: esp-idf
     version: recommended
   flash_size: 8MB
 
