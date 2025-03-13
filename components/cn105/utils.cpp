@@ -1,6 +1,8 @@
 #include "cn105.h"
 #include "Globals.h"
 
+using namespace esphome;
+
 void log_info_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix) {
 #if __GNUC__ >= 11
     ESP_LOGI(tag, "%s %lu %s", msg, (unsigned long)value, suffix);
