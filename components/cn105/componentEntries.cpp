@@ -1,6 +1,6 @@
 #include "cn105.h"
 
-
+using namespace esphome;
 
 /**
  * This method is call by the esphome framework to initialize the component
