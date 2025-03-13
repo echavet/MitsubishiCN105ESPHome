@@ -1,0 +1,90 @@
+globals:
+  - id: current_page
+    type: "int"
+    initial_value: "0"
+
+font: !include fonts.yaml
+
+spi:
+  clk_pin: 17
+  mosi_pin: 21
+
+display: 
+  - platform: st7789v
+    id: display_tft
+    model: Custom
+    height: 128
+    width: 128
+    rotation: 0
+    offset_height: 2
+    offset_width: 1
+    backlight_pin: 16
+    cs_pin: 15    
+    dc_pin: 33   #RS/DC
+    reset_pin: 34
+    eightbitcolor: true
+    update_interval: 5s
+    
+    pages:
+      - id: page1
+        lambda: |- 
+          
+          auto color_orange = Color(0xFF4500);  // Rouge-orange chaud
+          auto color_blue = Color(0x00008B);    // Bleu sombre
+          auto color_yellow = Color(0xFFFF00);  // Jaune
+          auto color_black = Color(0x000000);   // Noir
+
+          // Changer la couleur de fond en fonction du mode du climatiseur
+          if (id(atoms3_clim).mode == esphome::climate::CLIMATE_MODE_HEAT) {
+            it.fill(color_orange);
+          } else if (id(atoms3_clim).mode == esphome::climate::CLIMATE_MODE_COOL) {
+            it.fill(color_blue);
+          } else if (id(atoms3_clim).mode == esphome::climate::CLIMATE_MODE_FAN_ONLY) {
+            it.fill(color_yellow);
+          } else {
+            it.fill(color_black);
+          }
+
+          // Afficher la température de consigne en grand texte
+          it.printf(it.get_width() / 2, it.get_height() / 2 - 10, id(font_display), TextAlign::CENTER, "%.1f °C", id(atoms3_clim).target_temperature);
+
+          // Afficher la température de la pièce en texte plus petit en dessous
+          it.printf(it.get_width() / 2, it.get_height() / 2 + 32, id(font_data), TextAlign::CENTER, "%.1f °C", id(atoms3_clim).current_temperature);
+
+      - id: page2
+        lambda: |-          
+          it.rectangle(0, 0, it.get_width(), it.get_height());
+          it.print(2, 2, id(font_title), "WiFi:");
+          // En-tête pour l'IP
+          it.print(2, 22, id(font_header), "IP:");
+          // Donnée pour l'IP
+          it.print(2, 34, id(font_data), id(wifi_ip).state.c_str());
+
+          // En-tête pour le SSID
+          it.print(2, 54, id(font_header), "SSID:");
+          // Donnée pour le SSID
+          it.print(2, 66, id(font_data), id(wifi_ssid).state.c_str());
+
+          // En-tête pour le BSSID
+          it.print(2, 86, id(font_header), "BSSID:");
+          // Donnée pour le BSSID
+          it.print(2, 98, id(font_data), id(wifi_bssid).state.c_str());        
+          it.printf(2, 112, id(font_header), "signal: %.1f dBm", id(wifi_signal_dbm).state);
+
+      - id: page3
+        lambda: |-
+          it.rectangle(0, 0, it.get_width(), it.get_height());
+          
+          // Section HA Integration
+          it.print(2, 2, id(font_title), "HA Integration:");
+          it.strftime(12, 22, id(font_data), "%H:%M:%S", id(ha_time).now());
+          it.print(12, 36, id(font_data), "API & MQTT");
+          it.printf(16, 48, id(font_data), "Status: %s", id(ha_api_status).state?"OK":"FAILED");
+          
+
+          // Section Climate UART
+          it.print(2, 66, id(font_title), "Climate UART:");
+          it.print(2, 87, id(font_data), "Successful cycles:");
+          it.printf(12, 100, id(font_data), "%.1f%%", id(complete_cycles_percent).state);
+
+    

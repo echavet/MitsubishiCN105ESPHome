@@ -127,7 +127,7 @@ climate:
 
 # Default logging level
 logger:
-#  hardware_uart: UART1 # Uncomment this line for ESP8266 devices
+#  hardware_uart: UART1 # Uncomment on ESP8266 devices
   level: INFO
 ```
 
@@ -224,7 +224,7 @@ This firmware supports detailed log granularity for troubleshooting. Below is th
 
 ```yaml
 logger:
-  hardware_uart: UART1 # Only needed on ESP8266 devices
+#  hardware_uart: UART1 # Uncomment on ESP8266 devices
   level: INFO
   logs:
     EVT_SETS : INFO
@@ -314,7 +314,7 @@ climate:
 
 # Default logging level
 logger:
-  hardware_uart: UART1 # This line can be removed for ESP32 devices
+#  hardware_uart: UART1 # Uncomment on ESP8266 devices
   level: INFO
 
 # Enable logging
@@ -400,7 +400,7 @@ captive_portal:
 
 # Enable logging
 logger:
-  hardware_uart: UART1
+#  hardware_uart: UART1 # Uncomment on ESP8266 devices
   level: INFO
   logs:
     EVT_SETS : INFO

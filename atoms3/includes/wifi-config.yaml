@@ -1,0 +1,19 @@
+#use_address: 10.1.101.172
+#use_address: 192.168.8.109
+networks:
+- ssid: !secret wifi_ssid
+  password: !secret wifi_password  
+- ssid : !secret wifi_ssid2
+  password: !secret wifi_password2
+- ssid : !secret wifi_ssid3
+  password: !secret wifi_password3
+- ssid : !secret wifi_ssid4
+  password: !secret wifi_password4
+
+#- ssid: !secret wifi_ssid2
+#  password: !secret wifi_password2
+
+# Enable fallback hotspot (captive portal) in case wifi connection fails
+ap:
+  ssid: "atom Fallback Hotspot"
+  password: !secret ota_pwd

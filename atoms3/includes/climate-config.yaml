@@ -1,0 +1,58 @@
+# includes diagnostic sensors
+<<: !include sensor-config.yaml
+
+# external_components:
+#   - source: github://echavet/MitsubishiCN105ESPHome
+#     refresh: 0s
+external_components:
+ - source:
+     type: local
+     path: ../components 
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: GPIO01 #G1
+  rx_pin: GPIO02 #G2
+climate:
+  - platform: cn105
+    name: ${clim_name}
+    id: "atoms3_clim"
+    compressor_frequency_sensor:
+      name: Compressor frequency (clim Sejour)
+    input_power_sensor:
+      name: Input power
+    #kwh_sensor:
+    #  name: Energy usage
+    #runtime_hours_sensor:
+    #  name: Runtime hours
+
+    #outside_air_temperature_sensor:
+    #  name: ${name} Outside air temperature
+    vertical_vane_select:
+      name: Orientation de la Vane Verticale
+    #horizontal_vane_select:
+    #  name: Orientation de la Vane Horizontale
+    #isee_sensor:
+    #  name: ISEE Sensor
+    auto_sub_mode_sensor:
+      name: auto-submode sensor
+    sub_mode_sensor:
+      name: submode sensor
+    stage_sensor:
+      name: stage sensor
+    remote_temperature_timeout: 15min
+    update_interval: 3500ms # shouldn't be less than 1 second
+    debounce_delay: 100ms # delay to prevent bouncing
+    hp_uptime_connection_sensor:
+      name: ${name} HP Uptime Connection
+      update_interval: 30s
+    supports:
+      mode: [COOL, HEAT, FAN_ONLY, DRY]
+      fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
+      swing_mode: ["OFF", VERTICAL]
+    visual:
+      min_temperature: 17
+      max_temperature: 28
+      temperature_step:
+        target_temperature: 0.5
+        current_temperature: 0.1

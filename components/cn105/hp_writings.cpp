@@ -88,7 +88,7 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
             this->get_hw_serial_()->write_byte((uint8_t)packet[i]);
         }
 
-	// Prevent sending wantedSettings too soon after writing for example the remote temperature update packet
+        // Prevent sending wantedSettings too soon after writing for example the remote temperature update packet
         this->lastSend = CUSTOM_MILLIS;
 
     } else {
@@ -212,7 +212,7 @@ void CN105Climate::createPacket(uint8_t* packet) {
 
 void CN105Climate::publishWantedSettingsStateToHA() {
 
-    if ((this->wantedSettings.mode != nullptr) || (this->wantedSettings.mode != nullptr)) {
+    if ((this->wantedSettings.mode != nullptr) || (this->wantedSettings.power != nullptr)) {
         checkPowerAndModeSettings(this->wantedSettings, false);
         this->updateAction();       // update action info on HA climate component
     }
@@ -361,25 +361,18 @@ void CN105Climate::sendRemoteTemperature() {
     packet[5] = 0x07;
     if (this->remoteTemperature_ > 0) {
         packet[6] = 0x01;
-        this->remoteTemperature_ = this->remoteTemperature_ * 2;
-        this->remoteTemperature_ = round(this->remoteTemperature_);
-        this->remoteTemperature_ = this->remoteTemperature_ / 2;
-        float temp1 = 3 + ((this->remoteTemperature_ - 10) * 2);
-        packet[7] = (int)temp1;
-        float temp2 = (this->remoteTemperature_ * 2) + 128;
-        packet[8] = (int)temp2;
+        float temp = round(this->remoteTemperature_ * 2);
+        packet[7] = static_cast<uint8_t>(temp - 16);
+        packet[8] = static_cast<uint8_t>(temp + 128);
     } else {
-        packet[6] = 0x00;
         packet[8] = 0x80; //MHK1 send 80, even though it could be 00, since ControlByte is 00
     }
     // add the checksum
     uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
-    ESP_LOGD(TAG, "sending remote temperature packet...");
+    ESP_LOGD(LOG_REMOTE_TEMP, "Sending remote temperature packet... -> %f", this->remoteTemperature_);
     writePacket(packet, PACKET_LEN);
 
     // this resets the timeout
     this->pingExternalTemperature();
-
-
 }

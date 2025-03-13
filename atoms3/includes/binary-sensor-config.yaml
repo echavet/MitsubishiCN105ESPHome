@@ -1,0 +1,38 @@
+binary_sensor: 
+  - platform: status
+    name: "Home Assistant API Connection"
+    id: ha_api_status
+    
+  - platform: gpio
+    name: Button
+    pin:
+      number: GPIO41
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_off: 10ms
+    
+    on_click:
+      - min_length: 10ms
+        max_length: 350ms
+        then:          
+          - logger.log: Button short click
+        # - display_menu.show: test_graphical_display_menu
+          - lambda: |-
+              id(current_page)++;
+              if (id(current_page) >= 3) { // Nombre de pages (index 0 et 1 dans cet exemple)
+                id(current_page) = 0;
+              }
+              if (id(current_page) == 0) {
+                id(display_tft).show_page(id(page1));
+              } else if (id(current_page) == 1) {
+                id(display_tft).show_page(id(page2));
+              } else if (id(current_page) == 2) {
+                id(display_tft).show_page(id(page3));
+              }
+      - min_length: 350ms    
+        max_length: 4000ms
+        then:
+          - logger.log: Button long click

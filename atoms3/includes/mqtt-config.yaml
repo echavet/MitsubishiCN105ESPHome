@@ -1,0 +1,5 @@
+#broker: home-io.local
+broker: !secret broker
+username: !secret m5_login 
+password: !secret m5_password
+discovery: true

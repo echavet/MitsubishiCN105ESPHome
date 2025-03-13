@@ -157,13 +157,16 @@ void CN105Climate::getPowerFromResponsePacket() {
     ESP_LOGD("Decoder", "[Auto Mode Sub Mode  : %s]", receivedSettings.auto_sub_mode);
 
     //this->heatpumpUpdate(receivedSettings);
-    if (this->Stage_sensor_ != nullptr) {
+    if (this->Stage_sensor_ != nullptr && (!this->currentSettings.stage || strcmp(receivedSettings.stage, this->currentSettings.stage) != 0)) {
+        this->currentSettings.stage = receivedSettings.stage;
         this->Stage_sensor_->publish_state(receivedSettings.stage);
     }
-    if (this->Sub_mode_sensor_ != nullptr) {
+    if (this->Sub_mode_sensor_ != nullptr && (!this->currentSettings.sub_mode || strcmp(receivedSettings.sub_mode, this->currentSettings.sub_mode) != 0)) {
+        this->currentSettings.sub_mode = receivedSettings.sub_mode;
         this->Sub_mode_sensor_->publish_state(receivedSettings.sub_mode);
     }
-    if (this->Auto_sub_mode_sensor_ != nullptr) {
+    if (this->Auto_sub_mode_sensor_ != nullptr && (!this->currentSettings.auto_sub_mode || strcmp(receivedSettings.auto_sub_mode, this->currentSettings.auto_sub_mode) != 0)) {
+        this->currentSettings.auto_sub_mode = receivedSettings.auto_sub_mode;
         this->Auto_sub_mode_sensor_->publish_state(receivedSettings.auto_sub_mode);
     }
 }
@@ -235,9 +238,9 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
     // RM = indoor unit operating time in minutes
 
     if (data[5] > 1) {
-	receivedStatus.outsideAirTemperature = (float)(data[5] - 128) / 2;
+        receivedStatus.outsideAirTemperature = (float)(data[5] - 128) / 2;
     } else {
-	receivedStatus.outsideAirTemperature = NAN;
+        receivedStatus.outsideAirTemperature = NAN;
     }
 
     if (data[6] != 0x00) {
@@ -293,8 +296,9 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
 
 void CN105Climate::terminateCycle() {
     if (this->shouldSendExternalTemperature_) {
-	// We will receive ACK packet for this.
-	// Sending WantedSettings must be delayed in this case (lastSend timestamp updated).
+        // We will receive ACK packet for this.
+        // Sending WantedSettings must be delayed in this case (lastSend timestamp updated).        
+        ESP_LOGD(LOG_REMOTE_TEMP, "Sending remote temperature...");
         this->sendRemoteTemperature();
     }
 
@@ -400,7 +404,7 @@ void CN105Climate::getDataFromResponsePacket() {
 }
 
 void CN105Climate::updateSuccess() {
-    ESP_LOGI(TAG, "Last heatpump data update successful!");
+    ESP_LOGD(LOG_ACK, "Last heatpump data update successful!");
     // nothing can be done here because we have no mean to know wether it is an external temp ack
     // or a wantedSettings update ack
 }
@@ -517,8 +521,8 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings& settings) {
 
     if (this->currentSettings != settings) {
         ESP_LOGD(LOG_SETTINGS_TAG, "Settings changed, updating HA states");
+        this->publishStateToHA(settings);
     }
-    this->publishStateToHA(settings);
 }
 
 void CN105Climate::checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
