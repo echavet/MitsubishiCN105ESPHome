@@ -7,12 +7,12 @@ ota:
 
 wifi: !include wifi-config.yaml
 
-captive_portal:
+#captive_portal:
 
-improv_serial:
+#improv_serial:
 
-web_server:
-  port: 80
+#web_server:
+#  port: 80
 
 time:
   platform: homeassistant

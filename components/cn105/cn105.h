@@ -280,7 +280,7 @@ private:
 #ifdef USE_ESP32
     std::mutex wantedSettingsMutex;
 #else
-    bool wantedSettingsMutex = false;
+    volatile bool wantedSettingsMutex = false;
 #endif
 
     unsigned long lastResponseMs;
