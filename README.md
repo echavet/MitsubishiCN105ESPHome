@@ -1,5 +1,14 @@
 # Mitsubishi CN105 ESPHome
 
+> [!WARNING]  
+> Due to a change in ESPHome 2025.2.0, some users are reporting build problems related to the loading of the `uptime_seconds_sensor` class. If you get a compile error for this reason, manually add an uptime sensor to your YAML configuration as below, clean your build files, and recompile. Once the root cause is identified this note will be removed.
+>
+> ```yaml
+> sensor:
+>   - platform: uptime
+>     name: Uptime
+> ```
+
 This project is a firmware for ESP32 microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump through Home Assistant, a web interface, or any MQTT client.
 
 It uses the ESPHome framework and is compatible with the Arduino framework and ESP-IDF.
@@ -10,8 +19,9 @@ The intended use case is for owners of a Mitsubishi Electric heat pump or air co
 
 The benefits include fully local control over your heat pump system, without reliance on a vendor network. Additional visibility, finer control, and even improved energy efficiency and comfort are possible when utilizing the remote temperature features.
 
-### Warning: Use at your own risk.
-This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on the Swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
+> [!CAUTION]
+> Use at your own risk.
+> This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on the Swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
 
 ### New Features
 - Additional components for supported units: vane orientation (fully supporting the Swicago map), compressor frequency for energy monitoring, and i-see sensor.
@@ -41,12 +51,14 @@ This project maintains all functionalities of the original [geoffdavis](https://
 
 ## Supported Microcontrollers
 
-**Caution:** ESP8266 boards such as the WeMos D1 Mini clones (LOLIN in particular) tend to be unreliable in this application, and may require an external voltage regulator to work. While some users have successfully used ESP8266 based devices, if you are purchasing new hardware for use with this project, it is recommended to focus on the more modern and powerful ESP32-S3 based devices.
+> [!IMPORTANT]
+> ESP8266 boards such as the WeMos D1 Mini clones (LOLIN in particular) tend to be unreliable in this application, and may require an external voltage regulator to work. While some users have successfully used ESP8266 based devices, if you are purchasing new hardware for use with this project, it is recommended to focus on the more modern and powerful ESP32-S3 based devices.
 
 - Generic ESP32 Dev Kit (ESP32): tested
 - M5Stack ATOM Lite : tested
 - M5Stack ATOM S3 Lite: tested w/ [modifications](https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
 - M5Stack StampS3
+- Seeed Studios Xiao ESP32S3: tested
 - WeMos D1 Mini Pro (ESP8266): tested (but not currently recommended, see above)
 
 ## Supported Mitsubishi Climate Units
@@ -77,7 +89,8 @@ Add a new device in your ESPHome dashboard. Create a yaml configuration file for
 - [Getting Started with ESPHome and HomeAssistant](https://esphome.io/guides/getting_started_hassio)
 - [Installing ESPHome Locally](https://esphome.io/guides/installing_esphome)
 
-Note: This code uses the ESPHome [external components](https://esphome.io/components/external_components.html) integration feature. This means the project is not part of the ESPHome framework, it is an external component. 
+> [!NOTE]
+> This code uses the ESPHome [external components](https://esphome.io/components/external_components.html) integration feature. This means the project is not part of the ESPHome framework, it is an external component not managed by the core ESPHome project. 
 
 ### Step 3: Configure the board and UART settings
 
@@ -123,7 +136,7 @@ climate:
   - platform: cn105
     id: hp
     name: "My Heat Pump"
-    update_interval: 4s        # update interval can be adjusted after a first run and logs monitoring 
+    update_interval: 2s        # update interval can be adjusted after a first run and logs monitoring 
 
 # Default logging level
 logger:
@@ -167,14 +180,14 @@ climate:
     name: "${friendly_name}"
     icon: mdi:heat-pump
     visual:
-      min_temperature: 15
+      min_temperature: 10 # Adjust to your unit's min temp. SmartSet units can go to 10C for heating
       max_temperature: 31
       temperature_step:
         target_temperature: 1
         current_temperature: 0.5
     # Timeout and communication settings
     remote_temperature_timeout: 30min
-    update_interval: 4s
+    update_interval: 2s
     debounce_delay : 100ms
     # Various optional sensors, not all sensors are supported by all heatpumps
     compressor_frequency_sensor:
@@ -217,7 +230,8 @@ climate:
       disabled_by_default: true
 ```
 
-Note: An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
+> [!TIP]
+> An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
 
 #### Logger granularity
 This firmware supports detailed log granularity for troubleshooting. Below is the full list of logger components and recommended defaults.
@@ -310,7 +324,7 @@ external_components:
 climate:
   - platform: cn105
     name: "My Heat Pump"
-    update_interval: 4s
+    update_interval: 2s
 
 # Default logging level
 logger:
@@ -522,14 +536,14 @@ climate:
     name: "${friendly_name}"
     icon: mdi:heat-pump
     visual:
-      min_temperature: 15
+      min_temperature: 10 # Adjust to your unit's min temp. SmartSet units can go to 10C for heating
       max_temperature: 31
       temperature_step:
         target_temperature: 1
         current_temperature: 0.5
     # Timeout and communication settings
     remote_temperature_timeout: 30min
-    update_interval: 4s
+    update_interval: 2s
     debounce_delay : 100ms
     # Various optional sensors, not all sensors are supported by all heatpumps
     compressor_frequency_sensor:
@@ -692,13 +706,17 @@ The below sensors were added recently based on the work of others in sorting out
     auto_sub_mode_sensor:
       name: Auto Sub Mode Sensor
 ```
-- `stage_sensor` is the actual fan speed of the indoor unit. This is called stage in some of the documentation, even though the name isnt clear. This sensor is important because of how units act when they are in AUTO mode. AUTO mode is standard mode where the unit will acept a single setpoint and keep with in +/- 2 degrees C of that set point.
+- `stage_sensor` is the actual fan speed of the indoor unit. This is called stage in some documentation. Reported speeds include `IDLE`, `LOW`, `GENTLE`, `MEDIUM`, `MODERATE`, `HIGH` and `DIFFUSE`, named using Mitsubishi documentation conventions.
 
-- `auto_sub_mode_sensor` is that indicates what actual mode the unit is in when in AUTO; AUTO OFF means AUTO is not enabled, otherwise AUTO COOL means the unit is in AUTO and currently cooling to say within the +/- 2C from the setpoint.
+- `auto_sub_mode_sensor` indicates what actual mode the unit is in when in AUTO. Modes are `AUTO_OFF`, meaning AUTO is disabled, `AUTO_COOL`, meaning AUTO and cooling, `AUTO_HEAT`, meaning AUTO and heating and `AUTO_LEADER`, meaning this unit is the leader in a multi-head unit and selects the heat/cool mode that the others follow.
 
-- `sub_mode_sensor` indicates if the unit is in `PREHEAT`, `DEFROST`, `STANDBY` or `LEADER` submode. These are usful in knowing the day by day life of your unit. If it is in one of these modes too much this is an indication of a problem. NORMAL is just the NORMAL running sub mode. LEADER is the odd ball and it is not completely clear if this is the right name. What this indicates is that in a multi-head unit one id the leader and gets to pick the HEAT/COOL mode that the other must follow.
+- `sub_mode_sensor` indicates additional detail on the current behavior of the unit. The Sub Modes are:
+  - `NORMAL` - the unit is in an active mode (heat, cool, dry, etc.) and is either running, or waiting to run
+  - `PREHEAT` - a cold-climate feature that electrically preheats the compressor windings prior to start of operation
+  - `DEFROST` - a cold climate behavior that runs a short AC cycle during heating mode to melt ice from the coils
+  - `STANDBY` - unit is off, or has been put into a "sleep" state through AUTO operation on another indoor unit
 
-Some examples of how these all fit together: Unit 1 is in AUTO set to 20C and Unit 2 is in AUTO and set to 20C. Unit 1 senses that the room is 24C and tries to enter AUTO COOL. If Unit 2 wants to heat the room it is in, it will enter STANDBY (and in the case of a few units tested, this mean it will go to "sleep" as if it is off, but not really be off) making Unit 1 enter LEADER sub mode. In future releases, it is planned to make the ACTION in HA match these modes. But at this time this is not implemented.
+Some examples of how these all fit together: Unit 1 is in AUTO set to 20C and Unit 2 is in AUTO and set to 20C. Unit 1 senses that the room is 24C and tries to enter `AUTO_COOL`. If Unit 2 wants to heat the room it is in, it will enter `STANDBY` (and in the case of a few units tested, this mean it will go to "sleep" as if it is off, but not really be off) making Unit 1 enter `AUTO_LEADER` sub mode. In future releases, it is planned to make the ACTION in HA match these modes. But at this time this is not implemented.
 
 It is also important to note that the Kumo adapter has many more settings that impact the behaviour above (such as thermal fan behaviour) and if you have set these the exact actions the untis take in these modes/submodes/stages is determined by those. Some of these can also be set by remotes and other devices. The setup you have will dictate the exact actions you see. If you have permutations, please share!
 
