@@ -1,6 +1,7 @@
 #include "cn105.h"
 #include "heatpumpFunctions.h"
 
+using namespace esphome;
 //#region heatpump_functions fonctions clim
 
 heatpumpFunctions CN105Climate::getFunctions() {
