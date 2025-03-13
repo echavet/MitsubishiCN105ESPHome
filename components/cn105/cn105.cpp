@@ -110,9 +110,7 @@ bool CN105Climate::is_operating() {
 // SERIAL_8E1
 void CN105Climate::setupUART() {
 
-    //ESP_LOGI(TAG, "setupUART() with baudrate %lu", this->parent_->get_baud_rate());
     log_info_uint32(TAG, "setupUART() with baudrate ", this->parent_->get_baud_rate());
-    log_info_uint32(TAG, "setupUART() is hw uart?", reinterpret_cast<uart::RP2040UartComponent*>(this->parent_)->is_hw_serial());
     this->setHeatpumpConnected(false);
     this->isUARTConnected_ = false;
 
