@@ -19,8 +19,9 @@ The intended use case is for owners of a Mitsubishi Electric heat pump or air co
 
 The benefits include fully local control over your heat pump system, without reliance on a vendor network. Additional visibility, finer control, and even improved energy efficiency and comfort are possible when utilizing the remote temperature features.
 
-### Warning: Use at your own risk.
-This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on the Swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
+> [!CAUTION]
+> Use at your own risk.
+> This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on the Swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
 
 ### New Features
 - Additional components for supported units: vane orientation (fully supporting the Swicago map), compressor frequency for energy monitoring, and i-see sensor.
@@ -50,12 +51,14 @@ This project maintains all functionalities of the original [geoffdavis](https://
 
 ## Supported Microcontrollers
 
-**Caution:** ESP8266 boards such as the WeMos D1 Mini clones (LOLIN in particular) tend to be unreliable in this application, and may require an external voltage regulator to work. While some users have successfully used ESP8266 based devices, if you are purchasing new hardware for use with this project, it is recommended to focus on the more modern and powerful ESP32-S3 based devices.
+> [!IMPORTANT]
+> ESP8266 boards such as the WeMos D1 Mini clones (LOLIN in particular) tend to be unreliable in this application, and may require an external voltage regulator to work. While some users have successfully used ESP8266 based devices, if you are purchasing new hardware for use with this project, it is recommended to focus on the more modern and powerful ESP32-S3 based devices.
 
 - Generic ESP32 Dev Kit (ESP32): tested
 - M5Stack ATOM Lite : tested
 - M5Stack ATOM S3 Lite: tested w/ [modifications](https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
 - M5Stack StampS3
+- Seeed Studios Xiao ESP32S3: tested
 - WeMos D1 Mini Pro (ESP8266): tested (but not currently recommended, see above)
 
 ## Supported Mitsubishi Climate Units
@@ -86,7 +89,8 @@ Add a new device in your ESPHome dashboard. Create a yaml configuration file for
 - [Getting Started with ESPHome and HomeAssistant](https://esphome.io/guides/getting_started_hassio)
 - [Installing ESPHome Locally](https://esphome.io/guides/installing_esphome)
 
-Note: This code uses the ESPHome [external components](https://esphome.io/components/external_components.html) integration feature. This means the project is not part of the ESPHome framework, it is an external component. 
+> [!NOTE]
+> This code uses the ESPHome [external components](https://esphome.io/components/external_components.html) integration feature. This means the project is not part of the ESPHome framework, it is an external component not managed by the core ESPHome project. 
 
 ### Step 3: Configure the board and UART settings
 
@@ -132,7 +136,7 @@ climate:
   - platform: cn105
     id: hp
     name: "My Heat Pump"
-    update_interval: 4s        # update interval can be adjusted after a first run and logs monitoring 
+    update_interval: 2s        # update interval can be adjusted after a first run and logs monitoring 
 
 # Default logging level
 logger:
@@ -183,7 +187,7 @@ climate:
         current_temperature: 0.5
     # Timeout and communication settings
     remote_temperature_timeout: 30min
-    update_interval: 4s
+    update_interval: 2s
     debounce_delay : 100ms
     # Various optional sensors, not all sensors are supported by all heatpumps
     compressor_frequency_sensor:
@@ -226,7 +230,8 @@ climate:
       disabled_by_default: true
 ```
 
-Note: An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
+> [!TIP]
+> An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
 
 #### Logger granularity
 This firmware supports detailed log granularity for troubleshooting. Below is the full list of logger components and recommended defaults.
@@ -319,7 +324,7 @@ external_components:
 climate:
   - platform: cn105
     name: "My Heat Pump"
-    update_interval: 4s
+    update_interval: 2s
 
 # Default logging level
 logger:
@@ -538,7 +543,7 @@ climate:
         current_temperature: 0.5
     # Timeout and communication settings
     remote_temperature_timeout: 30min
-    update_interval: 4s
+    update_interval: 2s
     debounce_delay : 100ms
     # Various optional sensors, not all sensors are supported by all heatpumps
     compressor_frequency_sensor:
