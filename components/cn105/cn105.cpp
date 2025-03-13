@@ -112,6 +112,7 @@ void CN105Climate::setupUART() {
 
     //ESP_LOGI(TAG, "setupUART() with baudrate %lu", this->parent_->get_baud_rate());
     log_info_uint32(TAG, "setupUART() with baudrate ", this->parent_->get_baud_rate());
+    log_info_uint32(TAG, "setupUART() with parent address ", this->parent_);
     this->setHeatpumpConnected(false);
     this->isUARTConnected_ = false;
 
