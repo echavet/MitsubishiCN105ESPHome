@@ -1,6 +1,6 @@
 #include "cn105.h"
 
-
+using namespace esphome;
 
 uint8_t CN105Climate::checkSum(uint8_t bytes[], int len) {
     uint8_t sum = 0;

@@ -20,8 +20,7 @@
 #include <mutex>
 #endif
 
-using namespace esphome;
-
+namespace esphome {
 
 void log_info_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix = "");
 void log_debug_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix = "");
@@ -328,3 +327,4 @@ private:
     int dataLength = 0;
     uint8_t command = 0;
 };
+}
