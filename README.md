@@ -72,9 +72,11 @@ Units tested by project contributors include:
 - `MSZ-GLxxNA`
 - `MSZ-AP20VGK` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
 - `MSZ-AP42VGK`
+- `MSZ-AP35VGD2` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/254)
 - `MSZ-AY35VGKP`
 - `MSZ-FSxxNA`
 - `MSZ-FHxxNA`
+
 
 ## Usage
 
