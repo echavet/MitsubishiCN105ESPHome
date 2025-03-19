@@ -1,0 +1,103 @@
+sensor:
+  - platform: template
+    id: cfm_lookup
+    internal: true
+    lambda: |-
+      json::parse_json(id(fanspeed_json).state, [](JsonObject root) -> bool {
+          if (root[id(model).state]) {
+            id(fan_cfm).publish_state(root[id(model).state][id(stage).state]);
+            ESP_LOGD(TAG,"CFM calculated from JSON");
+            return true;
+          }
+          else {
+            ESP_LOGD(TAG,"Unsupported model - can't return fan CFM");
+            return false;
+          }
+      });
+      return 0;
+    update_interval: 1s
+  - platform: template
+    name: "Fan CFM"
+    id: fan_cfm
+    unit_of_measurement: "ft³/min"
+    icon: "mdi:weather-windy"
+    device_class: "volume_flow_rate"
+    state_class: "measurement"
+    accuracy_decimals: 0
+    disabled_by_default: true
+    filters:
+      - sliding_window_moving_average:
+          window_size: 4
+          send_every: 1
+      - delta: 1
+
+text:
+  - platform: template
+    id: model
+    internal: true
+    optimistic: true
+    mode: text
+    initial_value: ${model}
+  - platform: template
+    id: fanspeed_json
+    internal: true
+    optimistic: true
+    mode: text
+    initial_value: >
+      {
+      "MSZ-GL12NA": {
+          "IDLE": 0,
+          "DIFFUSE": 145,
+          "LOW": 145,
+          "GENTLE": 170,
+          "MEDIUM": 237,
+          "MODERATE": 321,
+          "HIGH": 406
+      },
+      "MSZ-GL09NA": {
+          "IDLE": 0,
+          "DIFFUSE": 145,
+          "LOW": 145,
+          "GENTLE": 170,
+          "MEDIUM": 237,
+          "MODERATE": 321,
+          "HIGH": 406
+      },
+      "MSZ-GL06NA": {
+          "IDLE": 0,
+          "DIFFUSE": 145,
+          "LOW": 145,
+          "GENTLE": 170,
+          "MEDIUM": 237,
+          "MODERATE": 321,
+          "HIGH": 406
+      },
+      "MSZ-GL15NA": {
+          "IDLE": 0,
+          "DIFFUSE": 205,
+          "LOW": 205,
+          "GENTLE": 247,
+          "MEDIUM": 304,
+          "MODERATE": 367,
+          "HIGH": 463
+      },
+      "MSZ-GL18NA": {
+          "IDLE": 0,
+          "DIFFUSE": 297,
+          "LOW": 297,
+          "GENTLE": 385,
+          "MEDIUM": 469,
+          "MODERATE": 565,
+          "HIGH": 646
+      },
+      "MSZ-GL24NA": {
+          "IDLE": 0,
+          "DIFFUSE": 388,
+          "LOW": 388,
+          "GENTLE": 469,
+          "MEDIUM": 544,
+          "MODERATE": 628,
+          "HIGH": 738
+      }
+      }
+

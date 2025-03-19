@@ -1,0 +1,73 @@
+# Configure air intake and outlet sensors, and perform BTU/hr calculations
+
+one_wire:
+  - platform: gpio
+    pin: GPIO3
+
+sensor:
+  - platform: dallas_temp
+    address: 0x8b00000003eba528
+    name: "Intake Temperature"
+    id: intake_temp
+    unit_of_measurement: "°C"
+    device_class: "temperature"
+    state_class: "measurement"
+    update_interval: 2s
+    filters:
+    - throttle_average: 15s
+    - delta: 0.2
+  - platform: dallas_temp
+    address: 0x8c00000003136528
+    name: "Outlet Temperature"
+    id: outlet_temp
+    unit_of_measurement: "°C"
+    device_class: "temperature"
+    state_class: "measurement"
+    update_interval: 2s
+    filters:
+    - throttle_average: 15s
+    - delta: 0.2
+  - platform: template
+    name: "Delta T"
+    id: delta_t
+    lambda: |-
+      // Initialize variables
+      // airflow rate in m^3/sec, converted from CFM
+      float flow = id(fan_cfm).state * 0.000471947;
+      // Specific capacity of air at STC, in kJ/kg*K
+      float capacity = 1.005;
+      // DeltaT in degrees K
+      float delta_t = (id(outlet_temp).state - id(intake_temp).state);
+      // Air density in kg/m^3. 1.225 at sea level.
+      float density = id(air_density).state;
+      float power = 0;
+      // Calculate the heating or cooling power, in kW
+      power = delta_t * flow * density * capacity;
+      // Convert to BTU/hr for yankees
+      power = power * 3142;
+      // Update the thermal_power sensor and return the deltaT
+      id(thermal_power).publish_state(power);
+      return delta_t;
+    update_interval: 5s
+    state_class: "measurement"
+    filters:
+    - throttle_average: 30s
+    - delta: 0.2
+  - platform: template
+    name: "Thermal Power"
+    id: thermal_power
+    unit_of_measurement: "BTU/hr"
+    state_class: "measurement"
+    update_interval: never
+    accuracy_decimals: 0
+    filters:
+    - round: 0
+    - exponential_moving_average:
+        alpha: 0.1
+        send_every: 5
+    - delta: 10
+  - platform: homeassistant
+    name: Air Density
+    id: air_density
+    entity_id: sensor.st_00086672_air_density
+    internal: true

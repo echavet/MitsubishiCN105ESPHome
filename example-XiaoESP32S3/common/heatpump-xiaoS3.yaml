@@ -1,0 +1,62 @@
+# Configuration defaults for the Seeed Studios XIAO S3
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.mcu: esp32s3
+    board_build.extra_flags:
+    - "-DARDUINO_HW_CDC_ON_BOOT=0"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+# UART configuration for Wemos D1 Mini Pro
+uart:
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: GPIO43
+  rx_pin: GPIO44
+
+  # Enable logging
+logger:
+  level: INFO
+  logs:
+    EVT_SETS : INFO
+    WIFI : INFO
+    MQTT : INFO
+    WRITE_SETTINGS : INFO
+    SETTINGS : INFO
+    STATUS : INFO
+    CN105Climate: INFO
+    CN105: INFO
+    CYCLE: WARN # Set this to INFO to see how long your cycle times are taking
+    climate: WARN
+    sensor: INFO
+    chkSum : INFO
+    WRITE : WARN
+    READ : WARN
+    Header: INFO
+    Decoder : INFO
+    CONTROL_WANTED_SETTINGS: INFO
+#  level: DEBUG
+#  logs:
+#    EVT_SETS : DEBUG
+#    WIFI : INFO
+#    MQTT : INFO
+#    WRITE_SETTINGS : DEBUG
+#    SETTINGS : DEBUG
+#    STATUS : INFO
+#    CN105Climate: WARN
+#    CN105: DEBUG
+#    climate: WARN
+#    sensor: WARN
+#    chkSum : INFO
+#    WRITE : WARN
+#    READ : WARN
+#    Header: INFO
+#    Decoder : DEBUG
+#    CONTROL_WANTED_SETTINGS: DEBUG
