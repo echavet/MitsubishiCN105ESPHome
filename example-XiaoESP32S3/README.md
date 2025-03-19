@@ -21,3 +21,4 @@ CN105 connector to GPIO43 and GPIO44
 
 Temperature sensors connected to GPIO3 as a one-wire bus
 
+![408890061-c33e45d2-8174-49f0-bfdc-94b867311022](https://github.com/user-attachments/assets/a6b2fe08-1ab0-49f1-ad36-d51e5db8e9d4)
