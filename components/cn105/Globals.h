@@ -6,8 +6,8 @@
 #include "Arduino.h"
 #endif
 
-#define CUSTOM_MILLIS ::millis()
-#define CUSTOM_DELAY(x) ::delay(x)
+#define CUSTOM_MILLIS esphome::millis()
+#define CUSTOM_DELAY(x) esphome::delay(x)
 
 #define MAX_DATA_BYTES     64         // max number of data bytes in incoming messages
 #define MAX_DELAY_RESPONSE_FACTOR 10  // update_interval*10 seconds max without response

@@ -1,5 +1,7 @@
 #include "cn105.h"
 
+using namespace esphome;
+
 /**
  * Seek the byte pointer to the beginning of the array
  * Initializes few variables
