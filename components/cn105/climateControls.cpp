@@ -247,12 +247,36 @@ void CN105Climate::updateAction() {
         this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
         break;
     case climate::CLIMATE_MODE_AUTO:
-        //this->setActionIfOperatingAndCompressorIsActiveTo(
-        this->setActionIfOperatingTo(
-            (this->current_temperature > this->target_temperature ?
-                climate::CLIMATE_ACTION_COOLING :
-                climate::CLIMATE_ACTION_HEATING));
+        if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
+            this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
+            // If the unit supports both heating and cooling
+            this->setActionIfOperatingTo(
+                (this->current_temperature > this->target_temperature ?
+                    climate::CLIMATE_ACTION_COOLING :
+                    climate::CLIMATE_ACTION_HEATING));
+        } else if (this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
+            // If the unit only supports cooling
+            if (this->current_temperature <= this->target_temperature) {
+                // If the temperature meets or exceeds the target, switch to fan-only mode
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
+            } else {
+                // Otherwise, continue cooling
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
+            }
+        } else if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT)) {
+            // If the unit only supports heating
+            if (this->current_temperature >= this->target_temperature) {
+                // If the temperature meets or exceeds the target, switch to fan-only mode
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
+            } else {
+                // Otherwise, continue heating
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
+            }
+        } else {
+            ESP_LOGE(TAG, "AUTO mode is not supported by this unit");
+        }
         break;
+
     case climate::CLIMATE_MODE_DRY:
         //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_DRYING);
         this->setActionIfOperatingTo(climate::CLIMATE_ACTION_DRYING);
