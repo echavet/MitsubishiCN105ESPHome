@@ -1,0 +1,14 @@
+substitutions:
+  name: heatpump-w2
+  friendly_name: HP Kitchen
+  model: MSZ-GL12NA
+  remote_temp_sensor: sensor.average_kitchen_temperature
+
+packages:
+  wifi: !include common/wifi.yaml
+  sensors: !include common/sensors.yaml
+  heatpump-d1pro: !include common/heatpump-xiaoS3.yaml
+  fanspeeds: !include common/heatpump-fanspeeds.yaml
+  climate: !include common/heatpump-climate.yaml
+  intake-sensors: !include common/heatpump-intake-sensors.yaml
+  bt-proxy: !include common/bt-proxy.yaml
