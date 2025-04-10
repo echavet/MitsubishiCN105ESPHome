@@ -16,7 +16,7 @@ uart:
 climate:
   - platform: cn105
     name: ${clim_name}
-    id: ${name}
+    id: garage_ac
     icon: mdi:heat-pump
     compressor_frequency_sensor:
       name: Compressor Frequency

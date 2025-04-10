@@ -1,5 +1,5 @@
 substitutions:
-  name: "garage_ac"
+  name: "garage-ac"
   friendly_name: "Garage AC"
   clim_name: Garage AC Climate
 
