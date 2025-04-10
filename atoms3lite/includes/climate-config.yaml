@@ -4,10 +4,6 @@
 external_components:
   - source: github://echavet/MitsubishiCN105ESPHome
     refresh: always
-external_components:
- - source:
-     type: local
-     path: ../components 
 uart:
   id: HP_UART
   baud_rate: 2400
@@ -20,8 +16,6 @@ climate:
     icon: mdi:heat-pump
     compressor_frequency_sensor:
       name: Compressor Frequency
-    input_power_sensor:
-      name: Input power
     vertical_vane_select:
       name: Vertical Vane
     isee_sensor:

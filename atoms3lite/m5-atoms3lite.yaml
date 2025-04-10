@@ -72,6 +72,50 @@ light:
     chipset: ws2812
     restore_mode: ALWAYS_ON  #OFF?
 
+switch:
+  - platform: template
+    id: eps32_s3_led_switch
+    name: Led switch #${led_switch}
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON 
+    lambda: return id(eps32_s3_led_switch).state;
+    turn_on_action:
+      - light.turn_on:
+          id: led
+          brightness: !lambda |-
+            // output value must be in range 0 - 1.0
+            return id(led_brightness).state / 100.0;
+    turn_off_action:
+      - light.turn_off:
+          id: led
+
+
+number:
+    ## Set led brightness
+  - platform: template
+    id: led_brightness
+    name: Led brightness #${led_brightness}
+    icon: mdi:toggle-switch-variant
+    mode: slider
+    entity_category: config
+    optimistic: true
+    min_value: 0
+    max_value: 100
+    step: 10
+    initial_value: 70
+    restore_value: yes
+    unit_of_measurement: "%"
+    on_value:
+      then:
+        - if:
+            condition:
+              - light.is_on: led
+            then:
+            - light.turn_on:
+                id: led
+                brightness: !lambda |-
+                  // output value must be in range 0 - 1.0
+                  return id(led_brightness).state / 100.0;
 
 # mqtt, api, ota, wifi, captive, web, time
 <<: !include includes/ha-integration-config.yaml
