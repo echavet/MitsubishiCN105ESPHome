@@ -1,0 +1,113 @@
+
+sensor:
+  # # Sensors with general information.
+  - platform: template
+    name: "dg_uart_connected"
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (bool) id(garage_ac).isUARTConnected_;
+    update_interval: 30s
+
+  - platform: template
+    name: "dg_complete_cycles"
+    entity_category: DIAGNOSTIC
+    accuracy_decimals: 0
+    lambda: |-
+      return (unsigned long) id(garage_ac).nbCompleteCycles_;
+    update_interval: 60s
+
+  - platform: template
+    name: "dg_total_cycles"
+    accuracy_decimals: 0
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (unsigned long) id(garage_ac).nbCycles_;
+    update_interval: 60s
+  - platform: template
+    name: "dg_nb_hp_connections"
+    accuracy_decimals: 0
+    entity_category: DIAGNOSTIC
+    lambda: |-
+      return (unsigned int) id(garage_ac).nbHeatpumpConnections_;
+    update_interval: 60s
+
+  - platform: template
+    name: "dg_complete_cycles_percent"
+    id: complete_cycles_percent
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    entity_category: DIAGNOSTIC
+    lambda: |-      
+      unsigned long nbCompleteCycles = id(garage_ac).nbCompleteCycles_;
+      unsigned long nbCycles = id(garage_ac).nbCycles_;
+      if (nbCycles == 0) {
+        return 0.0;
+      }
+      return (float) nbCompleteCycles / nbCycles * 100.0;
+    update_interval: 60s
+
+  - platform: debug
+    free:
+      name: "Heap Free"
+    # fragmentation:
+    #   name: "Heap Fragmentation"
+    # block:
+    #   name: "Heap Max Block"
+    loop_time:
+      name: "Loop Time"
+    # psram:
+    #   name: "Free PSRAM"
+
+
+  # Uptime sensor.
+  - platform: uptime
+    name: ${name} Uptime
+    unit_of_measurement: days
+    update_interval: 3600s
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.000011574
+    device_class: duration
+    state_class: total_increasing
+    entity_category: diagnostic
+
+    - platform: internal_temperature
+    name: ${name} Internal ESP temperature
+    entity_category: diagnostic
+
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    name: Signal dB
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: diagnostic
+
+  - platform: copy # Reports the WiFi signal strength in %
+    source_id: wifi_signal_db
+    name: Signal %
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: " %"
+    entity_category: diagnostic
+    device_class: ""
+
+text_sensor:
+  # Expose ESPHome version as sensor.
+  - platform: version
+    name: ${name} ESPHome Version
+  # Expose WiFi information as sensors.
+  - platform: wifi_info
+    ip_address:
+      name: ${name} IP
+      id: wifi_ip  # ID pour référence dans l'écran
+    ssid:
+      name: ${name} SSID
+      id: wifi_ssid  # ID pour référence dans l'écran
+    bssid:
+      name: ${name} BSSID
+      id: wifi_bssid  # ID pour référence dans l'écran
+
+  - platform: debug
+    device:
+      name: "Device Info"
+    reset_reason:
+      name: "Reset Reason"

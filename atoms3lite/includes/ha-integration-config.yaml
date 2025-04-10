@@ -1,0 +1,13 @@
+mqtt: !include mqtt-config.yaml
+api: !include api-config.yaml
+
+ota:
+  - platform: esphome
+    password: !secret esphome_ota_pwd
+
+wifi: !include wifi-config.yaml
+web_server:
+  port: 80
+time:
+  platform: homeassistant
+  id: homeassistant_time

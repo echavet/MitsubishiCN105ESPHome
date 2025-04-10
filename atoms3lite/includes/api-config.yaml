@@ -1,0 +1,18 @@
+services:    
+    - service: reboot
+      then:
+        - logger.log: "Restart in progress..."
+        - lambda: |-
+            esp_restart();
+    - service: set_remote_temperature
+      variables:
+        temperature: float
+      then:
+        # C <--> C
+        # - lambda: 'id(garage_ac).set_remote_temperature(temperature);'
+        # Receive temp from HA in F; convert to C before sending to unit.
+        - lambda: 'id(garage_ac).set_remote_temperature((temperature - 32.0) * (5.0 / 9.0));'
+
+    - service: use_internal_temperature
+      then:
+        - lambda: 'id(garage_ac).set_remote_temperature(0);'

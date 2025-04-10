@@ -1,0 +1,21 @@
+binary_sensor: 
+  - platform: status
+    name: "Home Assistant API Connection"
+    id: ha_api_status
+    
+  - platform: gpio
+    id: esp_button
+    pin:
+      number: GPIO41
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    filters:
+      - delayed_off: 10ms
+    on_multi_click:
+        - timing:
+             - ON for at most 2s
+             - OFF for at least 0.2s
+          then:
+            - switch.toggle: eps32_s3_led_switch
