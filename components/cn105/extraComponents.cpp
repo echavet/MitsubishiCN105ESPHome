@@ -104,7 +104,9 @@ void CN105Climate::set_functions_set_button(FunctionsButton* Button) {
     this->Functions_set_button_->setCallbackFunction([this]() {
 
         if (!functions.isValid()) {
-            this->Functions_sensor_->publish_state("Please get the functions first.");
+            if (this->Functions_sensor_ != nullptr) {
+                this->Functions_sensor_->publish_state("Please get the functions first.");
+            }
             return;
         }
 

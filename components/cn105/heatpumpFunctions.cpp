@@ -50,7 +50,9 @@ void CN105Climate::functionsArrived() {
     }
 
     // Publish the results of all the codes in the Functions sensor
-    this->Functions_sensor_->publish_state(states);
+    if (this->Functions_sensor_ != nullptr) {
+        this->Functions_sensor_->publish_state(states);
+    }
 
 }
 
