@@ -4,46 +4,54 @@
 using namespace esphome;
 //#region heatpump_functions fonctions clim
 
-heatpumpFunctions CN105Climate::getFunctions() {
+void CN105Climate::getFunctions() {
     ESP_LOGV(TAG, "getting the list of functions...");
 
     functions.clear();
 
     uint8_t packet1[PACKET_LEN] = {};
-    uint8_t packet2[PACKET_LEN] = {};
 
     prepareInfoPacket(packet1, PACKET_LEN);
     packet1[5] = FUNCTIONS_GET_PART1;
     packet1[21] = checkSum(packet1, 21);
 
+    writePacket(packet1, PACKET_LEN);
+
+    // Read command will issue part 2.
+}
+
+void CN105Climate::getFunctionsPart2() {
+    ESP_LOGV(TAG, "getting the list of functions part 2...");
+
+    uint8_t packet2[PACKET_LEN] = {};
+
     prepareInfoPacket(packet2, PACKET_LEN);
     packet2[5] = FUNCTIONS_GET_PART2;
     packet2[21] = checkSum(packet2, 21);
 
-    /*while (!canSend(false)) {
-        CUSTOM_DELAY(10); // esphome::CUSTOM_DELAY(10);
-    }*/
-    ESP_LOGD(TAG, "sending a getFunctions packet part 1");
-    writePacket(packet1, PACKET_LEN);
-    //readPacket();
-
-    /*while (!canSend(false)) {
-        //esphome::CUSTOM_DELAY(10);
-        CUSTOM_DELAY(10);
-    }*/
-    ESP_LOGD(TAG, "sending a getFunctions packet part 2");
     writePacket(packet2, PACKET_LEN);
-    //readPacket();
+}
 
-    // retry reading a few times in case responses were related
-    // to other requests
-    /*for (int i = 0; i < 5 && !functions.isValid(); ++i) {
-        //esphome::CUSTOM_DELAY(100);
-        CUSTOM_DELAY(100);
-        readPacket();
-    }*/
+void CN105Climate::functionsArrived() {
 
-    return functions;
+    // Called after 2nd packet has arrived.
+
+    char states[256];
+    states[0] = 0;
+    heatpumpFunctionCodes codes = functions.getAllCodes();
+    for (int i = 0; i < MAX_FUNCTION_CODE_COUNT; ++i) {
+      if (codes.valid[i]) {
+        int code = codes.code[i];
+        int value = functions.getValue(code);
+        // handle value
+        ESP_LOGI(LOG_CYCLE_TAG, "Code %i Value %i", code, value);
+        snprintf(states, sizeof(states), "%s %i: %i ", states, code, value);
+      }
+    }
+
+    // Publish the results of all the codes in the Functions sensor
+    this->Functions_sensor_->publish_state(states);
+
 }
 
 bool CN105Climate::setFunctions(heatpumpFunctions const& functions) {

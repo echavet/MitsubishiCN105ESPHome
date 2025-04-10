@@ -85,6 +85,55 @@ void CN105Climate::set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sens
     this->Stage_sensor_ = Stage_sensor;
 }
 
+void CN105Climate::set_functions_sensor(esphome::text_sensor::TextSensor* Functions_sensor) {
+    this->Functions_sensor_ = Functions_sensor;
+}
+
+void CN105Climate::set_functions_get_button(FunctionsButton* Button) {
+    this->Functions_get_button_ = Button;
+    this->Functions_get_button_->setCallbackFunction([this]() {
+        ESP_LOGI(LOG_CYCLE_TAG, "Retrieving functions");
+        // Get the settings from the heat pump
+        this->getFunctions();
+        // The response is handled in heatpumpFunctions.cpp
+    });
+}
+
+void CN105Climate::set_functions_set_button(FunctionsButton* Button) {
+    this->Functions_set_button_ = Button;
+    this->Functions_set_button_->setCallbackFunction([this]() {
+
+        if (!functions.isValid()) {
+            this->Functions_sensor_->publish_state("Please get the functions first.");
+            return;
+        }
+
+        ESP_LOGI(LOG_CYCLE_TAG, "Setting code %i to value %i", this->functions_code_, this->functions_value_);
+        functions.setValue(this->functions_code_, this->functions_value_);
+
+        // Now send the codes.
+        this->setFunctions(functions);
+
+    });
+}
+
+void CN105Climate::set_functions_set_code(FunctionsNumber* Number) {
+    this->Functions_set_code_ = Number;
+    this->Functions_set_code_->setCallbackFunction([this](float x) {
+        // store the code
+        this->functions_code_ = (int)x;
+    });
+
+}
+void CN105Climate::set_functions_set_value(FunctionsNumber* Number) {
+    this->Functions_set_value_ = Number;
+    this->Functions_set_value_->setCallbackFunction([this](float x) {
+        // store the value
+        this->functions_value_ = (int)x;
+    });
+}
+
+
 void CN105Climate::set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor) {
     this->Sub_mode_sensor_ = Sub_mode_sensor;
 }

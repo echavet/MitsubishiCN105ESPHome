@@ -10,9 +10,11 @@ from esphome.components import (
     uart,
     select,
     sensor,
+    button,
     binary_sensor,
     text_sensor,
     uptime,
+    number,
 )
 
 from esphome.components.logger import HARDWARE_UART_TO_SERIAL
@@ -38,9 +40,11 @@ AUTO_LOAD = [
     "sensor",
     "select",
     "binary_sensor",
+    "button",
     "text_sensor",
     "uart",
     "uptime",
+    "number",
 ]
 
 DEPENDENCIES = ["uptime"]
@@ -55,6 +59,11 @@ CONF_KWH_SENSOR = "kwh_sensor"
 CONF_RUNTIME_HOURS_SENSOR = "runtime_hours_sensor"
 CONF_OUTSIDE_AIR_TEMPERATURE_SENSOR = "outside_air_temperature_sensor"
 CONF_ISEE_SENSOR = "isee_sensor"
+CONF_FUNCTIONS_SENSOR = "functions_sensor"
+CONF_FUNCTIONS_BUTTON = "functions_get_button"
+CONF_FUNCTIONS_SET_BUTTON = "functions_set_button"
+CONF_FUNCTIONS_SET_CODE = "functions_set_code"
+CONF_FUNCTIONS_SET_VALUE = "functions_set_value"
 CONF_STAGE_SENSOR = "stage_sensor"
 CONF_SUB_MODE_SENSOR = "sub_mode_sensor"
 CONF_AUTO_SUB_MODE_SENSOR = "auto_sub_mode_sensor"
@@ -92,6 +101,9 @@ OutsideAirTemperatureSensor = cg.global_ns.class_(
 
 ISeeSensor = cg.global_ns.class_("ISeeSensor", binary_sensor.BinarySensor, cg.Component)
 StageSensor = cg.global_ns.class_("StageSensor", text_sensor.TextSensor, cg.Component)
+FunctionsSensor = cg.global_ns.class_("FunctionsSensor", text_sensor.TextSensor, cg.Component)
+FunctionsButton = cg.global_ns.class_("FunctionsButton", button.Button, cg.Component)
+FunctionsNumber = cg.global_ns.class_("FunctionsNumber", number.Number, cg.Component)
 SubModSensor = cg.global_ns.class_("SubModSensor", text_sensor.TextSensor, cg.Component)
 AutoSubModSensor = cg.global_ns.class_(
     "AutoSubModSensor", text_sensor.TextSensor, cg.Component
@@ -143,6 +155,18 @@ ISEE_SENSOR_SCHEMA = binary_sensor.BINARY_SENSOR_SCHEMA.extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(ISeeSensor)}
 )
 
+FUNCTIONS_SENSOR_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsSensor)}
+)
+
+FUNCTIONS_BUTTON_SCHEMA = button.BUTTON_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsButton)}
+)
+
+FUNCTIONS_NUMBER_SCHEMA = number.NUMBER_SCHEMA.extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsNumber)}
+)
+
 STAGE_SENSOR_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(StageSensor)}
 )
@@ -190,6 +214,11 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
             CONF_OUTSIDE_AIR_TEMPERATURE_SENSOR
         ): OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA,
         cv.Optional(CONF_ISEE_SENSOR): ISEE_SENSOR_SCHEMA,
+        cv.Optional(CONF_FUNCTIONS_SENSOR): FUNCTIONS_SENSOR_SCHEMA,
+        cv.Optional(CONF_FUNCTIONS_BUTTON): FUNCTIONS_BUTTON_SCHEMA,
+        cv.Optional(CONF_FUNCTIONS_SET_BUTTON): FUNCTIONS_BUTTON_SCHEMA,
+        cv.Optional(CONF_FUNCTIONS_SET_CODE): FUNCTIONS_NUMBER_SCHEMA,
+        cv.Optional(CONF_FUNCTIONS_SET_VALUE): FUNCTIONS_NUMBER_SCHEMA,
         cv.Optional(CONF_STAGE_SENSOR): STAGE_SENSOR_SCHEMA,
         cv.Optional(CONF_SUB_MODE_SENSOR): SUB_MODE_SENSOR_SCHEMA,
         cv.Optional(CONF_AUTO_SUB_MODE_SENSOR): AUTO_SUB_MODE_SENSOR_SCHEMA,
@@ -298,6 +327,36 @@ def to_code(config):
         bsensor_ = yield binary_sensor.new_binary_sensor(conf)
         yield cg.register_component(bsensor_, conf)
         cg.add(var.set_isee_sensor(bsensor_))
+
+    if CONF_FUNCTIONS_SENSOR in config:
+        conf = config[CONF_FUNCTIONS_SENSOR]
+        tsensor_ = yield text_sensor.new_text_sensor(conf)
+        yield cg.register_component(tsensor_, conf)
+        cg.add(var.set_functions_sensor(tsensor_))
+
+    if CONF_FUNCTIONS_BUTTON in config:
+        conf = config[CONF_FUNCTIONS_BUTTON]
+        button_ = yield button.new_button(conf)
+        yield cg.register_component(button_, conf)
+        cg.add(var.set_functions_get_button(button_))
+
+    if CONF_FUNCTIONS_SET_BUTTON in config:
+        conf = config[CONF_FUNCTIONS_SET_BUTTON]
+        button_ = yield button.new_button(conf)
+        yield cg.register_component(button_, conf)
+        cg.add(var.set_functions_set_button(button_))
+
+    if CONF_FUNCTIONS_SET_CODE in config:
+        conf = config[CONF_FUNCTIONS_SET_CODE]
+        number_ = yield number.new_number(conf, min_value=100, max_value=128, step=1)
+        yield cg.register_component(number_, conf)
+        cg.add(var.set_functions_set_code(number_))
+
+    if CONF_FUNCTIONS_SET_VALUE in config:
+        conf = config[CONF_FUNCTIONS_SET_VALUE]
+        number_ = yield number.new_number(conf, min_value=0, max_value=2, step=1)
+        yield cg.register_component(number_, conf)
+        cg.add(var.set_functions_set_value(number_))
 
     if CONF_STAGE_SENSOR in config:
         conf = config[CONF_STAGE_SENSOR]

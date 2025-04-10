@@ -11,8 +11,12 @@
 #include "auto_sub_mode_sensor.h"
 #include "isee_sensor.h"
 #include "stage_sensor.h"
+#include "functions_sensor.h"
+#include "functions_number.h"
+#include "functions_button.h"
 #include "sub_mode_sensor.h"
 #include <esphome/components/sensor/sensor.h>
+#include <esphome/components/button/button.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
 #include "cycle_management.h"
 
@@ -42,6 +46,13 @@ public:
     void set_outside_air_temperature_sensor(esphome::sensor::Sensor* outside_air_temperature_sensor);
     void set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_sensor);
     void set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor);
+
+    void set_functions_sensor(esphome::text_sensor::TextSensor* Functions_sensor);
+    void set_functions_get_button(FunctionsButton* Button);
+    void set_functions_set_button(FunctionsButton* Button);
+    void set_functions_set_code(FunctionsNumber* Number);
+    void set_functions_set_value(FunctionsNumber* Number);
+
     void set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor);
     void set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor);
     void set_hp_uptime_connection_sensor(uptime::HpUpTimeConnectionSensor* hp_up_connection_sensor);
@@ -49,8 +60,17 @@ public:
     //sensor::Sensor* compressor_frequency_sensor;
     binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
     text_sensor::TextSensor* Stage_sensor_ = nullptr;
+    text_sensor::TextSensor* Functions_sensor_ = nullptr;
+    FunctionsButton* Functions_get_button_ = nullptr;
+    FunctionsButton* Functions_set_button_ = nullptr;
+    FunctionsNumber* Functions_set_code_ = nullptr;
+    FunctionsNumber* Functions_set_value_ = nullptr;
     text_sensor::TextSensor* Sub_mode_sensor_ = nullptr;
     text_sensor::TextSensor* Auto_sub_mode_sensor_ = nullptr;
+
+    // The value of the code and value for the functions set.
+    int functions_code_;
+    int functions_value_;
 
     //select::Select* van_orientation;
 
@@ -152,7 +172,9 @@ public:
     //bool can_proceed() override;
 
 
-    heatpumpFunctions getFunctions();
+    void getFunctions();
+    void getFunctionsPart2();
+    void functionsArrived();
     bool setFunctions(heatpumpFunctions const& functions);
 
     // helpers
