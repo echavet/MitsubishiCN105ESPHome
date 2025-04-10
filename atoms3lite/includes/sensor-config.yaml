@@ -71,7 +71,7 @@ sensor:
     state_class: total_increasing
     entity_category: diagnostic
 
-    - platform: internal_temperature
+  - platform: internal_temperature
     name: ${name} Internal ESP temperature
     entity_category: diagnostic
 
