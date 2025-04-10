@@ -38,13 +38,15 @@ climate:
     hp_uptime_connection_sensor:
       name: ${name} HP Uptime Connection
       update_interval: 30s
+    outside_air_temperature_sensor:
+      name: ${name} Outside Air Temperature
     supports:
       mode: [COOL, HEAT, FAN_ONLY, DRY]
       fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
       swing_mode: ["OFF", VERTICAL]
     visual:
-      min_temperature: 61
-      max_temperature: 88
+      min_temperature: 16
+      max_temperature: 31
       temperature_step:
         target_temperature: 1
         current_temperature: 0.1
