@@ -381,19 +381,21 @@ void CN105Climate::getDataFromResponsePacket() {
         //this->getAutoModeStateFromResponsePacket();
         break;
 
-    case 0x20:
+    case 0x20: // fallthrough
     case 0x22: {
         ESP_LOGD("Decoder", "[Packet Functions 0x20 et 0x22]");
         //this->last_received_packet_sensor->publish_state("0x62-> 0x20/0x22: Data -> Packet functions");
         if (dataLength == 0x10) {
             if (data[0] == 0x20) {
                 functions.setData1(&data[1]);
+                ESP_LOGI(LOG_CYCLE_TAG, "Got functions packet 1, requesting part 2");
+                this->getFunctionsPart2();
             } else {
                 functions.setData2(&data[1]);
+                ESP_LOGI(LOG_CYCLE_TAG, "Got functions packet 2");
+                this->functionsArrived();
             }
-
         }
-
     }
              break;
 
