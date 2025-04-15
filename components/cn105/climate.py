@@ -354,7 +354,7 @@ def to_code(config):
 
     if CONF_FUNCTIONS_SET_VALUE in config:
         conf = config[CONF_FUNCTIONS_SET_VALUE]
-        number_ = yield number.new_number(conf, min_value=0, max_value=2, step=1)
+        number_ = yield number.new_number(conf, min_value=1, max_value=3, step=1)
         yield cg.register_component(number_, conf)
         cg.add(var.set_functions_set_value(number_))
 

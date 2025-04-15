@@ -37,23 +37,31 @@ void CN105Climate::functionsArrived() {
     // Called after 2nd packet has arrived.
 
     char states[256];
-    states[0] = 0;
+    states[0] = '\0';  // Initialize as empty string
+    size_t remaining = sizeof(states);
+    char* pos = states;
+
     heatpumpFunctionCodes codes = functions.getAllCodes();
     for (int i = 0; i < MAX_FUNCTION_CODE_COUNT; ++i) {
-      if (codes.valid[i]) {
-        int code = codes.code[i];
-        int value = functions.getValue(code);
-        // handle value
-        ESP_LOGI(LOG_CYCLE_TAG, "Code %i Value %i", code, value);
-        snprintf(states, sizeof(states), "%s %i: %i ", states, code, value);
-      }
+        if (codes.valid[i]) {
+            int code = codes.code[i];
+            int value = functions.getValue(code);
+            if (value > 0) {  // only values 1, 2, 3 are valid -- 0 values mean something the device does not support
+                int written = snprintf(pos, remaining, "%i: %i ", code, value);
+                if (written < 0 || static_cast<size_t>(written) >= remaining) {
+                    // Buffer full or error
+                    break;
+                }
+                pos += written;
+                remaining -= written;
+            }
+        }
     }
 
     // Publish the results of all the codes in the Functions sensor
     if (this->Functions_sensor_ != nullptr) {
         this->Functions_sensor_->publish_state(states);
     }
-
 }
 
 bool CN105Climate::setFunctions(heatpumpFunctions const& functions) {
