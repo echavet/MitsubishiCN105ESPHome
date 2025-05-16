@@ -32,7 +32,11 @@ from esphome.const import (
     UNIT_SECOND,
     ICON_TIMER,
     DEVICE_CLASS_DURATION,
+    CONF_TX_PIN,
+    CONF_RX_PIN,
 )
+
+
 from esphome.core import CORE, coroutine
 
 AUTO_LOAD = [
@@ -101,7 +105,9 @@ OutsideAirTemperatureSensor = cg.global_ns.class_(
 
 ISeeSensor = cg.global_ns.class_("ISeeSensor", binary_sensor.BinarySensor, cg.Component)
 StageSensor = cg.global_ns.class_("StageSensor", text_sensor.TextSensor, cg.Component)
-FunctionsSensor = cg.global_ns.class_("FunctionsSensor", text_sensor.TextSensor, cg.Component)
+FunctionsSensor = cg.global_ns.class_(
+    "FunctionsSensor", text_sensor.TextSensor, cg.Component
+)
 FunctionsButton = cg.global_ns.class_("FunctionsButton", button.Button, cg.Component)
 FunctionsNumber = cg.global_ns.class_("FunctionsNumber", number.Number, cg.Component)
 SubModSensor = cg.global_ns.class_("SubModSensor", text_sensor.TextSensor, cg.Component)
@@ -114,6 +120,45 @@ uptime = uptime_ns.class_("UptimeSecondsSensor", sensor.Sensor, cg.Component)
 HpUpTimeConnectionSensor = uptime_ns.class_(
     "HpUpTimeConnectionSensor", sensor.Sensor, cg.PollingComponent
 )
+
+
+# --- help function to retreive tx and rx pin settings from UART section ---
+def get_uart_pins_from_config(core_config, target_uart_id_str):
+    """
+    Récupère les numéros de broches TX et RX pour un UART_ID donné
+    à partir de la configuration globale d'ESPHome.
+    """
+    tx_pin_num = -1
+    rx_pin_num = -1
+    uart_config_found = {}  # Renommé pour plus de clarté
+
+    # Recherche de la configuration de l'UART correspondant
+    for uart_conf_item in core_config.get("uart", []):
+        # uart_conf_item[CONF_ID] est un objet esphome.core.ID
+        # target_uart_id_str est la représentation en chaîne de l'ID que nous cherchons
+        if str(uart_conf_item[CONF_ID]) == target_uart_id_str:  # MODIFICATION ICI
+            uart_config_found = uart_conf_item
+            break
+
+    if uart_config_found:  # Vérifie si le dictionnaire n'est pas vide
+        tx_pin_schema = uart_config_found.get(CONF_TX_PIN)
+        if tx_pin_schema:
+            if isinstance(tx_pin_schema, dict) and "number" in tx_pin_schema:
+                tx_pin_num = tx_pin_schema["number"]
+            elif isinstance(tx_pin_schema, int):
+                tx_pin_num = tx_pin_schema
+
+        rx_pin_schema = uart_config_found.get(CONF_RX_PIN)
+        if rx_pin_schema:
+            if isinstance(rx_pin_schema, dict) and "number" in rx_pin_schema:
+                rx_pin_num = rx_pin_schema["number"]
+            elif isinstance(rx_pin_schema, int):
+                rx_pin_num = rx_pin_schema
+
+    return tx_pin_num, rx_pin_num
+
+
+# --- END help function ---
 
 
 def valid_uart(uart):
@@ -249,13 +294,19 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
 
 @coroutine
 def to_code(config):
-    uart_var = yield cg.get_variable(config["uart_id"])
 
+    uart_id_object = config[CONF_UART_ID]
+    uart_var = yield cg.get_variable(uart_id_object)
     var = cg.new_Pvariable(config[CONF_ID], uart_var)
 
     cg.add(uart_var.set_data_bits(8))
     cg.add(uart_var.set_parity(UARTParityOptions.UART_CONFIG_PARITY_EVEN))
     cg.add(uart_var.set_stop_bits(1))
+
+    uart_id_str_for_lookup = str(uart_id_object)
+    tx_pin, rx_pin = get_uart_pins_from_config(CORE.config, uart_id_str_for_lookup)
+
+    cg.add(var.set_tx_rx_pins(tx_pin, rx_pin))
 
     supports = config[CONF_SUPPORTS]
     traits = var.config_traits()
