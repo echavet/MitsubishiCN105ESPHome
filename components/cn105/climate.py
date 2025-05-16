@@ -237,12 +237,10 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
         ): STAGE_SENSOR_CONFIG_SCHEMA,  # Modifié pour le nouveau schéma
         cv.Optional(CONF_SUB_MODE_SENSOR): SUB_MODE_SENSOR_SCHEMA,
         cv.Optional(CONF_AUTO_SUB_MODE_SENSOR): AUTO_SUB_MODE_SENSOR_SCHEMA,
-        cv.Optional(
-            CONF_REMOTE_TEMP_TIMEOUT, default="never"
-        ): cv.positive_time_period_milliseconds,
-        cv.Optional(
-            CONF_DEBOUNCE_DELAY, default="100ms"
-        ): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.All(
+            cv.update_interval
+        ),
+        cv.Optional(CONF_DEBOUNCE_DELAY, default="100ms"): cv.All(cv.update_interval),
         cv.Optional(
             CONF_HP_UP_TIME_CONNECTION_SENSOR
         ): HP_UP_TIME_CONNECTION_SENSOR_SCHEMA,
