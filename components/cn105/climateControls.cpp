@@ -209,14 +209,51 @@ void CN105Climate::controlMode() {
 }
 
 
-void CN105Climate::setActionIfOperatingTo(climate::ClimateAction action) {
-    if (currentStatus.operating) {
-        this->action = action;
+void CN105Climate::setActionIfOperatingTo(climate::ClimateAction action_if_operating) {
+    bool effective_operating_status = this->currentStatus.operating; // Valeur par défaut depuis paquet 0x06
+
+    if (this->use_stage_for_operating_status_) {
+        bool stage_is_active = false;
+        // Accéder à l'état actuel du stage_sensor
+        // this->currentSettings.stage est mis à jour dans getPowerFromResponsePacket
+        // lorsque le stage_sensor_ (s'il est configuré) publie son état.
+        if (this->currentSettings.stage != nullptr &&
+            strcmp(this->currentSettings.stage, STAGE_MAP[0 /*IDLE*/]) != 0) {
+            stage_is_active = true;
+        }
+
+        // for fwump38 issue #277 (where paquet 0x06 does not give a reliable state for 'operating'),
+        // on se base principalement sur 'stage_is_active'.
+        // Si le paquet 0x06 *donne* un 'operating = true', on le garde.
+        // Sinon (0x06 dit false OU 0x06 n'est pas fiable/reçu), on regarde stage.
+        // Une logique possible: si 0x06 dit "operating", c'est "operating". Sinon, si fallback activé, stage décide.
+        if (!effective_operating_status) { // Si 0x06 n'a pas dit "operating"
+            effective_operating_status = stage_is_active;
+        }
+        // Autre logique plus directe pour fwump38:
+        // effective_operating_status = stage_is_active; // Si on veut que stage ait la priorité ou soit la seule source quand fallback est true.
+        // Choisissons pour l'instant: le stage peut rendre "operating" true si 0x06 ne l'a pas déjà fait,
+        // mais ne peut pas le rendre false si 0x06 l'a mis à true (sauf si stage est IDLE).
+        // Pour fwump38, son 0x06 ne renvoyait rien, donc effective_operating_status serait false au départ.
+        // Sa logique était: effective_operating_status = stage_is_active;
+        // Adoptons cela pour le fallback:
+        effective_operating_status = stage_is_active; // Si fallback est activé, stage dicte.
+        // Attention: cela ignore complètement le data[4] de 0x06 si fallback est true.
+        // C'est ce que fwump38 a fait pour son cas.
+    }
+
+    if (effective_operating_status) {
+        this->action = action_if_operating;
     } else {
         this->action = climate::CLIMATE_ACTION_IDLE;
     }
-    ESP_LOGD(TAG, "setting action to -> %d", this->action);
+    ESP_LOGD(TAG, "Setting action to %d (effective_operating: %s, use_stage_fallback: %s, current_stage: %s)",
+        static_cast<int>(this->action),
+        effective_operating_status ? "true" : "false",
+        this->use_stage_for_operating_status_ ? "yes" : "no",
+        this->currentSettings.stage ? this->currentSettings.stage : "N/A");
 }
+
 /**
  * Thanks to Bascht74 on issu #9 we know that the compressor frequency is not a good indicator of the heatpump being in operation
  * Because one can have multiple inside module for a single compressor.

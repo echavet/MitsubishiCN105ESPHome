@@ -17,6 +17,7 @@ climate:
   - platform: cn105
     name: ${clim_name}
     id: "atoms3_clim"
+    uart_id: HP_UART
     compressor_frequency_sensor:
       name: Compressor frequency (clim Sejour)
     input_power_sensor:
