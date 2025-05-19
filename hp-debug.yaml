@@ -130,6 +130,9 @@ climate:
     hp_uptime_connection_sensor:
       name: ${name} HP Uptime Connection
       update_interval: 10s
+    stage_sensor:
+      name: stage sensor
+      use_as_operating_fallback: true
     
 # Configuration pour l'objet 'select' pour choisir un baud_rate
 select:
