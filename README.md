@@ -24,6 +24,7 @@ The benefits include fully local control over your heat pump system, without rel
 > This is an unofficial implementation of the reverse-engineered Mitsubishi protocol based on the Swicago library. The authors and contributors have extensively tested this firmware across several similar implementations and forks. However, it's important to note that not all units support every feature. While free to use, it is at your own risk. If you are seeking an officially supported method to remotely control your Mitsubishi device via WiFi, a commercial solution is available [here](https://www.mitsubishi-electric.co.nz/wifi/).
 
 ### New Features
+
 - Additional components for supported units: vane orientation (fully supporting the Swicago map), compressor frequency for energy monitoring, and i-see sensor.
 - Additional diagnostic sensors for understanding the behavior of the indoor units while in AUTO mode
 - Additional sensors for power usage and outdoor temperature (not supported by all units)
@@ -63,7 +64,7 @@ This project maintains all functionalities of the original [geoffdavis](https://
 
 ## Supported Mitsubishi Climate Units
 
-Generally, indoor units with a `CN105` header are compatible. Refer to the [HeatPump wiki](https://github.com/SwiCago/HeatPump/wiki/Supported-models) for a comprehensive list. Additionally, Mitsubishi units listed as compatible with the [Mitsubishi PAC-USWHS002-WF-2 Kumo Cloud interface](https://mylinkdrive.com/USA/Controls/kumo_cloud/kumo_cloud_Devices/PAC_USWHS002_WF_2?product) will *likely* be compatible with this project, as they use the same CN105 connector and serial protocol.
+Generally, indoor units with a `CN105` header are compatible. Refer to the [HeatPump wiki](https://github.com/SwiCago/HeatPump/wiki/Supported-models) for a comprehensive list. Additionally, Mitsubishi units listed as compatible with the [Mitsubishi PAC-USWHS002-WF-2 Kumo Cloud interface](https://mylinkdrive.com/USA/Controls/kumo_cloud/kumo_cloud_Devices/PAC_USWHS002_WF_2?product) will _likely_ be compatible with this project, as they use the same CN105 connector and serial protocol.
 
 Units tested by project contributors include:
 
@@ -76,7 +77,6 @@ Units tested by project contributors include:
 - `MSZ-AY35VGKP`
 - `MSZ-FSxxNA`
 - `MSZ-FHxxNA`
-
 
 ## Usage
 
@@ -92,18 +92,19 @@ Add a new device in your ESPHome dashboard. Create a yaml configuration file for
 - [Installing ESPHome Locally](https://esphome.io/guides/installing_esphome)
 
 > [!NOTE]
-> This code uses the ESPHome [external components](https://esphome.io/components/external_components.html) integration feature. This means the project is not part of the ESPHome framework, it is an external component not managed by the core ESPHome project. 
+> This code uses the ESPHome [external components](https://esphome.io/components/external_components.html) integration feature. This means the project is not part of the ESPHome framework, it is an external component not managed by the core ESPHome project.
 
 ### Step 3: Configure the board and UART settings
 
 Your ESPHome device configuration file starts with common defaults for ESPHome. To these defaults, add these minimum sections:
 
 #### For ESP32-based Devices
+
 ```yaml
 esp32:
-  board: esp32doit-devkit-v1      #or esp32-s3-devkitc-1
+  board: esp32doit-devkit-v1 #or esp32-s3-devkitc-1
   framework:
-    type: esp-idf   
+    type: esp-idf
 
 uart:
   id: HP_UART
@@ -113,6 +114,7 @@ uart:
 ```
 
 #### For ESP8266-based Devices
+
 ```yaml
 esp8266:
   board: d1_mini
@@ -138,19 +140,21 @@ climate:
   - platform: cn105
     id: hp
     name: "My Heat Pump"
-    update_interval: 2s        # update interval can be adjusted after a first run and logs monitoring 
+    update_interval: 2s # update interval can be adjusted after a first run and logs monitoring
 
 # Default logging level
 logger:
-#  hardware_uart: UART1 # Uncomment on ESP8266 devices
+  #  hardware_uart: UART1 # Uncomment on ESP8266 devices
   level: INFO
 ```
 
 #### Adjusting the `update_interval`
+
 An ESPHome firmware implements the esphome::Component interface to be integrated into the Inversion Of Control mechanism of the ESPHome framework.
 The main method of this process is the `loop()` method. MitsubishiCN105ESPHome performs a series of exchanges with the heat pump through a cycle. This cycle is timed, and its duration is displayed in the logs, provided the `CYCLE` logger is set to at least `INFO`.
 
 If this is the case, you will see logs in the form:
+
 ```
 [09:48:36][I][CYCLE:052]: 6: Cycle ended in 1.2 seconds (with timeout?: NO)
 ```
@@ -169,6 +173,7 @@ substitutions:
 ```
 
 #### Climate component full example
+
 This example adds support for configuring the temperature steps, adding an icon, and the optional climate sensors supported by SwiCago (but not supported by all indoor units), `compressor_frequency_sensor`, `vertical_vane_select`, `horizontal_vane_select` and `isee_sensor`. Supports many of the other features of the [ESPHome climate component](https://esphome.io/components/climate/index.html) as well for additional customization.
 
 The `remote_temperature_timeout` setting allows the unit to revert back to the internal temperature measurement if it does not receive an update in the specified time range (highly recommended if using remote temperature updates).
@@ -190,7 +195,7 @@ climate:
     # Timeout and communication settings
     remote_temperature_timeout: 30min
     update_interval: 2s
-    debounce_delay : 100ms
+    debounce_delay: 100ms
     # Various optional sensors, not all sensors are supported by all heatpumps
     compressor_frequency_sensor:
       name: Compressor Frequency
@@ -210,6 +215,7 @@ climate:
       disabled_by_default: true
     stage_sensor:
       name: Stage
+      #use_as_operating_fallback: false     # set to true if your unit doesn't provide activity indicator ([#277](https://github.com/echavet/MitsubishiCN105ESPHome/issues/277))
       entity_category: diagnostic
       disabled_by_default: true
     sub_mode_sensor:
@@ -236,28 +242,29 @@ climate:
 > An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
 
 #### Logger granularity
+
 This firmware supports detailed log granularity for troubleshooting. Below is the full list of logger components and recommended defaults.
 
 ```yaml
 logger:
-#  hardware_uart: UART1 # Uncomment on ESP8266 devices
+  #  hardware_uart: UART1 # Uncomment on ESP8266 devices
   level: INFO
   logs:
-    EVT_SETS : INFO
-    WIFI : INFO
-    MQTT : INFO
-    WRITE_SETTINGS : INFO
-    SETTINGS : INFO
-    STATUS : INFO
+    EVT_SETS: INFO
+    WIFI: INFO
+    MQTT: INFO
+    WRITE_SETTINGS: INFO
+    SETTINGS: INFO
+    STATUS: INFO
     CN105Climate: WARN
     CN105: INFO
     climate: WARN
     sensor: WARN
-    chkSum : INFO
-    WRITE : WARN
-    READ : WARN
+    chkSum: INFO
+    WRITE: WARN
+    READ: WARN
     Header: INFO
-    Decoder : INFO
+    Decoder: INFO
     CONTROL_WANTED_SETTINGS: INFO
 # Swap the above settings with these debug settings for development or troubleshooting
 #  level: DEBUG
@@ -298,64 +305,83 @@ esphome:
   friendly_name: My Heatpump 1
 
 # For ESP8266 Devices
+
 #esp8266:
-#  board: d1_mini
+
+# board: d1_mini
+
 #
+
 #uart:
-#  id: HP_UART
-#  baud_rate: 2400
-#  tx_pin: 1
-#  rx_pin: 3
+
+# id: HP_UART
+
+# baud_rate: 2400
+
+# tx_pin: 1
+
+# rx_pin: 3
 
 # For ESP32 Devices
+
 esp32:
-  board: esp32doit-devkit-v1
-  framework:
-    type: esp-idf   
+board: esp32doit-devkit-v1
+framework:
+type: esp-idf
 
 uart:
-  id: HP_UART
-  baud_rate: 2400
-  tx_pin: GPIO17
-  rx_pin: GPIO16
+id: HP_UART
+baud_rate: 2400
+tx_pin: GPIO17
+rx_pin: GPIO16
 
 external_components:
-  - source: github://echavet/MitsubishiCN105ESPHome
+
+- source: github://echavet/MitsubishiCN105ESPHome
 
 # Climate entity configuration
+
 climate:
-  - platform: cn105
-    name: "My Heat Pump"
-    update_interval: 2s
+
+- platform: cn105
+  name: "My Heat Pump"
+  update_interval: 2s
 
 # Default logging level
+
 logger:
-#  hardware_uart: UART1 # Uncomment on ESP8266 devices
-  level: INFO
+
+# hardware_uart: UART1 # Uncomment on ESP8266 devices
+
+level: INFO
 
 # Enable logging
+
 logger:
 
 # Enable Home Assistant API
+
 api:
-  encryption:
-    key: !secret api_key
+encryption:
+key: !secret api_key
 
 ota:
-  platform: esphome # Required for ESPhome 2024.6.0 and greater
-  password: !secret ota_password
+platform: esphome # Required for ESPhome 2024.6.0 and greater
+password: !secret ota_password
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+ssid: !secret wifi_ssid
+password: !secret wifi_password
 
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Heatpump Fallback Hotspot"
-    password: !secret fallback_password
+# Enable fallback hotspot (captive portal) in case wifi connection fails
+
+ap:
+ssid: "Heatpump Fallback Hotspot"
+password: !secret fallback_password
 
 captive_portal:
-```
+
+````
 </details>
 
 ## Example Configuration - Complete
@@ -375,7 +401,7 @@ substitutions:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  
+
 # For ESP8266 Devices
 #esp8266:
 #  board: d1_mini
@@ -390,7 +416,7 @@ esphome:
 esp32:
   board: esp32doit-devkit-v1
   framework:
-    type: esp-idf   
+    type: esp-idf
 
 uart:
   id: HP_UART
@@ -586,7 +612,8 @@ climate:
       name: Runtime Hours
       entity_category: diagnostic
       disabled_by_default: true
-```
+````
+
 </details>
 
 ## Methods for updating external temperature
@@ -596,8 +623,9 @@ There are several methods for updating the unit with an remote temperature value
 ### Recommended - Get external temperature from a [HomeAssistant Sensor](https://esphome.io/components/sensor/homeassistant.html) through the HomeAssistant API
 
 Creates the sensor used to receive the remote temperature from Home Assistant. Uses sensor selected in substitutions area at top of config or manually entered into the sensor configuration. When the HomeAssistant sensor updates, it will send the new value to the ESP device, which will update the heatpump's remote temperature value.
- 
+
 Customize the filters to your application:
+
 - Uncomment the first line to convert F to C when remote temps are sent.
 - If you have a fast or noisy sensor, consider some of the other filter options such as throttle_average.
 
@@ -612,8 +640,8 @@ sensor:
     state_class: measurement
     unit_of_measurement: "°C"
     filters:
-    # Uncomment the lambda line to convert F to C on incoming temperature
-    #  - lambda: return (x - 32) * (5.0/9.0);
+      # Uncomment the lambda line to convert F to C on incoming temperature
+      #  - lambda: return (x - 32) * (5.0/9.0);
       - clamp: # Limits values to range accepted by Mitsubishi units
           min_value: 1
           max_value: 40
@@ -624,8 +652,8 @@ sensor:
         - logger.log:
             level: INFO
             format: "Remote temperature received from HA: %.1f C"
-            args: [ 'x' ]
-        - lambda: 'id(hp).set_remote_temperature(x);'
+            args: ["x"]
+        - lambda: "id(hp).set_remote_temperature(x);"
 ```
 
 ### Alternate - Get external temperature from a networked sensor with a throttle filter
@@ -643,7 +671,7 @@ sensor:
         throttle_average: 90s
       on_value:
         then:
-          - lambda: 'id(hp).set_remote_temperature(x);'
+          - lambda: "id(hp).set_remote_temperature(x);"
 ```
 
 ### Alternate - HomeAssistant Action
@@ -659,14 +687,14 @@ api:
       variables:
         temperature: float
       then:
-# Select between the C version and the F version
-# Uncomment just ONE of the below lines. The top receives the temperature value in C,
-# the bottom receives the value in F, converting to C here.
-        - lambda: 'id(hp).set_remote_temperature(temperature);'
-#        - lambda: 'id(hp).set_remote_temperature((temperature - 32.0) * (5.0 / 9.0));'
+        # Select between the C version and the F version
+        # Uncomment just ONE of the below lines. The top receives the temperature value in C,
+        # the bottom receives the value in F, converting to C here.
+        - lambda: "id(hp).set_remote_temperature(temperature);"
+    #        - lambda: 'id(hp).set_remote_temperature((temperature - 32.0) * (5.0 / 9.0));'
     - service: use_internal_temperature
       then:
-        - lambda: 'id(hp).set_remote_temperature(0);'
+        - lambda: "id(hp).set_remote_temperature(0);"
 ```
 
 ## Diagnostic Sensors
@@ -676,38 +704,39 @@ api:
 This sensor reads the outdoor unit's air temperature reading, in 1.0 degree C increments. Not all outdoor units support this sensor. Some outdoor units will send an accurate value while the unit is operating, or in heat/cool mode, but will send -63.5C when offline.
 
 ```yaml
-    outside_air_temperature_sensor:
-      name: Outside Air Temperature
+outside_air_temperature_sensor:
+  name: Outside Air Temperature
 ```
 
 Compatible units (as reported by users):
 
-| Indoor          | Outdoor          | Temperature                             |
-|-----------------|------------------|-----------------------------------------|
-| MSZ-AP25VGD     | MXZ-4F80VGD      | Works                                   |
-| MSZ-AP35VGD     | MUZ-AP35VG       | Works but reports -63.5C when idle      |
-| MSZ-AP60VGD     | MUZ-AP60VG       | Works                                   |
-| MSZ-AP71VGD     | MUZ-AP71VG       | Works but reports -63.5C when idle      |
-| MSZ-AY35VGKP    | MUZ-AY35VG       | Works                                   |
-| MSZ-GLxxNA      | MXZ-SM42NAMHZ    | Works                                   |
-|                 | MXZ-3C24NA2      | Not working                             |
-| MSZ-RW25VG-SC1  | MUZ-RW25VGHZ-SC1 | Works                                   |
-| MSZ-FSxxNA      | MXZ-4C36NA2      | Works                                   |
-|                 | MUZ-FD25NA       | Not working                             |
-| MSZ-LN35        | MUZ-LN35         | Not working                             |
+| Indoor         | Outdoor          | Temperature                        |
+| -------------- | ---------------- | ---------------------------------- |
+| MSZ-AP25VGD    | MXZ-4F80VGD      | Works                              |
+| MSZ-AP35VGD    | MUZ-AP35VG       | Works but reports -63.5C when idle |
+| MSZ-AP60VGD    | MUZ-AP60VG       | Works                              |
+| MSZ-AP71VGD    | MUZ-AP71VG       | Works but reports -63.5C when idle |
+| MSZ-AY35VGKP   | MUZ-AY35VG       | Works                              |
+| MSZ-GLxxNA     | MXZ-SM42NAMHZ    | Works                              |
+|                | MXZ-3C24NA2      | Not working                        |
+| MSZ-RW25VG-SC1 | MUZ-RW25VGHZ-SC1 | Works                              |
+| MSZ-FSxxNA     | MXZ-4C36NA2      | Works                              |
+|                | MUZ-FD25NA       | Not working                        |
+| MSZ-LN35       | MUZ-LN35         | Not working                        |
 
 ### Auto and Stage Sensors
 
 The below sensors were added recently based on the work of others in sorting out other messages and bytes. The names are likely to change as we work to determine exactly what the units are doing.
 
 ```yaml
-    stage_sensor:
-      name: Stage Sensor
-    sub_mode_sensor:
-      name: Sub Mode Sensor
-    auto_sub_mode_sensor:
-      name: Auto Sub Mode Sensor
+stage_sensor:
+  name: Stage Sensor
+sub_mode_sensor:
+  name: Sub Mode Sensor
+auto_sub_mode_sensor:
+  name: Auto Sub Mode Sensor
 ```
+
 - `stage_sensor` is the actual fan speed of the indoor unit. This is called stage in some documentation. Reported speeds include `IDLE`, `LOW`, `GENTLE`, `MEDIUM`, `MODERATE`, `HIGH` and `DIFFUSE`, named using Mitsubishi documentation conventions.
 
 - `auto_sub_mode_sensor` indicates what actual mode the unit is in when in AUTO. Modes are `AUTO_OFF`, meaning AUTO is disabled, `AUTO_COOL`, meaning AUTO and cooling, `AUTO_HEAT`, meaning AUTO and heating and `AUTO_LEADER`, meaning this unit is the leader in a multi-head unit and selects the heat/cool mode that the others follow.
@@ -760,7 +789,7 @@ sensor:
     unit_of_measurement: "%"
     accuracy_decimals: 1
     entity_category: DIAGNOSTIC
-    lambda: |-      
+    lambda: |-
       unsigned long nbCompleteCycles = id(hp).nbCompleteCycles_;
       unsigned long nbCycles = id(hp).nbCycles_;
       if (nbCycles == 0) {

@@ -159,9 +159,11 @@ void CN105Climate::getPowerFromResponsePacket() {
     ESP_LOGD("Decoder", "[Auto Mode Sub Mode  : %s]", receivedSettings.auto_sub_mode);
 
     //this->heatpumpUpdate(receivedSettings);
-    if (this->Stage_sensor_ != nullptr && (!this->currentSettings.stage || strcmp(receivedSettings.stage, this->currentSettings.stage) != 0)) {
-        this->currentSettings.stage = receivedSettings.stage;
-        this->Stage_sensor_->publish_state(receivedSettings.stage);
+    if (this->stage_sensor_ != nullptr) {
+        if (!this->currentSettings.stage || strcmp(receivedSettings.stage, this->currentSettings.stage) != 0) {
+            this->currentSettings.stage = receivedSettings.stage;
+            this->stage_sensor_->publish_state(receivedSettings.stage);
+        }
     }
     if (this->Sub_mode_sensor_ != nullptr && (!this->currentSettings.sub_mode || strcmp(receivedSettings.sub_mode, this->currentSettings.sub_mode) != 0)) {
         this->currentSettings.sub_mode = receivedSettings.sub_mode;

@@ -81,8 +81,12 @@ void CN105Climate::set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_se
     this->iSee_sensor_ = iSee_sensor;
 }
 
-void CN105Climate::set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor) {
-    this->Stage_sensor_ = Stage_sensor;
+void CN105Climate::set_stage_sensor(esphome::text_sensor::TextSensor* stage_sensor) {
+    this->stage_sensor_ = stage_sensor;
+}
+void CN105Climate::set_use_stage_for_operating_status(bool value) {
+    this->use_stage_for_operating_status_ = value;
+    ESP_LOGI(TAG, "Using stage sensor as operating fallback: %s", value ? "true" : "false");
 }
 
 void CN105Climate::set_functions_sensor(esphome::text_sensor::TextSensor* Functions_sensor) {
@@ -96,7 +100,7 @@ void CN105Climate::set_functions_get_button(FunctionsButton* Button) {
         // Get the settings from the heat pump
         this->getFunctions();
         // The response is handled in heatpumpFunctions.cpp
-    });
+        });
 }
 
 void CN105Climate::set_functions_set_button(FunctionsButton* Button) {
@@ -116,7 +120,7 @@ void CN105Climate::set_functions_set_button(FunctionsButton* Button) {
         // Now send the codes.
         this->setFunctions(functions);
 
-    });
+        });
 }
 
 void CN105Climate::set_functions_set_code(FunctionsNumber* Number) {
@@ -124,7 +128,7 @@ void CN105Climate::set_functions_set_code(FunctionsNumber* Number) {
     this->Functions_set_code_->setCallbackFunction([this](float x) {
         // store the code
         this->functions_code_ = (int)x;
-    });
+        });
 
 }
 void CN105Climate::set_functions_set_value(FunctionsNumber* Number) {
@@ -132,7 +136,7 @@ void CN105Climate::set_functions_set_value(FunctionsNumber* Number) {
     this->Functions_set_value_->setCallbackFunction([this](float x) {
         // store the value
         this->functions_value_ = (int)x;
-    });
+        });
 }
 
 
