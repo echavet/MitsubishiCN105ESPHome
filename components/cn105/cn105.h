@@ -180,17 +180,6 @@ namespace esphome {
         bool setFunctions(heatpumpFunctions const& functions);
 
         // helpers
-
-        float FahrenheitToCelsius(int tempF) {
-            float temp = (tempF - 32) / 1.8;
-            return ((float)round(temp * 2)) / 2;                 //Round to nearest 0.5C
-        }
-
-        int CelsiusToFahrenheit(float tempC) {
-            float temp = (tempC * 1.8) + 32;                //round up if heat, down if cool or any other mode
-            return (int)(temp + 0.5);
-        }
-
         const char* getIfNotNull(const char* what, const char* defaultValue);
 
 #ifdef TEST_MODE
