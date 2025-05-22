@@ -74,6 +74,7 @@ CONF_SUB_MODE_SENSOR = "sub_mode_sensor"
 CONF_AUTO_SUB_MODE_SENSOR = "auto_sub_mode_sensor"
 CONF_HP_UP_TIME_CONNECTION_SENSOR = "hp_uptime_connection_sensor"
 CONF_USE_AS_OPERATING_FALLBACK = "use_as_operating_fallback"  # Nouvelle constante
+CONF_FAHRENHEIT_SUPPORT_MODE = "fahrenheit_compatibility"
 
 DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
@@ -232,6 +233,7 @@ CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
         cv.Optional(CONF_FUNCTIONS_SET_BUTTON): FUNCTIONS_BUTTON_SCHEMA,
         cv.Optional(CONF_FUNCTIONS_SET_CODE): FUNCTIONS_NUMBER_SCHEMA,
         cv.Optional(CONF_FUNCTIONS_SET_VALUE): FUNCTIONS_NUMBER_SCHEMA,
+        cv.Optional(CONF_FAHRENHEIT_SUPPORT_MODE): cv.boolean,
         cv.Optional(
             CONF_STAGE_SENSOR
         ): STAGE_SENSOR_CONFIG_SCHEMA,  # Modifié pour le nouveau schéma
@@ -383,6 +385,9 @@ def to_code(config):
             conf_item, min_value=1.0, max_value=3.0, step=1.0
         )
         cg.add(var.set_functions_set_value(number_var))
+
+    if CONF_FAHRENHEIT_SUPPORT_MODE in config:
+        cg.add(var.set_use_fahrenheit_support_mode(config.get(CONF_FAHRENHEIT_SUPPORT_MODE)))
 
     # --- TRAITEMENT POUR STAGE_SENSOR AVEC LA NOUVELLE OPTION ---
     if CONF_STAGE_SENSOR in config:
