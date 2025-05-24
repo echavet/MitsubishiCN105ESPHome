@@ -210,7 +210,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
     ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, this->wideVaneAdj);
     if ((data[10] != 0) && (this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {    // wideVane is not always supported
         receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F, "wideVane reading");
-        wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
+        this->wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;        
         ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, wideVaneAdj);
     } else {
         ESP_LOGD("Decoder", "widevane is not supported");
