@@ -1,6 +1,12 @@
 #include "cn105.h"
 #include "Globals.h"
 
+#include <algorithm>
+#include <cmath>
+#include <map>
+#include <vector>
+#include <utility>
+
 using namespace esphome;
 
 
@@ -44,21 +50,6 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
         // Changer la température cible
         ESP_LOGI("control", "Setting heatpump setpoint : %.1f", *call.get_target_temperature());
         this->target_temperature = *call.get_target_temperature();
-        updated = true;
-        controlTemperature();
-    }
-
-    if (call.get_target_temperature_low().has_value()) {
-        // Changer la température cible
-        ESP_LOGI("control", "Setting heatpump low setpoint : %.1f", *call.get_target_temperature_low());
-        this->target_temperature_low = *call.get_target_temperature_low();
-        updated = true;
-        controlTemperature();
-    }
-    if (call.get_target_temperature_high().has_value()) {
-        // Changer la température cible
-        ESP_LOGI("control", "Setting heatpump high setpoint : %.1f", *call.get_target_temperature_high());
-        this->target_temperature_high = *call.get_target_temperature_high();
         updated = true;
         controlTemperature();
     }
@@ -154,20 +145,49 @@ void CN105Climate::controlFan() {
         break;
     }
 }
+
+// Given a temperature in Celsius that was converted from Fahrenheit, converts
+// it to the Celsius value (at half-degree precision) that matches what
+// Mitsubishi thermostats would have converted the Fahrenheit value to. For
+// instance, 72°F is 22.22°C, but this function returns 22.5°C.
+static float mapCelsiusForConversionFromFahrenheit(const float c) {
+    static const auto& mapping = [] {
+        std::vector<std::pair<float, float>> v = {
+            {61, 16.0}, {62, 16.5}, {63, 17.0}, {64, 17.5}, {65, 18.0},
+            {66, 18.5}, {67, 19.0}, {68, 20.0}, {69, 21.0}, {70, 21.5},
+            {71, 22.0}, {72, 22.5}, {73, 23.0}, {74, 23.5}, {75, 24.0},
+            {76, 24.5}, {77, 25.0}, {78, 25.5}, {79, 26.0}, {80, 26.5},
+            {81, 27.0}, {82, 27.5}, {83, 28.0}, {84, 28.5}, {85, 29.0},
+            {86, 29.5}, {87, 30.0}, {88, 30.5}
+        };
+        for (auto& [k, v] : v) {
+            k = (k - 32.0f) / 1.8f;
+        }
+        return *new std::map<float, float>(v.begin(), v.end());
+    }();
+
+    // Due to vagaries of floating point math across architectures, we can't
+    // just look up `c` in the map -- we're very unlikely to find a matching
+    // value. Instead, we find the first value greater than `c`, and the
+    // next-lowest value in the map. We return whichever `c` is closer to.
+    auto it = mapping.upper_bound(c);
+    if (it == mapping.begin() || it == mapping.end()) return c;
+
+    auto prev = it;
+    --prev;
+    return c - prev->first < it->first - c ? prev->second : it->second;
+}
+
 void CN105Climate::controlTemperature() {
     float setting = this->target_temperature;
-
-    float cool_setpoint = this->target_temperature_low;
-    float heat_setpoint = this->target_temperature_high;
-    //float humidity_setpoint = this->target_humidity;
-
+    if (use_fahrenheit_support_mode_) {
+      setting = mapCelsiusForConversionFromFahrenheit(setting);
+    }
     if (!this->tempMode) {
         this->wantedSettings.temperature = this->lookupByteMapIndex(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
     } else {
-        setting = setting * 2;
-        setting = round(setting);
-        setting = setting / 2;
-        this->wantedSettings.temperature = setting < 10 ? 10 : (setting > 31 ? 31 : setting);
+        setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
+        this->wantedSettings.temperature = std::clamp(setting, 10.0f, 31.0f);
     }
 }
 
@@ -390,5 +410,12 @@ void CN105Climate::setWideVaneSetting(const char* setting) {
     }
 }
 
-
+void CN105Climate::set_remote_temperature(float setting) {
+    this->shouldSendExternalTemperature_ = true;
+    if (use_fahrenheit_support_mode_) {
+      setting = mapCelsiusForConversionFromFahrenheit(setting);
+    }
+    this->remoteTemperature_ = setting;
+    ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
+}
 

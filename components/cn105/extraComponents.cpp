@@ -151,3 +151,9 @@ void CN105Climate::set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Au
 void CN105Climate::set_hp_uptime_connection_sensor(uptime::HpUpTimeConnectionSensor* hp_up_connection_sensor) {
     this->hp_uptime_connection_sensor_ = hp_up_connection_sensor;
 }
+
+void CN105Climate::set_use_fahrenheit_support_mode(bool value) {
+    this->use_fahrenheit_support_mode_ = value;
+    ESP_LOGI(TAG, "Fahrenheit compatibility mode enabled: ", value ? "true" : "false");
+}
+

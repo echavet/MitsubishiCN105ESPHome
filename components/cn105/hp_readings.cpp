@@ -1,5 +1,7 @@
 #include "cn105.h"
 
+#include <map>
+
 using namespace esphome;
 
 /**
@@ -175,6 +177,32 @@ void CN105Climate::getPowerFromResponsePacket() {
     }
 }
 
+// Given a temperature in Celsius that will be converted to Fahrenheit, converts
+// it to the Celsius value corresponding to the the Fahrenheit value that
+// Mitsubishi thermostats would have converted the Celsius value to. For
+// instance, 21.5°C is 70.7°F, but to get it to map to 70°F, this function
+// returns 21.1°C.
+static float mapCelsiusForConversionToFahrenheit(const float c) {
+    static const auto& mapping = [] {
+        auto* const m = new std::map<float, float>{
+            {16.0, 61}, {16.5, 62}, {17.0, 63}, {17.5, 64}, {18.0, 65},
+            {18.5, 66}, {19.0, 67}, {20.0, 68}, {21.0, 69}, {21.5, 70},
+            {22.0, 71}, {22.5, 72}, {23.0, 73}, {23.5, 74}, {24.0, 75},
+            {24.5, 76}, {25.0, 77}, {25.5, 78}, {26.0, 79}, {26.5, 80},
+            {27.0, 81}, {27.5, 82}, {28.0, 83}, {28.5, 84}, {29.0, 85},
+            {29.5, 86}, {30.0, 87}, {30.5, 88}
+        };
+        for (auto& [k, v] : *m) {
+            v = (v - 32.0f) / 1.8f;
+        }
+        return *m;
+    }();
+
+    auto it = mapping.find(c);
+    if (it == mapping.end()) return c;
+    return it->second;
+}
+
 void CN105Climate::getSettingsFromResponsePacket() {
     heatpumpSettings receivedSettings{};
     ESP_LOGD("Decoder", "[0x02 is settings]");
@@ -197,6 +225,9 @@ void CN105Climate::getSettingsFromResponsePacket() {
         //ESP_LOGD("Decoder", "tempMode is true");
     } else {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
+    }
+    if (use_fahrenheit_support_mode_) {
+        receivedSettings.temperature = mapCelsiusForConversionToFahrenheit(receivedSettings.temperature);
     }
 
     ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
@@ -242,7 +273,10 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
     // RM = indoor unit operating time in minutes
 
     if (data[5] > 1) {
-        receivedStatus.outsideAirTemperature = (float)(data[5] - 128) / 2;
+        receivedStatus.outsideAirTemperature = (data[5] - 128) / 2.0f;
+        if (use_fahrenheit_support_mode_) {
+            receivedStatus.outsideAirTemperature = mapCelsiusForConversionToFahrenheit(receivedStatus.outsideAirTemperature);
+        }
     } else {
         receivedStatus.outsideAirTemperature = NAN;
     }
@@ -250,9 +284,12 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
     if (data[6] != 0x00) {
         int temp = data[6];
         temp -= 128;
-        receivedStatus.roomTemperature = (float)temp / 2;
+        receivedStatus.roomTemperature = temp / 2.0f;
     } else {
         receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
+    }
+    if (use_fahrenheit_support_mode_) {
+        receivedStatus.roomTemperature = mapCelsiusForConversionToFahrenheit(receivedStatus.roomTemperature);
     }
 
     receivedStatus.runtimeHours = float((data[11] << 16) | (data[12] << 8) | data[13]) / 60;

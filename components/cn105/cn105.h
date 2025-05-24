@@ -47,6 +47,7 @@ namespace esphome {
         void set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_sensor);
         void set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor);
         void set_use_stage_for_operating_status(bool value);
+        void set_use_fahrenheit_support_mode(bool value);
 
         void set_functions_sensor(esphome::text_sensor::TextSensor* Functions_sensor);
         void set_functions_get_button(FunctionsButton* Button);
@@ -62,6 +63,7 @@ namespace esphome {
         binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
         text_sensor::TextSensor* stage_sensor_{ nullptr }; // to save ref if needed
         bool use_stage_for_operating_status_{ false };
+        bool use_fahrenheit_support_mode_ = false;
         text_sensor::TextSensor* Functions_sensor_ = nullptr;
         FunctionsButton* Functions_get_button_ = nullptr;
         FunctionsButton* Functions_set_button_ = nullptr;
@@ -180,17 +182,6 @@ namespace esphome {
         bool setFunctions(heatpumpFunctions const& functions);
 
         // helpers
-
-        float FahrenheitToCelsius(int tempF) {
-            float temp = (tempF - 32) / 1.8;
-            return ((float)round(temp * 2)) / 2;                 //Round to nearest 0.5C
-        }
-
-        int CelsiusToFahrenheit(float tempC) {
-            float temp = (tempC * 1.8) + 32;                //round up if heat, down if cool or any other mode
-            return (int)(temp + 0.5);
-        }
-
         const char* getIfNotNull(const char* what, const char* defaultValue);
 
 #ifdef TEST_MODE
