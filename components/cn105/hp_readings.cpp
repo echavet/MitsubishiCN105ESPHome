@@ -193,7 +193,7 @@ static float mapCelsiusForConversionToFahrenheit(const float c) {
             {29.5, 86}, {30.0, 87}, {30.5, 88}
         };
         for (auto& pair : *m) {
-            pair.second = (pair.second - 32.0f) / 1.8f
+            pair.second = (pair.second - 32.0f) / 1.8f;
         }
         return *m;
     }();
