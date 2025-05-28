@@ -171,10 +171,10 @@ ISEE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(ISeeSensor).extend(
 FUNCTIONS_SENSOR_SCHEMA = text_sensor.text_sensor_schema(FunctionsSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsSensor)}
 )
-FUNCTIONS_BUTTON_SCHEMA = button.button_schema(FunctionsButton).BUTTON_SCHEMA.extend(
+FUNCTIONS_BUTTON_SCHEMA = button.button_schema(FunctionsButton).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsButton)}
 )
-FUNCTIONS_NUMBER_SCHEMA = number.number_schema(FunctionsNumber).NUMBER_SCHEMA.extend(
+FUNCTIONS_NUMBER_SCHEMA = number.number_schema(FunctionsNumber).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsNumber)}
 )
 SUB_MODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(SubModSensor).extend(
