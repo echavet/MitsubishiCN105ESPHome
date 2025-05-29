@@ -160,8 +160,8 @@ static float mapCelsiusForConversionFromFahrenheit(const float c) {
             {81, 27.0}, {82, 27.5}, {83, 28.0}, {84, 28.5}, {85, 29.0},
             {86, 29.5}, {87, 30.0}, {88, 30.5}
         };
-        for (auto& [k, v] : v) {
-            k = (k - 32.0f) / 1.8f;
+        for (auto& pair : v) {
+            pair.first = (pair.first - 32.0f) / 1.8f;
         }
         return *new std::map<float, float>(v.begin(), v.end());
     }();
@@ -187,7 +187,7 @@ void CN105Climate::controlTemperature() {
         this->wantedSettings.temperature = this->lookupByteMapIndex(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
     } else {
         setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
-        this->wantedSettings.temperature = std::clamp(setting, 10.0f, 31.0f);
+        this->wantedSettings.temperature =  setting < 10 ? 10 : (setting > 31 ? 31 : setting);
     }
 }
 
