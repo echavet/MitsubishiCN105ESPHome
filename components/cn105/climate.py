@@ -147,45 +147,45 @@ def get_uart_pins_from_config(core_config, target_uart_id_str):
 # --- FIN de la fonction d'aide ---
 
 # Schémas pour les entités optionnelles (identiques à votre version)
-SELECT_SCHEMA = select.SELECT_SCHEMA.extend(
+SELECT_SCHEMA = select.select_schema(VaneOrientationSelect).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(VaneOrientationSelect)}
 )
-COMPRESSOR_FREQUENCY_SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
+COMPRESSOR_FREQUENCY_SENSOR_SCHEMA = sensor.sensor_schema(CompressorFrequencySensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(CompressorFrequencySensor)}
 )
-INPUT_POWER_SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
+INPUT_POWER_SENSOR_SCHEMA = sensor.sensor_schema(InputPowerSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(InputPowerSensor)}
 )
-KWH_SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
+KWH_SENSOR_SCHEMA = sensor.sensor_schema(kWhSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(kWhSensor)}
 )
-RUNTIME_HOURS_SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
+RUNTIME_HOURS_SENSOR_SCHEMA = sensor.sensor_schema(RuntimeHoursSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(RuntimeHoursSensor)}
 )
-OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA = sensor.SENSOR_SCHEMA.extend(
+OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA = sensor.sensor_schema(OutsideAirTemperatureSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(OutsideAirTemperatureSensor)}
 )
-ISEE_SENSOR_SCHEMA = binary_sensor.BINARY_SENSOR_SCHEMA.extend(
+ISEE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(ISeeSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(ISeeSensor)}
 )
-FUNCTIONS_SENSOR_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
+FUNCTIONS_SENSOR_SCHEMA = text_sensor.text_sensor_schema(FunctionsSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsSensor)}
 )
-FUNCTIONS_BUTTON_SCHEMA = button.BUTTON_SCHEMA.extend(
+FUNCTIONS_BUTTON_SCHEMA = button.button_schema(FunctionsButton).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsButton)}
 )
-FUNCTIONS_NUMBER_SCHEMA = number.NUMBER_SCHEMA.extend(
+FUNCTIONS_NUMBER_SCHEMA = number.number_schema(FunctionsNumber).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsNumber)}
 )
-SUB_MODE_SENSOR_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
+SUB_MODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(SubModSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(SubModSensor)}
 )
-AUTO_SUB_MODE_SENSOR_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
+AUTO_SUB_MODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(AutoSubModSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(AutoSubModSensor)}
 )
 
 # Schéma pour STAGE_SENSOR (qui est un text_sensor) AVEC la nouvelle sous-option
-STAGE_SENSOR_CONFIG_SCHEMA = text_sensor.TEXT_SENSOR_SCHEMA.extend(
+STAGE_SENSOR_CONFIG_SCHEMA = text_sensor.text_sensor_schema(StageSensor).extend(
     {
         # L'ID pour l'objet StageSensor C++ est géré par text_sensor.TEXT_SENSOR_SCHEMA (via CONF_ID)
         cv.Optional(CONF_USE_AS_OPERATING_FALLBACK, default=False): cv.boolean,
@@ -204,7 +204,7 @@ HP_UP_TIME_CONNECTION_SENSOR_SCHEMA = sensor.sensor_schema(
 ).extend(cv.polling_component_schema("60s"))
 
 
-CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
+CONFIG_SCHEMA = climate.climate_schema(CN105Climate).extend(
     {
         cv.GenerateID(): cv.declare_id(CN105Climate),
         cv.GenerateID(CONF_UART_ID): cv.use_id(uart.UARTComponent),
