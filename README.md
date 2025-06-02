@@ -1,14 +1,5 @@
 # Mitsubishi CN105 ESPHome
 
-> [!WARNING]  
-> Due to a change in ESPHome 2025.2.0, some users are reporting build problems related to the loading of the `uptime_seconds_sensor` class. If you get a compile error for this reason, manually add an uptime sensor to your YAML configuration as below, clean your build files, and recompile. Once the root cause is identified this note will be removed.
->
-> ```yaml
-> sensor:
->   - platform: uptime
->     name: Uptime
-> ```
-
 This project is a firmware for ESP32 microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump through Home Assistant, a web interface, or any MQTT client.
 
 It uses the ESPHome framework and is compatible with the Arduino framework and ESP-IDF.
@@ -25,9 +16,10 @@ The benefits include fully local control over your heat pump system, without rel
 
 ### New Features
 
+- Support Fahrenheit users better by mapping unit conversions to Mitsubishi's "creative" math, ensuring that HomeAssistant and external thermostats stay in sync. Thanks [@ams2990](https://github.com/ams2990) and [@dsstewa](https://github.com/dsstewa)!
 - Additional components for supported units: vane orientation (fully supporting the Swicago map), compressor frequency for energy monitoring, and i-see sensor.
-- Additional diagnostic sensors for understanding the behavior of the indoor units while in AUTO mode
-- Additional sensors for power usage and outdoor temperature (not supported by all units)
+- Additional diagnostic sensors for understanding the behavior of the indoor units while in AUTO mode.
+- Additional sensors for power usage and outdoor temperature (not supported by all units).
 - Code is divided into distinct concerns for better readability.
 - Extensive logging for easier troubleshooting and development.
 - Ongoing refactoring to further improve the code quality.
@@ -178,7 +170,11 @@ This example adds support for configuring the temperature steps, adding an icon,
 
 The `remote_temperature_timeout` setting allows the unit to revert back to the internal temperature measurement if it does not receive an update in the specified time range (highly recommended if using remote temperature updates).
 
-`debounce_delay` adds a small delay to the command processing to account for some HomeAssistant buttons that may send repeat commands too quickly. A shorter value creates a more responsive UI, a longer value protects against repeat commands. (See Issue https://github.com/echavet/MitsubishiCN105ESPHome/issues/21)
+`debounce_delay` adds a small delay to the command processing to account for some HomeAssistant buttons that may send repeat commands too quickly. A shorter value creates a more responsive UI, a longer value protects against repeat commands. (See https://github.com/echavet/MitsubishiCN105ESPHome/issues/21)
+
+`fahrenheit_compatibility` improves compatibility with HomeAssistant installations using Fahrenheit units. Mitsubishi uses a custom lookup table to convert F to C which doesn't correspond to the actual math in all cases. This can result in external thermostats and HomeAssistant "disagreeing" on what the current setpoint is. Setting this value to `true` forces the component to use the same lookup tables, resulting in more consistent display of setpoints. Recommended for Fahrenheit users. (See https://github.com/echavet/MitsubishiCN105ESPHome/pull/298.)
+
+`use_as_operating_fallback` in the `stage_sensor` is an uncommon option. If your unit doesn't accurately update the activity indicator (idle/heating/cooling/etc.), then this sensor can use the `stage_sensor` as an alternate source of information on the status of the unit. Not recommended for most users. (See https://github.com/echavet/MitsubishiCN105ESPHome/issues/277)
 
 ```yaml
 climate:
@@ -192,6 +188,9 @@ climate:
       temperature_step:
         target_temperature: 1
         current_temperature: 0.5
+    # Fahrenheit compatibility mode - uses Mitsubishi's "custom" unit conversions, set to
+    # "true" for better support of Fahrenheit units in HomeAssistant
+    fahrenheit_compatibility: false
     # Timeout and communication settings
     remote_temperature_timeout: 30min
     update_interval: 2s
@@ -215,7 +214,7 @@ climate:
       disabled_by_default: true
     stage_sensor:
       name: Stage
-      #use_as_operating_fallback: false     # set to true if your unit doesn't provide activity indicator ([#277](https://github.com/echavet/MitsubishiCN105ESPHome/issues/277))
+      # use_as_operating_fallback: false     # set to true if your unit doesn't provide activity indicator
       entity_category: diagnostic
       disabled_by_default: true
     sub_mode_sensor:
@@ -247,7 +246,7 @@ This firmware supports detailed log granularity for troubleshooting. Below is th
 
 ```yaml
 logger:
-  #  hardware_uart: UART1 # Uncomment on ESP8266 devices
+  # hardware_uart: UART1 # Uncomment on ESP8266 devices
   level: INFO
   logs:
     EVT_SETS: INFO
@@ -305,82 +304,60 @@ esphome:
   friendly_name: My Heatpump 1
 
 # For ESP8266 Devices
-
 #esp8266:
-
-# board: d1_mini
-
-#
+#  board: d1_mini
 
 #uart:
-
-# id: HP_UART
-
-# baud_rate: 2400
-
-# tx_pin: 1
-
-# rx_pin: 3
+#  id: HP_UART
+#  baud_rate: 2400
+#  tx_pin: 1
+#  rx_pin: 3
 
 # For ESP32 Devices
 
 esp32:
-board: esp32doit-devkit-v1
-framework:
-type: esp-idf
+  board: esp32doit-devkit-v1
+  framework:
+    type: esp-idf
 
 uart:
-id: HP_UART
-baud_rate: 2400
-tx_pin: GPIO17
-rx_pin: GPIO16
+  id: HP_UART
+  baud_rate: 2400
+  tx_pin: GPIO17
+  rx_pin: GPIO16
 
 external_components:
-
-- source: github://echavet/MitsubishiCN105ESPHome
+  - source: github://echavet/MitsubishiCN105ESPHome
 
 # Climate entity configuration
-
 climate:
-
 - platform: cn105
   name: "My Heat Pump"
   update_interval: 2s
 
 # Default logging level
-
 logger:
-
-# hardware_uart: UART1 # Uncomment on ESP8266 devices
-
-level: INFO
-
-# Enable logging
-
-logger:
+#  hardware_uart: UART1 # Uncomment on ESP8266 devices
+  level: INFO
 
 # Enable Home Assistant API
-
 api:
-encryption:
-key: !secret api_key
+ encryption:
+ key: !secret api_key
 
 ota:
-platform: esphome # Required for ESPhome 2024.6.0 and greater
-password: !secret ota_password
+  platform: esphome # Required for ESPhome 2024.6.0 and greater
+  password: !secret ota_password
 
 wifi:
-ssid: !secret wifi_ssid
-password: !secret wifi_password
-
-# Enable fallback hotspot (captive portal) in case wifi connection fails
-
-ap:
-ssid: "Heatpump Fallback Hotspot"
-password: !secret fallback_password
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Heatpump Fallback Hotspot"
+    password: !secret fallback_password
 
 captive_portal:
-
 ````
 </details>
 
@@ -569,6 +546,9 @@ climate:
       temperature_step:
         target_temperature: 1
         current_temperature: 0.5
+    # Fahrenheit compatibility mode - uses Mitsubishi's "custom" unit conversions, set to
+    # "true" for better support of Fahrenheit units in HomeAssistant
+    fahrenheit_compatibility: false
     # Timeout and communication settings
     remote_temperature_timeout: 30min
     update_interval: 2s
