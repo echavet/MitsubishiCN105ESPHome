@@ -601,7 +601,7 @@ climate:
       name: Runtime Hours
       entity_category: diagnostic
       disabled_by_default: true
-````
+```
 
 </details>
 
@@ -804,3 +804,42 @@ Refer to these for further understanding:
 - [ESPHome's Climate Component Source](https://github.com/esphome/esphome/tree/master/esphome/components/climate)
 
 ---
+
+## Dual UART Support: Heatpump and Melcloud Adapter (Proxy Mode)
+
+This firmware now supports using two UARTs simultaneously: one for the Mitsubishi heatpump (CN105) and one for a Melcloud adapter (see [esphome-ecodan-hp](https://github.com/gekkekoe/esphome-ecodan-hp)).
+
+**Proxy Mode:**
+
+The ESPHome device acts as a transparent proxy between the heatpump and the Melcloud adapter. All communication between the Melcloud adapter and the heatpump is passed through this device, allowing you to monitor, log, or inject commands as needed. This enables advanced integrations and diagnostics, while maintaining compatibility with both systems.
+
+### Example ESPHome YAML Configuration
+
+```yaml
+uart:
+  - id: HP_UART
+    baud_rate: 2400
+    tx_pin: GPIO17
+    rx_pin: GPIO16
+  - id: MELCLOUD_UART
+    baud_rate: 2400
+    tx_pin: GPIO21
+    rx_pin: GPIO22
+
+climate:
+  - platform: cn105
+    id: hp
+    name: "My Heat Pump"
+    update_interval: 2s
+    uart_id: HP_UART
+    melcloud_uart_id: MELCLOUD_UART  # New: specify the Melcloud UART here
+```
+
+- `uart_id` is used for the main CN105/heatpump connection.
+- `melcloud_uart_id` is used for the Melcloud adapter connection.
+
+> [!NOTE]
+> The Melcloud UART is optional. If not specified, only the heatpump UART will be used as before.
+> In proxy mode, the ESPHome device transparently passes all data between the heatpump and Melcloud adapter, and can also monitor or log this traffic.
+
+For more information on the Melcloud protocol and compatible adapters, see [esphome-ecodan-hp](https://github.com/gekkekoe/esphome-ecodan-hp).
