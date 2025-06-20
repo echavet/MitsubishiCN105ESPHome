@@ -35,7 +35,7 @@ namespace esphome {
 
     public:
 
-        CN105Climate(uart::UARTComponent* hw_serial);
+        CN105Climate(uart::UARTComponent* hw_serial, uart::UARTComponent* melcloud_uart = nullptr);
 
         void set_vertical_vane_select(VaneOrientationSelect* vertical_vane_select);
         void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select);
@@ -240,6 +240,7 @@ namespace esphome {
         void setFanSpeed(const char* setting);
 
         void setHeatpumpConnected(bool state);
+        void proxy_uart_data();
 
     private:
         const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
@@ -341,5 +342,22 @@ namespace esphome {
         int bytesRead = 0;
         int dataLength = 0;
         uint8_t command = 0;
+
+        uart::UARTComponent* uart_melcloud_ = nullptr;
+
+        void setupMelcloudUART();
+        void disconnectMelcloudUART();
+        void reconnectMelcloudUART();
+
+        // Proxy buffers and state for collision avoidance
+        static const int PROXY_BUFFER_SIZE = 64;
+        uint8_t proxy_buffer_hp2mc_[PROXY_BUFFER_SIZE];
+        int proxy_len_hp2mc_ = 0;
+        bool proxy_in_packet_hp2mc_ = false;
+        uint8_t proxy_buffer_mc2hp_[PROXY_BUFFER_SIZE];
+        int proxy_len_mc2hp_ = 0;
+        bool proxy_in_packet_mc2hp_ = false;
+        void proxy_handle_uart(uart::UARTComponent* from, uart::UARTComponent* to, uint8_t* buffer, int& len, bool& in_packet, const char* dir_tag);
+        bool proxy_is_packet_complete(const uint8_t* buffer, int len);
     };
 }
