@@ -1,11 +1,10 @@
-
 #include "cn105.h"
 
 using namespace esphome;
 
 
-CN105Climate::CN105Climate(uart::UARTComponent* uart) :
-    UARTDevice(uart) {
+CN105Climate::CN105Climate(uart::UARTComponent* uart, uart::UARTComponent* melcloud_uart) :
+    UARTDevice(uart), uart_melcloud_(melcloud_uart) {
 
     this->traits_.set_supports_action(true);
     this->traits_.set_supports_current_temperature(true);
@@ -191,4 +190,77 @@ bool CN105Climate::isHeatpumpConnectionActive() {
     // }
 
     return  (lrTimeMs < MAX_DELAY_RESPONSE_FACTOR * this->update_interval_);
+}
+
+void CN105Climate::set_melcloud_uart(uart::UARTComponent* melcloud_uart) {
+    this->uart_melcloud_ = melcloud_uart;
+}
+
+void CN105Climate::setupMelcloudUART() {
+    if (this->uart_melcloud_ == nullptr) return;
+    log_info_uint32(TAG, "setupMelcloudUART() with baudrate ", this->uart_melcloud_->get_baud_rate());
+    // Add Melcloud UART setup logic here
+}
+
+void CN105Climate::disconnectMelcloudUART() {
+    if (this->uart_melcloud_ == nullptr) return;
+    ESP_LOGD(TAG, "disconnectMelcloudUART()");
+    // Add Melcloud UART disconnect logic here
+}
+
+void CN105Climate::reconnectMelcloudUART() {
+    if (this->uart_melcloud_ == nullptr) return;
+    ESP_LOGD(TAG, "reconnectMelcloudUART()");
+    this->disconnectMelcloudUART();
+    this->setupMelcloudUART();
+    // Add Melcloud-specific connection packet if needed
+}
+
+void CN105Climate::proxy_uart_data() {
+    if (this->uart_melcloud_ == nullptr || this->parent_ == nullptr) return;
+    // Melcloud -> Heatpump
+    proxy_handle_uart(this->uart_melcloud_, this->parent_, proxy_buffer_mc2hp_, proxy_len_mc2hp_, proxy_in_packet_mc2hp_, "Melcloud->HP");
+    // Heatpump -> Melcloud
+    proxy_handle_uart(this->parent_, this->uart_melcloud_, proxy_buffer_hp2mc_, proxy_len_hp2mc_, proxy_in_packet_hp2mc_, "HP->Melcloud");
+}
+
+void CN105Climate::proxy_handle_uart(uart::UARTComponent* from, uart::UARTComponent* to, uint8_t* buffer, int& len, bool& in_packet, const char* dir_tag) {
+    while (from->available()) {
+        int byte = from->read();
+        if (byte < 0) continue;
+        uint8_t b = static_cast<uint8_t>(byte);
+        // Start of packet detection (example: 0x23)
+        if (!in_packet && b == 0x23) {
+            in_packet = true;
+            len = 0;
+        }
+        if (in_packet) {
+            if (len < PROXY_BUFFER_SIZE) {
+                buffer[len++] = b;
+            }
+            // Check if packet is complete
+            if (proxy_is_packet_complete(buffer, len)) {
+                // Forward complete packet
+                for (int i = 0; i < len; ++i) {
+                    to->write(buffer[i]);
+                }
+                ESP_LOGV(TAG, "Proxy %s: Forwarded packet of %d bytes", dir_tag, len);
+                in_packet = false;
+                len = 0;
+            }
+        }
+    }
+}
+
+// Example: Packet complete if length >= 6 and last byte is 0x0A (adjust as needed)
+bool CN105Climate::proxy_is_packet_complete(const uint8_t* buffer, int len) {
+    if (len < 6) return false;
+    // Example: packet starts with 0x23 and ends with 0x0A
+    return (buffer[0] == 0x23 && buffer[len-1] == 0x0A);
+}
+
+void CN105Climate::loop() {
+    // ...existing code...
+    this->proxy_uart_data();
+    // ...existing code...
 }
