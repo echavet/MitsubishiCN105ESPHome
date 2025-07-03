@@ -91,19 +91,26 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 
 }
 
-
 void CN105Climate::controlSwing() {
     switch (this->swing_mode) {                 //setVaneSetting supports:  AUTO 1 2 3 4 5 and SWING
     case climate::CLIMATE_SWING_OFF:
-        this->setVaneSetting("AUTO");
-        this->setWideVaneSetting("|");
+        if (strcmp(currentSettings.vane, "SWING") == 0) {
+            this->setVaneSetting("AUTO");
+        }
+        if (strcmp(currentSettings.wideVane, "SWING") == 0) {
+            this->setWideVaneSetting("|");
+        }
         break;
     case climate::CLIMATE_SWING_VERTICAL:
         this->setVaneSetting("SWING");
-        this->setWideVaneSetting("|");
+        if (strcmp(currentSettings.wideVane, "SWING") == 0) {
+            this->setWideVaneSetting("|");
+        }
         break;
     case climate::CLIMATE_SWING_HORIZONTAL:
-        this->setVaneSetting("AUTO");
+        if (strcmp(currentSettings.vane, "SWING") == 0) {
+            this->setVaneSetting("AUTO");
+        }
         this->setWideVaneSetting("SWING");
         break;
     case climate::CLIMATE_SWING_BOTH:
