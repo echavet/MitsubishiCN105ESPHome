@@ -239,7 +239,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
     ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
 
     if ((data[10] != 0) && (this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {    // wideVane is not always supported
-        receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 7, data[10] & 0x0F, "wideVane reading");
+        receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 11, data[10], "wideVane reading");
         this->wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;        
         ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, this->wideVaneAdj);
     } else {
@@ -599,7 +599,7 @@ void CN105Climate::checkWideVaneSettings(heatpumpSettings& settings, bool update
 
     /* ******** HANDLE MITSUBISHI VANE CHANGES ********
      * VANE_MAP[7]        = {"AUTO", "1", "2", "3", "4", "5", "SWING"};
-     * WIDEVANE_MAP[7]    = { "<<", "<",  "|",  ">",  ">>", "<>", "SWING" }
+     * WIDEVANE_MAP[11]   = { "<<", "<",  "|",  ">",  ">>", "<>", "SWING", "INDIRECT", "DIRECT", "EVEN", "OFF" }
      */
 
     if (this->hasChanged(currentSettings.wideVane, settings.wideVane, "wideVane")) {    // widevane setting change ?
