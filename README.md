@@ -59,6 +59,7 @@ This project maintains all functionalities of the original [geoffdavis](https://
 - Generic ESP32 Dev Kit (ESP32): tested
 - M5Stack ATOM Lite : tested
 - M5Stack ATOM S3 Lite: tested w/ [modifications](https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
+- M5Stack NanoC6: [tested over both wifi and thread](https://github.com/echavet/MitsubishiCN105ESPHome/discussions/340)
 - M5Stack StampS3
 - Seeed Studios Xiao ESP32S3: tested
 - WeMos D1 Mini Pro (ESP8266): tested (but not currently recommended, see above)
