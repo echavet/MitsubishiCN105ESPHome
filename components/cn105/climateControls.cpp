@@ -92,26 +92,63 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 }
 
 
+/**
+ * @brief Controls the swing modes based on user selection.
+ *
+ * This function handles the logic for CLIMATE_SWING_OFF, VERTICAL, HORIZONTAL, and BOTH.
+ * It is designed to be safe for units that do not support horizontal swing (wideVane)
+ * and provides an intuitive user experience by preserving static vane settings when possible.
+ */
 void CN105Climate::controlSwing() {
-    switch (this->swing_mode) {                 //setVaneSetting supports:  AUTO 1 2 3 4 5 and SWING
+    // Check if horizontal vane (wideVane) is supported by this unit at the beginning.
+    bool wideVaneSupported = this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL);
+
+    switch (this->swing_mode) {
     case climate::CLIMATE_SWING_OFF:
+        // When swing is turned OFF, unconditionally set vanes to a default static position.
+        // This ensures that any and all swinging motion stops, regardless of the previous state.
         this->setVaneSetting("AUTO");
-        this->setWideVaneSetting("|");
+        if (wideVaneSupported) {
+            this->setWideVaneSetting("|");
+        }
         break;
+
     case climate::CLIMATE_SWING_VERTICAL:
+        // Turn on vertical swing.
         this->setVaneSetting("SWING");
-        this->setWideVaneSetting("|");
+        // If horizontal swing was also on AND is supported, turn it off to a default static position.
+        // This correctly handles switching from BOTH to VERTICAL, while preserving any user's
+        // static horizontal setting if it wasn't swinging.
+        if (wideVaneSupported && strcmp(currentSettings.wideVane, "SWING") == 0) {
+            this->setWideVaneSetting("|");
+        }
         break;
+
     case climate::CLIMATE_SWING_HORIZONTAL:
-        this->setVaneSetting("AUTO");
-        this->setWideVaneSetting("SWING");
+        // If vertical swing was on, turn it off to a default static position.
+        // This correctly handles switching from BOTH to HORIZONTAL, while preserving any user's
+        // static vertical setting if it wasn't swinging.
+        if (strcmp(currentSettings.vane, "SWING") == 0) {
+            this->setVaneSetting("AUTO");
+        }
+        // Turn on horizontal swing, but only if the unit supports it.
+        if (wideVaneSupported) {
+            this->setWideVaneSetting("SWING");
+        }
         break;
+
     case climate::CLIMATE_SWING_BOTH:
+        // Turn on vertical swing.
         this->setVaneSetting("SWING");
-        this->setWideVaneSetting("SWING");
+        // Turn on horizontal swing, but only if the unit supports it.
+        if (wideVaneSupported) {
+            this->setWideVaneSetting("SWING");
+        }
         break;
+
     default:
         ESP_LOGW(TAG, "control - received unsupported swing mode request.");
+        break;
     }
 }
 void CN105Climate::controlFan() {
@@ -164,7 +201,7 @@ static float mapCelsiusForConversionFromFahrenheit(const float c) {
             pair.first = (pair.first - 32.0f) / 1.8f;
         }
         return *new std::map<float, float>(v.begin(), v.end());
-    }();
+        }();
 
     // Due to vagaries of floating point math across architectures, we can't
     // just look up `c` in the map -- we're very unlikely to find a matching
@@ -181,13 +218,13 @@ static float mapCelsiusForConversionFromFahrenheit(const float c) {
 void CN105Climate::controlTemperature() {
     float setting = this->target_temperature;
     if (use_fahrenheit_support_mode_) {
-      setting = mapCelsiusForConversionFromFahrenheit(setting);
+        setting = mapCelsiusForConversionFromFahrenheit(setting);
     }
     if (!this->tempMode) {
         this->wantedSettings.temperature = this->lookupByteMapIndex(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
     } else {
         setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
-        this->wantedSettings.temperature =  setting < 10 ? 10 : (setting > 31 ? 31 : setting);
+        this->wantedSettings.temperature = setting < 10 ? 10 : (setting > 31 ? 31 : setting);
     }
 }
 
@@ -413,7 +450,7 @@ void CN105Climate::setWideVaneSetting(const char* setting) {
 void CN105Climate::set_remote_temperature(float setting) {
     this->shouldSendExternalTemperature_ = true;
     if (use_fahrenheit_support_mode_) {
-      setting = mapCelsiusForConversionFromFahrenheit(setting);
+        setting = mapCelsiusForConversionFromFahrenheit(setting);
     }
     this->remoteTemperature_ = setting;
     ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);

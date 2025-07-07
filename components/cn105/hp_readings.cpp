@@ -196,7 +196,7 @@ static float mapCelsiusForConversionToFahrenheit(const float c) {
             pair.second = (pair.second - 32.0f) / 1.8f;
         }
         return *m;
-    }();
+        }();
 
     auto it = mapping.find(c);
     if (it == mapping.end()) return c;
@@ -206,9 +206,8 @@ static float mapCelsiusForConversionToFahrenheit(const float c) {
 void CN105Climate::getSettingsFromResponsePacket() {
     heatpumpSettings receivedSettings{};
     ESP_LOGD("Decoder", "[0x02 is settings]");
-    //02 00 00 01 08 0A 00 07 00 00 03 AA 00 00 00 00 94
-    //this->last_received_packet_sensor->publish_state("0x62-> 0x02: Data -> Settings");
-    receivedSettings.connected = true;      // we're here so we're connected (actually not used property)
+
+    receivedSettings.connected = true;
     receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3], "power reading");
     receivedSettings.iSee = data[4] > 0x08 ? true : false;
     receivedSettings.mode = lookupByteMapValue(MODE_MAP, MODE, 5, receivedSettings.iSee ? (data[4] - 0x08) : data[4], "mode reading");
@@ -222,7 +221,6 @@ void CN105Climate::getSettingsFromResponsePacket() {
         temp -= 128;
         receivedSettings.temperature = (float)temp / 2;
         this->tempMode = true;
-        //ESP_LOGD("Decoder", "tempMode is true");
     } else {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
     }
@@ -238,20 +236,33 @@ void CN105Climate::getSettingsFromResponsePacket() {
     receivedSettings.vane = lookupByteMapValue(VANE_MAP, VANE, 7, data[7], "vane reading");
     ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
 
-    if ((data[10] != 0) && (this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {    // wideVane is not always supported
-        receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 11, data[10], "wideVane reading");
-        this->wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;        
+    // --- DEBUT DE LA SECTION MODIFIÉE ---
+    if ((data[10] != 0) && (this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {
+        uint8_t wideVaneValue = data[10];
+
+        // 1. First, try to look up the full byte value. This works for models with unique codes (like i-see) and standard models.
+        const char* wideVaneSetting = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 11, wideVaneValue, "wideVane reading (full byte)");
+
+        // 2. If the lookup failed (returned the default value at index 0) AND the raw value isn't actually that default value...
+        if (strcmp(wideVaneSetting, WIDEVANE_MAP[0]) == 0 && wideVaneValue != WIDEVANE[0]) {
+            // ...then this might be a model that uses a flag. Try again with a mask to extract the base value.
+            ESP_LOGD("Decoder", "Wide vane full byte value %d not found, trying with 0x0F mask...", wideVaneValue);
+            wideVaneSetting = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 11, wideVaneValue & 0x0F, "wideVane reading (masked)");
+        }
+
+        receivedSettings.wideVane = wideVaneSetting;
+        this->wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
         ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, this->wideVaneAdj);
     } else {
         ESP_LOGD("Decoder", "widevane is not supported");
     }
+    // --- FIN DE LA SECTION MODIFIÉE ---
 
     if (this->iSee_sensor_ != nullptr) {
         this->iSee_sensor_->publish_state(receivedSettings.iSee);
     }
 
     this->heatpumpUpdate(receivedSettings);
-
 }
 
 void CN105Climate::getRoomTemperatureFromResponsePacket() {
