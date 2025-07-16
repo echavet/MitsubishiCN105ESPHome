@@ -79,6 +79,7 @@ Units tested by project contributors include:
 - `MSZ-AY35VGKP`
 - `MSZ-FSxxNA`
 - `MSZ-FHxxNA`
+- `MSZ-EF42VE`
 
 ## Usage
 
