@@ -109,10 +109,12 @@ void CN105Climate::controlSwing() {
 
     switch (this->swing_mode) {
     case climate::CLIMATE_SWING_OFF:
-        // When swing is turned OFF, unconditionally set vanes to a default static position.
-        // This ensures that any and all swinging motion stops, regardless of the previous state.
-        this->setVaneSetting("AUTO");
-        if (wideVaneSupported) {
+        // When swing is turned OFF, conditionally set vanes to a default static position.
+        // This only sets default position if swing was previously enabled
+        if (strcmp(currentSettings.vane, "SWING") == 0) {
+            this->setVaneSetting("AUTO");
+        }
+        if (wideVaneSupported && strcmp(currentSettings.wideVane, "SWING") == 0) {
             this->setWideVaneSetting("|");
         }
         break;
