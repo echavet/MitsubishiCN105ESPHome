@@ -177,32 +177,6 @@ void CN105Climate::getPowerFromResponsePacket() {
     }
 }
 
-// Given a temperature in Celsius that will be converted to Fahrenheit, converts
-// it to the Celsius value corresponding to the the Fahrenheit value that
-// Mitsubishi thermostats would have converted the Celsius value to. For
-// instance, 21.5°C is 70.7°F, but to get it to map to 70°F, this function
-// returns 21.1°C.
-static float mapCelsiusForConversionToFahrenheit(const float c) {
-    static const auto& mapping = [] {
-        auto* const m = new std::map<float, float>{
-            {16.0, 61}, {16.5, 62}, {17.0, 63}, {17.5, 64}, {18.0, 65},
-            {18.5, 66}, {19.0, 67}, {20.0, 68}, {21.0, 69}, {21.5, 70},
-            {22.0, 71}, {22.5, 72}, {23.0, 73}, {23.5, 74}, {24.0, 75},
-            {24.5, 76}, {25.0, 77}, {25.5, 78}, {26.0, 79}, {26.5, 80},
-            {27.0, 81}, {27.5, 82}, {28.0, 83}, {28.5, 84}, {29.0, 85},
-            {29.5, 86}, {30.0, 87}, {30.5, 88}
-        };
-        for (auto& pair : *m) {
-            pair.second = (pair.second - 32.0f) / 1.8f;
-        }
-        return *m;
-        }();
-
-    auto it = mapping.find(c);
-    if (it == mapping.end()) return c;
-    return it->second;
-}
-
 void CN105Climate::getSettingsFromResponsePacket() {
     heatpumpSettings receivedSettings{};
     ESP_LOGD("Decoder", "[0x02 is settings]");
@@ -223,9 +197,6 @@ void CN105Climate::getSettingsFromResponsePacket() {
         this->tempMode = true;
     } else {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
-    }
-    if (use_fahrenheit_support_mode_) {
-        receivedSettings.temperature = mapCelsiusForConversionToFahrenheit(receivedSettings.temperature);
     }
 
     ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
@@ -281,9 +252,6 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
     if (data[5] > 1) {
         receivedStatus.outsideAirTemperature = (data[5] - 128) / 2.0f;
-        if (use_fahrenheit_support_mode_) {
-            receivedStatus.outsideAirTemperature = mapCelsiusForConversionToFahrenheit(receivedStatus.outsideAirTemperature);
-        }
     } else {
         receivedStatus.outsideAirTemperature = NAN;
     }
@@ -294,9 +262,6 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
         receivedStatus.roomTemperature = temp / 2.0f;
     } else {
         receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
-    }
-    if (use_fahrenheit_support_mode_) {
-        receivedStatus.roomTemperature = mapCelsiusForConversionToFahrenheit(receivedStatus.roomTemperature);
     }
 
     receivedStatus.runtimeHours = float((data[11] << 16) | (data[12] << 8) | data[13]) / 60;
@@ -497,7 +462,7 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->currentStatus.runtimeHours = status.runtimeHours;
         this->currentStatus.roomTemperature = status.roomTemperature;
         this->currentStatus.outsideAirTemperature = status.outsideAirTemperature;
-        this->current_temperature = currentStatus.roomTemperature;
+        this->set_current_temperature(status.roomTemperature);
 
         this->updateAction();       // update action info on HA climate component
         this->publish_state();
@@ -519,7 +484,8 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         }
 
         if (this->outside_air_temperature_sensor_ != nullptr) {
-            this->outside_air_temperature_sensor_->publish_state(currentStatus.outsideAirTemperature);
+            this->outside_air_temperature_sensor_->publish_state(
+                this->fahrenheitSupport_.normalizeCelsiusForConversionToFahrenheit(currentStatus.outsideAirTemperature));
         }
     } // else no change
 }
@@ -547,7 +513,7 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
 
     // HA Temp
     if (this->wantedSettings.temperature == -1) { // to prevent overwriting a user demand
-        this->target_temperature = settings.temperature;
+        this->set_target_temperature(settings.temperature);
         this->currentSettings.temperature = settings.temperature;
     }
 
