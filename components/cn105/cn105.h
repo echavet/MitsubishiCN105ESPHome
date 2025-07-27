@@ -19,6 +19,7 @@
 #include <esphome/components/button/button.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
 #include "cycle_management.h"
+#include "localization.h"
 
 #ifdef USE_ESP32
 #include <mutex>
@@ -63,7 +64,6 @@ namespace esphome {
         binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
         text_sensor::TextSensor* stage_sensor_{ nullptr }; // to save ref if needed
         bool use_stage_for_operating_status_{ false };
-        bool use_fahrenheit_support_mode_ = false;
         text_sensor::TextSensor* Functions_sensor_ = nullptr;
         FunctionsButton* Functions_get_button_ = nullptr;
         FunctionsButton* Functions_set_button_ = nullptr;
@@ -170,6 +170,7 @@ namespace esphome {
         unsigned long nbCycles_ = 0;
         unsigned int nbHeatpumpConnections_ = 0;
 
+        FahrenheitSupport fahrenheitSupport_;
 
         void sendFirstConnectionPacket();
         void terminateCycle();
@@ -276,6 +277,10 @@ namespace esphome {
         void debugStatus(const char* statusName, heatpumpStatus status);
         void debugSettingsAndStatus(const char* settingName, heatpumpSettings settings, heatpumpStatus status);
         void debugClimate(const char* settingName);
+
+        void set_current_temperature(float temperature);
+        void set_target_temperature(float temperature);
+        float get_target_temperature();
 
 #ifndef USE_ESP32
         void emulateMutex(const char* retryName, std::function<void()>&& f);

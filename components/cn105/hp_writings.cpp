@@ -234,7 +234,7 @@ void CN105Climate::publishWantedSettingsStateToHA() {
     }
 
     // HA Temp
-    this->target_temperature = this->getTemperatureSetting();
+    this->set_target_temperature(this->getTemperatureSetting());
 
     // publish to HA
     this->publish_state();
