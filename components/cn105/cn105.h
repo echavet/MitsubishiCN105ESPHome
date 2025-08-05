@@ -15,11 +15,11 @@
 #include "functions_number.h"
 #include "functions_button.h"
 #include "sub_mode_sensor.h"
+#include "hvac_option_switch.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/button/button.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
 #include "cycle_management.h"
-#include "localization.h"
 
 #ifdef USE_ESP32
 #include <mutex>
@@ -40,6 +40,7 @@ namespace esphome {
 
         void set_vertical_vane_select(VaneOrientationSelect* vertical_vane_select);
         void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select);
+        void set_airflow_control_select(VaneOrientationSelect* airflow_control_select);
         void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);
         void set_input_power_sensor(esphome::sensor::Sensor* input_power_sensor);
         void set_kwh_sensor(esphome::sensor::Sensor* kwh_sensor);
@@ -49,6 +50,9 @@ namespace esphome {
         void set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor);
         void set_use_stage_for_operating_status(bool value);
         void set_use_fahrenheit_support_mode(bool value);
+        void set_air_purifier_switch(HVACOptionSwitch* air_purifier_switch);
+        void set_night_mode_switch(HVACOptionSwitch* night_mode_switch);
+        void set_circulator_switch(HVACOptionSwitch* circulator_switch);
 
         void set_functions_sensor(esphome::text_sensor::TextSensor* Functions_sensor);
         void set_functions_get_button(FunctionsButton* Button);
@@ -64,6 +68,7 @@ namespace esphome {
         binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
         text_sensor::TextSensor* stage_sensor_{ nullptr }; // to save ref if needed
         bool use_stage_for_operating_status_{ false };
+        bool use_fahrenheit_support_mode_ = false;
         text_sensor::TextSensor* Functions_sensor_ = nullptr;
         FunctionsButton* Functions_get_button_ = nullptr;
         FunctionsButton* Functions_set_button_ = nullptr;
@@ -71,6 +76,9 @@ namespace esphome {
         FunctionsNumber* Functions_set_value_ = nullptr;
         text_sensor::TextSensor* Sub_mode_sensor_ = nullptr;
         text_sensor::TextSensor* Auto_sub_mode_sensor_ = nullptr;
+        HVACOptionSwitch* air_purifier_switch_ = nullptr;
+        HVACOptionSwitch* night_mode_switch_ = nullptr;
+        HVACOptionSwitch* circulator_switch_ = nullptr;
 
         // The value of the code and value for the functions set.
         int functions_code_;
@@ -83,6 +91,8 @@ namespace esphome {
             nullptr;  // Select to store manual position of vertical swing
         VaneOrientationSelect* horizontal_vane_select_ =
             nullptr;  // Select to store manual position of horizontal swing
+        VaneOrientationSelect* airflow_control_select_ =
+            nullptr;
         sensor::Sensor* compressor_frequency_sensor_ =
             nullptr;  // Sensor to store compressor frequency
         sensor::Sensor* input_power_sensor_ =
@@ -102,6 +112,9 @@ namespace esphome {
         float get_kwh();
         float get_runtime_hours();
         bool is_operating();
+        bool is_air_purifier();
+        bool is_night_mode();
+        bool is_circulator();
 
         // checks if the field has changed
         bool hasChanged(const char* before, const char* now, const char* field, bool checkNotNull = false);
@@ -133,6 +146,7 @@ namespace esphome {
         // set_remote_temp(0) to switch back to the internal sensor.
         void set_remote_temperature(float);
         void sendRemoteTemperature();
+        void sendWantedRunStates();
 
         void set_remote_temp_timeout(uint32_t timeout);
 
@@ -170,7 +184,6 @@ namespace esphome {
         unsigned long nbCycles_ = 0;
         unsigned int nbHeatpumpConnections_ = 0;
 
-        FahrenheitSupport fahrenheitSupport_;
 
         void sendFirstConnectionPacket();
         void terminateCycle();
@@ -221,6 +234,7 @@ namespace esphome {
         void getSettingsFromResponsePacket();
         void getRoomTemperatureFromResponsePacket();
         void getOperatingAndCompressorFreqFromResponsePacket();
+        void getHVACOptionsFromResponsePacket();
 
         void updateSuccess();
         void processCommand();
@@ -231,13 +245,18 @@ namespace esphome {
         const char* getPowerSetting();
         const char* getVaneSetting();
         const char* getWideVaneSetting();
+        const char* getAirflowControlSetting();
         const char* getFanSpeedSetting();
         float getTemperatureSetting();
+        bool getAirPurifierRunState();
+        bool getNightModeRunState();
+        bool getCirculatorRunState();
 
         void setModeSetting(const char* setting);
         void setPowerSetting(const char* setting);
         void setVaneSetting(const char* setting);
         void setWideVaneSetting(const char* setting);
+        void setAirflowControlSetting(const char* setting);
         void setFanSpeed(const char* setting);
 
         void setHeatpumpConnected(bool state);
@@ -254,16 +273,19 @@ namespace esphome {
 
         void publishStateToHA(heatpumpSettings& settings);
         void publishWantedSettingsStateToHA();
+        void publishWantedRunStatesStateToHA();
 
         void heatpumpUpdate(heatpumpSettings& settings);
 
         void statusChanged(heatpumpStatus status);
 
         void checkPendingWantedSettings();
+        void checkPendingWantedRunStates();
         void checkPowerAndModeSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
         void checkFanSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
         void checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
         void checkWideVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
+//        void checkAirflowControlSettings(heatpumpRunStates& settings, bool updateCurrentSettings = true);
         void updateExtraSelectComponents(heatpumpSettings& settings);
 
         //void statusChanged();
@@ -278,10 +300,6 @@ namespace esphome {
         void debugSettingsAndStatus(const char* settingName, heatpumpSettings settings, heatpumpStatus status);
         void debugClimate(const char* settingName);
 
-        void set_current_temperature(float temperature);
-        void set_target_temperature(float temperature);
-        float get_target_temperature();
-
 #ifndef USE_ESP32
         void emulateMutex(const char* retryName, std::function<void()>&& f);
 #endif
@@ -294,6 +312,8 @@ namespace esphome {
         void createInfoPacket(uint8_t* packet, uint8_t packetType);
         heatpumpSettings currentSettings{};
         wantedHeatpumpSettings wantedSettings{};
+        heatpumpRunStates currentRunStates{};
+        wantedHeatpumpRunStates wantedRunStates{};
         cycleManagement loopCycle{};
 
 #ifdef USE_ESP32

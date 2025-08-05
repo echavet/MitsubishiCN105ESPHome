@@ -35,10 +35,15 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
     this->horizontal_vane_select_ = nullptr;
     this->vertical_vane_select_ = nullptr;
+    this->airflow_control_select_ = nullptr;
     this->compressor_frequency_sensor_ = nullptr;
     this->input_power_sensor_ = nullptr;
     this->kwh_sensor_ = nullptr;
     this->runtime_hours_sensor_ = nullptr;
+
+    this->air_purifier_switch_ = nullptr;
+    this->night_mode_switch_ = nullptr;
+    this->circulator_switch_ = nullptr;
 
     this->powerRequestWithoutResponses = 0;     // power request is not supported by all heatpump #112
 
@@ -46,6 +51,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->generateExtraComponents();
     this->loopCycle.init();
     this->wantedSettings.resetSettings();
+    this->wantedRunStates.resetSettings();
 #ifndef USE_ESP32
     this->wantedSettingsMutex = false;
 #endif
@@ -105,7 +111,15 @@ float CN105Climate::get_runtime_hours() {
 bool CN105Climate::is_operating() {
     return currentStatus.operating;
 }
-
+bool CN105Climate::is_air_purifier() {
+    return currentRunStates.air_purifier;
+}
+bool CN105Climate::is_night_mode() {
+    return currentRunStates.night_mode;
+}
+bool CN105Climate::is_circulator() {
+    return currentRunStates.circulator;
+}
 
 // SERIAL_8E1
 void CN105Climate::setupUART() {
