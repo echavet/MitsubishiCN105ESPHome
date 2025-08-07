@@ -77,7 +77,6 @@ CONF_AUTO_SUB_MODE_SENSOR = "auto_sub_mode_sensor"
 CONF_HP_UP_TIME_CONNECTION_SENSOR = "hp_uptime_connection_sensor"
 CONF_USE_AS_OPERATING_FALLBACK = "use_as_operating_fallback"  # Nouvelle constante
 CONF_FAHRENHEIT_SUPPORT_MODE = "fahrenheit_compatibility"
-CONF_FLOW_CONTROL_SENSOR = "flow_control_sensor"
 CONF_AIRFLOW_CONTROL_SELECT = "airflow_control_select"
 CONF_AIR_PURIFIER_SWITCH = "air_purifier_switch"
 CONF_NIGHT_MODE_SWITCH = "night_mode_switch"
@@ -212,9 +211,6 @@ HP_UP_TIME_CONNECTION_SENSOR_SCHEMA = sensor.sensor_schema(
     entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
 ).extend(cv.polling_component_schema("60s"))
 
-FLOW_CONTROL_SENSOR_SCHEMA = text_sensor.text_sensor_schema(FlowControlSensor).extend(
-    {cv.GenerateID(CONF_ID): cv.declare_id(FlowControlSensor)}
-)
 HVAC_OPTION_SWITCH_SCHEMA = switch.switch_schema(HVACOptionSwitch).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(HVACOptionSwitch )}
 )
@@ -243,7 +239,6 @@ CONFIG_SCHEMA = climate.climate_schema(CN105Climate).extend(
             CONF_OUTSIDE_AIR_TEMPERATURE_SENSOR
         ): OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA,
         cv.Optional(CONF_ISEE_SENSOR): ISEE_SENSOR_SCHEMA,
-        cv.Optional(CONF_FLOW_CONTROL_SENSOR): FLOW_CONTROL_SENSOR_SCHEMA,
         cv.Optional(CONF_FUNCTIONS_SENSOR): FUNCTIONS_SENSOR_SCHEMA,
         cv.Optional(CONF_FUNCTIONS_BUTTON): FUNCTIONS_BUTTON_SCHEMA,
         cv.Optional(CONF_FUNCTIONS_SET_BUTTON): FUNCTIONS_BUTTON_SCHEMA,
@@ -453,10 +448,6 @@ def to_code(config):
         hp_connection_sensor_ = yield sensor.new_sensor(conf)
         yield cg.register_component(hp_connection_sensor_, conf)
         cg.add(var.set_hp_uptime_connection_sensor(hp_connection_sensor_))
-
-    if CONF_FLOW_CONTROL_SENSOR in config:
-        tsensor_var = yield text_sensor.new_text_sensor(config[CONF_FLOW_CONTROL_SENSOR])
-        cg.add(var.set_flow_control_sensor(tsensor_var))
 
     yield cg.register_component(var, config)
     yield climate.register_climate(var, config)

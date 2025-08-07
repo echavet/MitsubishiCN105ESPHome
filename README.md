@@ -246,6 +246,18 @@ climate:
       name: Runtime Hours
       entity_category: diagnostic
       disabled_by_default: true
+    air_purifier_switch:
+      name: Air purifier
+      disabled_by_default: true
+    night_mode_switch:
+      name: Night mode
+      disabled_by_default: true
+    circulator_switch:
+      name: Circulator
+      disabled_by_default: true
+    airflow_control_select:
+      name: Airflow Control
+      disabled_by_default: true
 ```
 
 > [!TIP]
