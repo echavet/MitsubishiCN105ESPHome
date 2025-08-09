@@ -368,7 +368,7 @@ void CN105Climate::getHVACOptionsFromResponsePacket() {
     if (this->air_purifier_switch_ != nullptr) {
         receivedRunStates.air_purifier = data[1];
         ESP_LOGD("Decoder", "[Air purifier : %s]", receivedRunStates.air_purifier ? "ON" : "OFF");
-        if (receivedRunStates.air_purifier != this->currentRunStates.air_purifier) {
+        if (receivedRunStates.air_purifier != this->currentRunStates.air_purifier || receivedRunStates.air_purifier != this->air_purifier_switch_->state) {
             this->currentRunStates.air_purifier = receivedRunStates.air_purifier;
             this->air_purifier_switch_->publish_state(receivedRunStates.air_purifier);
         }
@@ -376,7 +376,7 @@ void CN105Climate::getHVACOptionsFromResponsePacket() {
     if (this->night_mode_switch_ != nullptr) {
         receivedRunStates.night_mode = data[2];
         ESP_LOGD("Decoder", "[Night mode : %s]", receivedRunStates.night_mode ? "ON" : "OFF");
-        if (receivedRunStates.night_mode != this->currentRunStates.night_mode) {
+        if (receivedRunStates.night_mode != this->currentRunStates.night_mode || receivedRunStates.night_mode != this->night_mode_switch_->state) {
             this->currentRunStates.night_mode = receivedRunStates.night_mode;
             this->night_mode_switch_->publish_state(receivedRunStates.night_mode);
         }
@@ -384,7 +384,7 @@ void CN105Climate::getHVACOptionsFromResponsePacket() {
     if (this->circulator_switch_ != nullptr) {
         receivedRunStates.circulator = data[3];
         ESP_LOGD("Decoder", "[Circulator : %s]", receivedRunStates.circulator ? "ON" : "OFF");
-        if (receivedRunStates.circulator != this->currentRunStates.circulator) {
+        if (receivedRunStates.circulator != this->currentRunStates.circulator || receivedRunStates.circulator != this->circulator_switch_->state) {
             this->currentRunStates.circulator = receivedRunStates.circulator;
             this->circulator_switch_->publish_state(receivedRunStates.circulator);
         }
@@ -424,9 +424,16 @@ void CN105Climate::getDataFromResponsePacket() {
         /* room temperature reading */
         ESP_LOGD(LOG_CYCLE_TAG, "3b: Receiving room °C response");
         this->getRoomTemperatureFromResponsePacket();
+        // next step is to get the heatpump extra function status (air purifier, night mode, circulator) case 0x42 if these are enabled in the YAML
+        // or else
         // next step is to get the heatpump status (operating and compressor frequency) case 0x06
-        ESP_LOGD(LOG_CYCLE_TAG, "4a: Sending HVAC options request (0x42)");
-        this->buildAndSendRequestPacket(RQST_PKT_HVAC_OPTIONS);
+        if (this->air_purifier_switch_ != nullptr || this->night_mode_switch_ != nullptr || this->circulator_switch_ != nullptr) {
+            ESP_LOGD(LOG_CYCLE_TAG, "3c: Sending HVAC options request (0x42)");
+            this->buildAndSendRequestPacket(RQST_PKT_HVAC_OPTIONS);
+        } else {
+            ESP_LOGD(LOG_CYCLE_TAG, "4a: Sending status request (0x06)");
+            this->buildAndSendRequestPacket(RQST_PKT_STATUS);
+        }
         break;
 
     case 0x04:
@@ -496,7 +503,7 @@ void CN105Climate::getDataFromResponsePacket() {
 
     case 0x42:
         /* HVAC Options */
-        ESP_LOGD("Decoder", "[0x42]: Packet HVAC Options");
+        ESP_LOGD(LOG_CYCLE_TAG, "3d: Receiving HVAC options");
         this->getHVACOptionsFromResponsePacket();
         ESP_LOGD(LOG_CYCLE_TAG, "4a: Sending status request (0x06)");
         this->buildAndSendRequestPacket(RQST_PKT_STATUS);

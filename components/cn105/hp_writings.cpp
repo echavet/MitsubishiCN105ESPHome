@@ -295,7 +295,7 @@ void CN105Climate::publishWantedRunStatesStateToHA() {
             this->wantedRunStates.night_mode = this->currentRunStates.night_mode;
         }
         if (this->night_mode_switch_->state != this->wantedRunStates.night_mode) {
-            ESP_LOGI(TAG, "air purifier setting changed");
+            ESP_LOGI(TAG, "night mode setting changed");
             this->night_mode_switch_->publish_state(wantedRunStates.night_mode);
         }
     }
@@ -304,7 +304,7 @@ void CN105Climate::publishWantedRunStatesStateToHA() {
             this->wantedRunStates.circulator = this->currentRunStates.circulator;
         }
         if (this->circulator_switch_->state != this->wantedRunStates.circulator) {
-            ESP_LOGI(TAG, "air purifier setting changed");
+            ESP_LOGI(TAG, "circulator setting changed");
             this->circulator_switch_->publish_state(wantedRunStates.circulator);
         }
     }
