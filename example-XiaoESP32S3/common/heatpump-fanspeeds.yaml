@@ -98,6 +98,14 @@ text:
           "MEDIUM": 544,
           "MODERATE": 628,
           "HIGH": 738
+      },
+      "MSXY-FN10VE": {
+          "IDLE": 0,
+          "DIFFUSE": 246,
+          "LOW": 246,
+          "GENTLE": 378,
+          "MEDIUM": 237,
+          "MODERATE": 546,
+          "HIGH": 774
       }
       }
-
