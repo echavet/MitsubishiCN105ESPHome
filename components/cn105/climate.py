@@ -8,6 +8,7 @@ from esphome.components import (
     select,
     sensor,
     button,
+	switch,
     binary_sensor,
     text_sensor,
     uptime,
@@ -48,6 +49,7 @@ AUTO_LOAD = [
     "select",
     "binary_sensor",
     "button",
+    "switch",
     "text_sensor",
     "uart",
     "uptime",
@@ -75,6 +77,10 @@ CONF_AUTO_SUB_MODE_SENSOR = "auto_sub_mode_sensor"
 CONF_HP_UP_TIME_CONNECTION_SENSOR = "hp_uptime_connection_sensor"
 CONF_USE_AS_OPERATING_FALLBACK = "use_as_operating_fallback"  # Nouvelle constante
 CONF_FAHRENHEIT_SUPPORT_MODE = "fahrenheit_compatibility"
+CONF_AIRFLOW_CONTROL_SELECT = "airflow_control_select"
+CONF_AIR_PURIFIER_SWITCH = "air_purifier_switch"
+CONF_NIGHT_MODE_SWITCH = "night_mode_switch"
+CONF_CIRCULATOR_SWITCH = "circulator_switch"
 
 DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
@@ -117,6 +123,8 @@ uptime_ns = cg.esphome_ns.namespace("esphome").namespace("uptime")
 HpUpTimeConnectionSensor = uptime_ns.class_(
     "HpUpTimeConnectionSensor", sensor.Sensor, cg.PollingComponent
 )
+FlowControlSensor = cg.global_ns.class_("FlowControlSensor", text_sensor.TextSensor, cg.Component)
+HVACOptionSwitch = cg.global_ns.class_("HVACOptionSwitch", switch.Switch, cg.Component)
 
 
 # --- Fonction d'aide pour récupérer les pins TX/RX (identique à votre version corrigée) ---
@@ -203,6 +211,9 @@ HP_UP_TIME_CONNECTION_SENSOR_SCHEMA = sensor.sensor_schema(
     entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
 ).extend(cv.polling_component_schema("60s"))
 
+HVAC_OPTION_SWITCH_SCHEMA = switch.switch_schema(HVACOptionSwitch).extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(HVACOptionSwitch )}
+)
 
 CONFIG_SCHEMA = climate.climate_schema(CN105Climate).extend(
     {
@@ -246,6 +257,10 @@ CONFIG_SCHEMA = climate.climate_schema(CN105Climate).extend(
         cv.Optional(
             CONF_HP_UP_TIME_CONNECTION_SENSOR
         ): HP_UP_TIME_CONNECTION_SENSOR_SCHEMA,
+        cv.Optional(CONF_AIRFLOW_CONTROL_SELECT): SELECT_SCHEMA,
+        cv.Optional(CONF_AIR_PURIFIER_SWITCH): HVAC_OPTION_SWITCH_SCHEMA,
+        cv.Optional(CONF_NIGHT_MODE_SWITCH): HVAC_OPTION_SWITCH_SCHEMA,
+        cv.Optional(CONF_CIRCULATOR_SWITCH): HVAC_OPTION_SWITCH_SCHEMA,
         cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
             {
                 cv.Optional(CONF_MODE, default=DEFAULT_CLIMATE_MODES): cv.ensure_list(
@@ -314,6 +329,11 @@ def to_code(config):
         conf_item = config[CONF_VERTICAL_SWING_SELECT]
         swing_select_var = yield select.new_select(conf_item, options=[])
         cg.add(var.set_vertical_vane_select(swing_select_var))
+
+    if CONF_AIRFLOW_CONTROL_SELECT in config:
+        conf_item = config[CONF_AIRFLOW_CONTROL_SELECT]
+        control_select_var = yield select.new_select(conf_item, options=[])
+        cg.add(var.set_airflow_control_select(control_select_var))
 
     # Pour les capteurs, text_sensors, etc., utiliser la méthode .new_... standard
     # Ces fonctions s'occupent de l'enregistrement du composant.
@@ -385,6 +405,18 @@ def to_code(config):
             conf_item, min_value=1.0, max_value=3.0, step=1.0
         )
         cg.add(var.set_functions_set_value(number_var))
+
+    if CONF_AIR_PURIFIER_SWITCH in config:
+        switch_var = yield switch.new_switch(config[CONF_AIR_PURIFIER_SWITCH])
+        cg.add(var.set_air_purifier_switch(switch_var))
+
+    if CONF_NIGHT_MODE_SWITCH in config:
+        switch_var = yield switch.new_switch(config[CONF_NIGHT_MODE_SWITCH])
+        cg.add(var.set_night_mode_switch(switch_var))
+
+    if CONF_CIRCULATOR_SWITCH in config:
+        switch_var = yield switch.new_switch(config[CONF_CIRCULATOR_SWITCH])
+        cg.add(var.set_circulator_switch(switch_var))
 
     if CONF_FAHRENHEIT_SUPPORT_MODE in config:
         cg.add(var.set_use_fahrenheit_support_mode(config.get(CONF_FAHRENHEIT_SUPPORT_MODE)))
