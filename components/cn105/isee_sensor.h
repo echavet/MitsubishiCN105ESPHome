@@ -5,10 +5,11 @@
 
 
 namespace esphome {
+    namespace cn105 {
+        class ISeeSensor : public binary_sensor::BinarySensor, public Component {
+        public:
+            ISeeSensor() {}
+        };
 
-    class ISeeSensor : public binary_sensor::BinarySensor, public Component {
-    public:
-        ISeeSensor() {}
-    };
-
+    }
 }

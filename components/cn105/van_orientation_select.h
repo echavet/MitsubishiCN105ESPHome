@@ -5,28 +5,30 @@
 
 namespace esphome {
 
-    class VaneOrientationSelect : public select::Select, public Component {
-    public:
+    namespace cn105 {
+        class VaneOrientationSelect : public select::Select, public Component {
+        public:
 
-        using CallbackFunction = std::function<void(const char* setting)>;
-
-
-        void setCallbackFunction(CallbackFunction&& callback) {
-            this->callBackFunction = std::move(callback);
-
-        }
+            using CallbackFunction = std::function<void(const char* setting)>;
 
 
-    protected:
-        void control(const std::string& value) override {
-            if (callBackFunction) {
-                callBackFunction(value.c_str()); // should be enough to trigger a sendWantedSettings
+            void setCallbackFunction(CallbackFunction&& callback) {
+                this->callBackFunction = std::move(callback);
+
             }
-        }
 
-    private:
-        CallbackFunction callBackFunction;
 
-    };
+        protected:
+            void control(const std::string& value) override {
+                if (callBackFunction) {
+                    callBackFunction(value.c_str()); // should be enough to trigger a sendWantedSettings
+                }
+            }
 
-}  // namespace esphome
+        private:
+            CallbackFunction callBackFunction;
+
+        };
+
+    }
+}// namespace esphome

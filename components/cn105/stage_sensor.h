@@ -5,10 +5,11 @@
 
 
 namespace esphome {
+    namespace cn105 {
+        class StageSensor : public text_sensor::TextSensor, public Component {
+        public:
+            StageSensor() {}
+        };
 
-    class StageSensor : public text_sensor::TextSensor, public Component {
-    public:
-        StageSensor() {}
-    };
-
+    }
 }

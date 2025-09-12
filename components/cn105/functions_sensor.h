@@ -4,10 +4,11 @@
 #include "esphome/core/component.h"
 
 namespace esphome {
+    namespace cn105 {
+        class FunctionsSensor : public text_sensor::TextSensor, public Component {
+        public:
+            FunctionsSensor() {}
+        };
 
-    class FunctionsSensor : public text_sensor::TextSensor, public Component {
-    public:
-        FunctionsSensor() {}
-    };
-
+    }
 }

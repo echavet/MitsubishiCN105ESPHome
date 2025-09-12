@@ -5,10 +5,11 @@
 
 
 namespace esphome {
+    namespace cn105 {
+        class SubModSensor : public text_sensor::TextSensor, public Component {
+        public:
+            SubModSensor() {}
+        };
 
-    class SubModSensor : public text_sensor::TextSensor, public Component {
-    public:
-        SubModSensor() {}
-    };
-
+    }
 }

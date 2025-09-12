@@ -5,15 +5,16 @@
 
 
 namespace esphome {
+    namespace cn105 {
+        class RuntimeHoursSensor : public sensor::Sensor, public Component {
+        public:
+            RuntimeHoursSensor() {
+                this->set_unit_of_measurement("h");
+                this->set_device_class("duration");
+                this->set_state_class(sensor::StateClass::STATE_CLASS_TOTAL_INCREASING);
+                this->set_accuracy_decimals(2);
+            }
+        };
 
-    class RuntimeHoursSensor : public sensor::Sensor, public Component {
-    public:
-        RuntimeHoursSensor() {
-            this->set_unit_of_measurement("h");
-            this->set_device_class("duration");
-            this->set_state_class(sensor::StateClass::STATE_CLASS_TOTAL_INCREASING);
-            this->set_accuracy_decimals(2);
-        }
-    };
-
+    }
 }

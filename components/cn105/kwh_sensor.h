@@ -5,15 +5,16 @@
 
 
 namespace esphome {
+    namespace cn105 {
+        class kWhSensor : public sensor::Sensor, public Component {
+        public:
+            kWhSensor() {
+                this->set_unit_of_measurement("kWh");
+                this->set_device_class("energy");
+                this->set_state_class(sensor::StateClass::STATE_CLASS_TOTAL_INCREASING);
+                this->set_accuracy_decimals(1);
+            }
+        };
 
-    class kWhSensor : public sensor::Sensor, public Component {
-    public:
-        kWhSensor() {
-            this->set_unit_of_measurement("kWh");
-            this->set_device_class("energy");
-            this->set_state_class(sensor::StateClass::STATE_CLASS_TOTAL_INCREASING);
-            this->set_accuracy_decimals(1);
-        }
-    };
-
+    }
 }

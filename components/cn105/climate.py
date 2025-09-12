@@ -17,14 +17,11 @@ from esphome.components.uart import UARTParityOptions
 
 from esphome.const import (
     CONF_ID,
-    CONF_NAME,
-    CONF_ICON,
     CONF_UPDATE_INTERVAL,
     CONF_MODE,
     CONF_FAN_MODE,
     CONF_SWING_MODE,
     CONF_UART_ID,
-    CONF_ENTITY_CATEGORY,
     ENTITY_CATEGORY_DIAGNOSTIC,
     STATE_CLASS_TOTAL_INCREASING,
     UNIT_SECOND,
@@ -33,15 +30,8 @@ from esphome.const import (
     CONF_TX_PIN,
     CONF_RX_PIN,
 )
-from esphome.components.sensor import (
-    CONF_UNIT_OF_MEASUREMENT as SENSOR_CONF_UNIT_OF_MEASUREMENT,
-    CONF_ACCURACY_DECIMALS as SENSOR_CONF_ACCURACY_DECIMALS,
-    CONF_DEVICE_CLASS as SENSOR_CONF_DEVICE_CLASS,
-    CONF_STATE_CLASS as SENSOR_CONF_STATE_CLASS,
-)
 from esphome.core import CORE, coroutine
 
-# ... (AUTO_LOAD, DEPENDENCIES, toutes les constantes CONF_XXX_SENSOR, DEFAULT_MODES - identiques à votre version) ...
 AUTO_LOAD = [
     "climate",
     "sensor",
@@ -53,7 +43,9 @@ AUTO_LOAD = [
     "uptime",
     "number",
 ]
-DEPENDENCIES = ["uart", "uptime"]  # Garder uart ici aussi
+DEPENDENCIES = ["uart", "uptime"]
+
+cn105_ns = cg.esphome_ns.namespace("cn105")  # Namespace pour toutes classes
 
 CONF_SUPPORTS = "supports"
 CONF_HORIZONTAL_SWING_SELECT = "horizontal_vane_select"
@@ -73,53 +65,53 @@ CONF_STAGE_SENSOR = "stage_sensor"
 CONF_SUB_MODE_SENSOR = "sub_mode_sensor"
 CONF_AUTO_SUB_MODE_SENSOR = "auto_sub_mode_sensor"
 CONF_HP_UP_TIME_CONNECTION_SENSOR = "hp_uptime_connection_sensor"
-CONF_USE_AS_OPERATING_FALLBACK = "use_as_operating_fallback"  # Nouvelle constante
+CONF_USE_AS_OPERATING_FALLBACK = "use_as_operating_fallback"
 CONF_FAHRENHEIT_SUPPORT_MODE = "fahrenheit_compatibility"
+
+CONF_CN105_MQTT_MIM = "cn105_mqtt_mim"
+CONF_MIM_TRACE_TOPIC = "mim_trace_topic"
+CONF_MIM_FORWARD_BUFFER_SIZE = "mim_forward_buffer_size"
 
 DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
 DEFAULT_SWING_MODES = ["OFF", "VERTICAL", "HORIZONTAL", "BOTH"]
 
-
-CN105Climate = cg.global_ns.class_(
+CN105Climate = cn105_ns.class_(
     "CN105Climate", climate.Climate, cg.Component, uart.UARTDevice
 )
+CN105MqttMim = cn105_ns.class_("CN105MqttMim", cg.Component)
 CONF_REMOTE_TEMP_TIMEOUT = "remote_temperature_timeout"
 CONF_DEBOUNCE_DELAY = "debounce_delay"
 
-# Définitions des classes C++ (identiques à votre version)
-VaneOrientationSelect = cg.global_ns.class_(
+VaneOrientationSelect = cn105_ns.class_(
     "VaneOrientationSelect", select.Select, cg.Component
 )
-CompressorFrequencySensor = cg.global_ns.class_(
+CompressorFrequencySensor = cn105_ns.class_(
     "CompressorFrequencySensor", sensor.Sensor, cg.Component
 )
-InputPowerSensor = cg.global_ns.class_("InputPowerSensor", sensor.Sensor, cg.Component)
-kWhSensor = cg.global_ns.class_("kWhSensor", sensor.Sensor, cg.Component)
-RuntimeHoursSensor = cg.global_ns.class_(
-    "RuntimeHoursSensor", sensor.Sensor, cg.Component
-)
-OutsideAirTemperatureSensor = cg.global_ns.class_(
+InputPowerSensor = cn105_ns.class_("InputPowerSensor", sensor.Sensor, cg.Component)
+kWhSensor = cn105_ns.class_("kWhSensor", sensor.Sensor, cg.Component)
+RuntimeHoursSensor = cn105_ns.class_("RuntimeHoursSensor", sensor.Sensor, cg.Component)
+OutsideAirTemperatureSensor = cn105_ns.class_(
     "OutsideAirTemperatureSensor", sensor.Sensor, cg.Component
 )
-ISeeSensor = cg.global_ns.class_("ISeeSensor", binary_sensor.BinarySensor, cg.Component)
-StageSensor = cg.global_ns.class_("StageSensor", text_sensor.TextSensor, cg.Component)
-FunctionsSensor = cg.global_ns.class_(
+ISeeSensor = cn105_ns.class_("ISeeSensor", binary_sensor.BinarySensor, cg.Component)
+StageSensor = cn105_ns.class_("StageSensor", text_sensor.TextSensor, cg.Component)
+FunctionsSensor = cn105_ns.class_(
     "FunctionsSensor", text_sensor.TextSensor, cg.Component
 )
-FunctionsButton = cg.global_ns.class_("FunctionsButton", button.Button, cg.Component)
-FunctionsNumber = cg.global_ns.class_("FunctionsNumber", number.Number, cg.Component)
-SubModSensor = cg.global_ns.class_("SubModSensor", text_sensor.TextSensor, cg.Component)
-AutoSubModSensor = cg.global_ns.class_(
+FunctionsButton = cn105_ns.class_("FunctionsButton", button.Button, cg.Component)
+FunctionsNumber = cn105_ns.class_("FunctionsNumber", number.Number, cg.Component)
+SubModSensor = cn105_ns.class_("SubModSensor", text_sensor.TextSensor, cg.Component)
+AutoSubModSensor = cn105_ns.class_(
     "AutoSubModSensor", text_sensor.TextSensor, cg.Component
 )
-uptime_ns = cg.esphome_ns.namespace("esphome").namespace("uptime")
+uptime_ns = cg.esphome_ns.namespace("uptime")
 HpUpTimeConnectionSensor = uptime_ns.class_(
     "HpUpTimeConnectionSensor", sensor.Sensor, cg.PollingComponent
 )
 
 
-# --- Fonction d'aide pour récupérer les pins TX/RX (identique à votre version corrigée) ---
 def get_uart_pins_from_config(core_config, target_uart_id_str):
     tx_pin_num = -1
     rx_pin_num = -1
@@ -144,15 +136,12 @@ def get_uart_pins_from_config(core_config, target_uart_id_str):
     return tx_pin_num, rx_pin_num
 
 
-# --- FIN de la fonction d'aide ---
-
-# Schémas pour les entités optionnelles (identiques à votre version)
 SELECT_SCHEMA = select.select_schema(VaneOrientationSelect).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(VaneOrientationSelect)}
 )
-COMPRESSOR_FREQUENCY_SENSOR_SCHEMA = sensor.sensor_schema(CompressorFrequencySensor).extend(
-    {cv.GenerateID(CONF_ID): cv.declare_id(CompressorFrequencySensor)}
-)
+COMPRESSOR_FREQUENCY_SENSOR_SCHEMA = sensor.sensor_schema(
+    CompressorFrequencySensor
+).extend({cv.GenerateID(CONF_ID): cv.declare_id(CompressorFrequencySensor)})
 INPUT_POWER_SENSOR_SCHEMA = sensor.sensor_schema(InputPowerSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(InputPowerSensor)}
 )
@@ -162,9 +151,9 @@ KWH_SENSOR_SCHEMA = sensor.sensor_schema(kWhSensor).extend(
 RUNTIME_HOURS_SENSOR_SCHEMA = sensor.sensor_schema(RuntimeHoursSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(RuntimeHoursSensor)}
 )
-OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA = sensor.sensor_schema(OutsideAirTemperatureSensor).extend(
-    {cv.GenerateID(CONF_ID): cv.declare_id(OutsideAirTemperatureSensor)}
-)
+OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA = sensor.sensor_schema(
+    OutsideAirTemperatureSensor
+).extend({cv.GenerateID(CONF_ID): cv.declare_id(OutsideAirTemperatureSensor)})
 ISEE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(ISeeSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(ISeeSensor)}
 )
@@ -183,16 +172,11 @@ SUB_MODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(SubModSensor).extend(
 AUTO_SUB_MODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(AutoSubModSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(AutoSubModSensor)}
 )
-
-# Schéma pour STAGE_SENSOR (qui est un text_sensor) AVEC la nouvelle sous-option
 STAGE_SENSOR_CONFIG_SCHEMA = text_sensor.text_sensor_schema(StageSensor).extend(
     {
-        # L'ID pour l'objet StageSensor C++ est géré par text_sensor.TEXT_SENSOR_SCHEMA (via CONF_ID)
         cv.Optional(CONF_USE_AS_OPERATING_FALLBACK, default=False): cv.boolean,
     }
 )
-
-# Schéma pour HP_UP_TIME_CONNECTION_SENSOR (identique à votre version)
 HP_UP_TIME_CONNECTION_SENSOR_SCHEMA = sensor.sensor_schema(
     HpUpTimeConnectionSensor,
     unit_of_measurement=UNIT_SECOND,
@@ -204,63 +188,75 @@ HP_UP_TIME_CONNECTION_SENSOR_SCHEMA = sensor.sensor_schema(
 ).extend(cv.polling_component_schema("60s"))
 
 
-CONFIG_SCHEMA = climate.climate_schema(CN105Climate).extend(
+MIM_SCHEMA = cv.Schema(
     {
-        cv.GenerateID(): cv.declare_id(CN105Climate),
-        cv.GenerateID(CONF_UART_ID): cv.use_id(uart.UARTComponent),
-        cv.Optional("baud_rate"): cv.invalid(
-            "baud_rate' option is not supported anymore. Please add a separate UART component with baud_rate configured."
-        ),
-        cv.Optional("hardware_uart"): cv.invalid(
-            "'hardware_uart' options is not supported anymore. Please add a separate UART component with the correct rx and tx pin."
-        ),
-        # cv.Optional(CONF_HARDWARE_UART, default="UART0"): valid_uart,
-        cv.Optional(CONF_UPDATE_INTERVAL, default="2s"): cv.All(cv.update_interval),
-        cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
-        cv.Optional(CONF_VERTICAL_SWING_SELECT): SELECT_SCHEMA,
-        cv.Optional(
-            CONF_COMPRESSOR_FREQUENCY_SENSOR
-        ): COMPRESSOR_FREQUENCY_SENSOR_SCHEMA,
-        cv.Optional(CONF_INPUT_POWER_SENSOR): INPUT_POWER_SENSOR_SCHEMA,
-        cv.Optional(CONF_KWH_SENSOR): KWH_SENSOR_SCHEMA,
-        cv.Optional(CONF_RUNTIME_HOURS_SENSOR): RUNTIME_HOURS_SENSOR_SCHEMA,
-        cv.Optional(
-            CONF_OUTSIDE_AIR_TEMPERATURE_SENSOR
-        ): OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA,
-        cv.Optional(CONF_ISEE_SENSOR): ISEE_SENSOR_SCHEMA,
-        cv.Optional(CONF_FUNCTIONS_SENSOR): FUNCTIONS_SENSOR_SCHEMA,
-        cv.Optional(CONF_FUNCTIONS_BUTTON): FUNCTIONS_BUTTON_SCHEMA,
-        cv.Optional(CONF_FUNCTIONS_SET_BUTTON): FUNCTIONS_BUTTON_SCHEMA,
-        cv.Optional(CONF_FUNCTIONS_SET_CODE): FUNCTIONS_NUMBER_SCHEMA,
-        cv.Optional(CONF_FUNCTIONS_SET_VALUE): FUNCTIONS_NUMBER_SCHEMA,
-        cv.Optional(CONF_FAHRENHEIT_SUPPORT_MODE): cv.boolean,
-        cv.Optional(
-            CONF_STAGE_SENSOR
-        ): STAGE_SENSOR_CONFIG_SCHEMA,  # Modifié pour le nouveau schéma
-        cv.Optional(CONF_SUB_MODE_SENSOR): SUB_MODE_SENSOR_SCHEMA,
-        cv.Optional(CONF_AUTO_SUB_MODE_SENSOR): AUTO_SUB_MODE_SENSOR_SCHEMA,
-        cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.All(
-            cv.update_interval
-        ),
-        cv.Optional(CONF_DEBOUNCE_DELAY, default="100ms"): cv.All(cv.update_interval),
-        cv.Optional(
-            CONF_HP_UP_TIME_CONNECTION_SENSOR
-        ): HP_UP_TIME_CONNECTION_SENSOR_SCHEMA,
-        cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
-            {
-                cv.Optional(CONF_MODE, default=DEFAULT_CLIMATE_MODES): cv.ensure_list(
-                    climate.validate_climate_mode
-                ),
-                cv.Optional(CONF_FAN_MODE, default=DEFAULT_FAN_MODES): cv.ensure_list(
-                    climate.validate_climate_fan_mode
-                ),
-                cv.Optional(
-                    CONF_SWING_MODE, default=DEFAULT_SWING_MODES
-                ): cv.ensure_list(climate.validate_climate_swing_mode),
-            }
-        ),
+        cv.GenerateID(): cv.declare_id(CN105MqttMim),
+        cv.Optional(CONF_MIM_TRACE_TOPIC, default="debug/cn105/trames"): cv.string,
+        cv.Optional(CONF_MIM_FORWARD_BUFFER_SIZE, default=256): cv.positive_int,
     }
-).extend(cv.COMPONENT_SCHEMA)
+)
+
+CONFIG_SCHEMA = (
+    climate.climate_schema(CN105Climate)
+    .extend(
+        {
+            cv.GenerateID(): cv.declare_id(CN105Climate),
+            cv.GenerateID(CONF_UART_ID): cv.use_id(uart.UARTComponent),
+            cv.Optional(CONF_CN105_MQTT_MIM): MIM_SCHEMA,
+            cv.Optional("baud_rate"): cv.invalid(
+                "'baud_rate' option is not supported anymore. Please add a separate UART component with baud_rate configured."
+            ),
+            cv.Optional("hardware_uart"): cv.invalid(
+                "'hardware_uart' options is not supported anymore. Please add a separate UART component with the correct rx and tx pin."
+            ),
+            cv.Optional(CONF_UPDATE_INTERVAL, default="2s"): cv.All(cv.update_interval),
+            cv.Optional(CONF_HORIZONTAL_SWING_SELECT): SELECT_SCHEMA,
+            cv.Optional(CONF_VERTICAL_SWING_SELECT): SELECT_SCHEMA,
+            cv.Optional(
+                CONF_COMPRESSOR_FREQUENCY_SENSOR
+            ): COMPRESSOR_FREQUENCY_SENSOR_SCHEMA,
+            cv.Optional(CONF_INPUT_POWER_SENSOR): INPUT_POWER_SENSOR_SCHEMA,
+            cv.Optional(CONF_KWH_SENSOR): KWH_SENSOR_SCHEMA,
+            cv.Optional(CONF_RUNTIME_HOURS_SENSOR): RUNTIME_HOURS_SENSOR_SCHEMA,
+            cv.Optional(
+                CONF_OUTSIDE_AIR_TEMPERATURE_SENSOR
+            ): OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA,
+            cv.Optional(CONF_ISEE_SENSOR): ISEE_SENSOR_SCHEMA,
+            cv.Optional(CONF_FUNCTIONS_SENSOR): FUNCTIONS_SENSOR_SCHEMA,
+            cv.Optional(CONF_FUNCTIONS_BUTTON): FUNCTIONS_BUTTON_SCHEMA,
+            cv.Optional(CONF_FUNCTIONS_SET_BUTTON): FUNCTIONS_BUTTON_SCHEMA,
+            cv.Optional(CONF_FUNCTIONS_SET_CODE): FUNCTIONS_NUMBER_SCHEMA,
+            cv.Optional(CONF_FUNCTIONS_SET_VALUE): FUNCTIONS_NUMBER_SCHEMA,
+            cv.Optional(CONF_FAHRENHEIT_SUPPORT_MODE): cv.boolean,
+            cv.Optional(CONF_STAGE_SENSOR): STAGE_SENSOR_CONFIG_SCHEMA,
+            cv.Optional(CONF_SUB_MODE_SENSOR): SUB_MODE_SENSOR_SCHEMA,
+            cv.Optional(CONF_AUTO_SUB_MODE_SENSOR): AUTO_SUB_MODE_SENSOR_SCHEMA,
+            cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.All(
+                cv.update_interval
+            ),
+            cv.Optional(CONF_DEBOUNCE_DELAY, default="100ms"): cv.All(
+                cv.update_interval
+            ),
+            cv.Optional(
+                CONF_HP_UP_TIME_CONNECTION_SENSOR
+            ): HP_UP_TIME_CONNECTION_SENSOR_SCHEMA,
+            cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
+                {
+                    cv.Optional(
+                        CONF_MODE, default=DEFAULT_CLIMATE_MODES
+                    ): cv.ensure_list(climate.validate_climate_mode),
+                    cv.Optional(
+                        CONF_FAN_MODE, default=DEFAULT_FAN_MODES
+                    ): cv.ensure_list(climate.validate_climate_fan_mode),
+                    cv.Optional(
+                        CONF_SWING_MODE, default=DEFAULT_SWING_MODES
+                    ): cv.ensure_list(climate.validate_climate_swing_mode),
+                }
+            ),
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+)
 
 
 @coroutine
@@ -303,10 +299,8 @@ def to_code(config):
     cg.add(var.set_remote_temp_timeout(config[CONF_REMOTE_TEMP_TIMEOUT]))
     cg.add(var.set_debounce_delay(config[CONF_DEBOUNCE_DELAY]))
 
-    # --- Configuration des entités optionnelles (style original) ---
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf_item = config[CONF_HORIZONTAL_SWING_SELECT]
-        # new_select s'occupe de l'enregistrement. options=[] est important.
         swing_select_var = yield select.new_select(conf_item, options=[])
         cg.add(var.set_horizontal_vane_select(swing_select_var))
 
@@ -315,15 +309,9 @@ def to_code(config):
         swing_select_var = yield select.new_select(conf_item, options=[])
         cg.add(var.set_vertical_vane_select(swing_select_var))
 
-    # Pour les capteurs, text_sensors, etc., utiliser la méthode .new_... standard
-    # Ces fonctions s'occupent de l'enregistrement du composant.
     if CONF_COMPRESSOR_FREQUENCY_SENSOR in config:
-        # conf = config[CONF_COMPRESSOR_FREQUENCY_SENSOR] # 'conf' est déjà utilisé comme argument de to_code
-        # conf["force_update"] = False # Ceci était dans votre code original, le garder si pertinent
         conf_item = config[CONF_COMPRESSOR_FREQUENCY_SENSOR]
-        if (
-            "force_update" not in conf_item
-        ):  # S'assurer de ne pas l'écraser si l'user l'a mis
+        if "force_update" not in conf_item:
             conf_item["force_update"] = False
         sensor_var = yield sensor.new_sensor(conf_item)
         cg.add(var.set_compressor_frequency_sensor(sensor_var))
@@ -387,19 +375,19 @@ def to_code(config):
         cg.add(var.set_functions_set_value(number_var))
 
     if CONF_FAHRENHEIT_SUPPORT_MODE in config:
-        cg.add(var.set_use_fahrenheit_support_mode(config.get(CONF_FAHRENHEIT_SUPPORT_MODE)))
+        cg.add(
+            var.set_use_fahrenheit_support_mode(
+                config.get(CONF_FAHRENHEIT_SUPPORT_MODE)
+            )
+        )
 
-    # --- TRAITEMENT POUR STAGE_SENSOR AVEC LA NOUVELLE OPTION ---
     if CONF_STAGE_SENSOR in config:
         conf_stage_dict = config[CONF_STAGE_SENSOR]
-        # new_text_sensor gère la création et l'enregistrement de base du text_sensor
         stage_ts_var = yield text_sensor.new_text_sensor(conf_stage_dict)
         cg.add(var.set_stage_sensor(stage_ts_var))
 
-        # Passer l'option de fallback au C++
         if conf_stage_dict.get(CONF_USE_AS_OPERATING_FALLBACK, False):
             cg.add(var.set_use_stage_for_operating_status(True))
-    # --- FIN DU TRAITEMENT POUR STAGE_SENSOR ---
 
     if CONF_SUB_MODE_SENSOR in config:
         tsensor_var = yield text_sensor.new_text_sensor(config[CONF_SUB_MODE_SENSOR])
@@ -416,6 +404,24 @@ def to_code(config):
         hp_connection_sensor_ = yield sensor.new_sensor(conf)
         yield cg.register_component(hp_connection_sensor_, conf)
         cg.add(var.set_hp_uptime_connection_sensor(hp_connection_sensor_))
+
+    if CONF_CN105_MQTT_MIM in config:
+        if "mqtt" not in CORE.config:
+            raise cv.Invalid(
+                "Le composant 'mqtt' est requis pour utiliser 'cn105_mqtt_mim'"
+            )
+
+        mim_config = config[CONF_CN105_MQTT_MIM]
+        mim_handler = cg.new_Pvariable(mim_config[CONF_ID])
+        yield cg.register_component(mim_handler, mim_config)
+        cg.add(var.set_mqtt_mim_handler(mim_handler))
+        cg.add(mim_handler.set_parent(var))
+        cg.add(mim_handler.set_topic_prefix(mim_config[CONF_MIM_TRACE_TOPIC]))
+        cg.add(
+            mim_handler.set_mim_forward_buffer_size(
+                mim_config[CONF_MIM_FORWARD_BUFFER_SIZE]
+            )
+        )
 
     yield cg.register_component(var, config)
     yield climate.register_climate(var, config)
