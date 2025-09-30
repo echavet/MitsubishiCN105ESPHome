@@ -10,7 +10,7 @@
 > ```
 
 > [!WARNING]  
-> Due to a change in ESPHome 2025.8.0, some users are facing UART connection issues. Forcing the firmware esphome version to a previous release AND cold booting the device solves the issue. Alternative is to force ESP32 IDF version to 5.4.1.
+> Due to a change in ESPHome 2025.8.0, some users are facing UART connection issues after a cold boot. Forcing the firmware esphome version to a previous release (2025.7.5 and below) solves the issue (no cold boot required). Alternative is to force ESP32 IDF version to 5.4.0. Note that OTA updates to 2025.8.0+ may work but can break after a subsequent cold boot.
 >
 > *"commit 116c91e9c5fc6d0d32191bd4e6d6e406e2bff6bf Author: Jonathan Swoboda <154711427+swoboda1337@users.noreply.github.com> Date:   Tue Jul 22 19:15:31 2025 -0400*
 > 
@@ -22,7 +22,7 @@
 >   board: esp32-s3-devkitc-1  
 >   framework:
 >     type: esp-idf
->     version: 5.4.1
+>     version: 5.4.0
 >   variant: esp32s3
 >   flash_size: 8MB
 > ```
