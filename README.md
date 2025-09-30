@@ -9,6 +9,23 @@
 >     name: Uptime
 > ```
 
+> [!WARNING]  
+> Due to a change in ESPHome 2025.8.0, some users are facing UART connection issues. Forcing the firmware esphome version to a previous release AND cold booting the device solves the issue. Alternative is to force ESP32 IDF version to 5.4.1.
+>
+> *"commit 116c91e9c5fc6d0d32191bd4e6d6e406e2bff6bf Author: Jonathan Swoboda <154711427+swoboda1337@users.noreply.github.com> Date:   Tue Jul 22 19:15:31 2025 -0400*
+> 
+>    *Bump ESP32 IDF version to 5.4.2 and Arduino version to 3.2.1 (#9770)"*
+>
+>
+> ```yaml
+> esp32:
+>   board: esp32-s3-devkitc-1  
+>   framework:
+>     type: esp-idf
+>     version: 5.4.1
+>   variant: esp32s3
+>   flash_size: 8MB
+> ```
 This project is a firmware for ESP32 microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump through Home Assistant, a web interface, or any MQTT client.
 
 It uses the ESPHome framework and is compatible with the Arduino framework and ESP-IDF.
