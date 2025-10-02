@@ -1,0 +1,479 @@
+platform: thermostat
+name: Thermostat
+id: meta_climate
+icon: mdi:heat-pump
+visual:
+  min_temperature: 17
+  max_temperature: 27
+  temperature_step:
+    target_temperature: 0.05
+    current_temperature: 0.05
+sensor: room_temperature
+humidity_sensor: room_humidity
+# Hysteresis settings for better control
+heat_deadband: 1.0
+heat_overrun: 1.0
+cool_deadband: 1.0
+cool_overrun: 1.0
+# Timing controls to prevent short cycling
+min_heating_off_time: 180s
+min_heating_run_time: 420s
+min_cooling_off_time: 300s
+min_cooling_run_time: 600s
+min_fanning_off_time: 60s
+min_fanning_run_time: 600s
+min_idle_time: 180s
+min_fan_mode_switching_time: 120s
+startup_delay: true
+#on_boot_restore_from: memory
+on_boot_restore_from: default_preset
+default_preset: Home
+# =============================================================================
+# COMFORT PRESETS - PRE-CONFIGURED TEMPERATURE SCENARIOS
+# =============================================================================
+# These presets provide quick access to common temperature scenarios.
+# Each preset defines both low and high temperature setpoints, creating
+# a comfort zone rather than a single target temperature.
+#
+# Temperature ranges are in Celsius:
+# - Low setpoint: Minimum comfortable temperature
+# - High setpoint: Maximum comfortable temperature
+# - Mode: Primary operation mode (HEAT, COOL, HEAT_COOL, FAN_ONLY)
+# - Fan mode: Air circulation speed (AUTO, LOW, MEDIUM, HIGH, QUIET)
+# - Swing mode: Air direction control (OFF, VERTICAL, HORIZONTAL, BOTH)
+# =============================================================================
+
+preset:
+  # Seasonal presets optimized for specific weather conditions
+  - name: Home in Summer
+    default_target_temperature_low: 21.11    # 70°F - comfortable minimum
+    default_target_temperature_high: 23.33   # 74°F - comfortable maximum
+    mode: COOL                                # Cooling-focused operation
+    fan_mode: "AUTO"                          # Automatic fan speed
+    swing_mode: "BOTH"                        # Full air circulation
+
+  - name: Home in Winter
+    default_target_temperature_low: 22.22    # 72°F - warmer minimum for winter
+    default_target_temperature_high: 25.56   # 78°F - higher maximum for comfort
+    mode: HEAT                                # Heating-focused operation
+    fan_mode: "AUTO"
+    swing_mode: "BOTH"
+
+  # General purpose presets for daily use
+  - name: Home
+    default_target_temperature_low: 21.11    # 70°F - standard comfort minimum
+    default_target_temperature_high: 23.89   # 75°F - standard comfort maximum
+    mode: HEAT_COOL                           # Dual-mode operation
+    fan_mode: "AUTO"
+    swing_mode: "BOTH"
+
+  # Sleep and night presets with energy-saving temperatures
+  - name: Sleep
+    default_target_temperature_low: 18.33    # 65°F - cooler for sleep
+    default_target_temperature_high: 22.22   # 72°F - moderate maximum
+    mode: HEAT_COOL
+    fan_mode: "AUTO"
+    swing_mode: "BOTH"
+
+  - name: Night
+    default_target_temperature_low: 18.33    # 65°F - energy saving minimum
+    default_target_temperature_high: 23.33   # 74°F - moderate maximum
+    mode: HEAT_COOL
+    fan_mode: "AUTO"
+    swing_mode: "BOTH"
+
+  # Away preset for energy conservation
+  - name: Away
+    default_target_temperature_low: 18.33    # 65°F - energy saving minimum
+    default_target_temperature_high: 25.56   # 78°F - wider range for efficiency
+    mode: HEAT_COOL
+    fan_mode: "AUTO"
+    swing_mode: "BOTH"
+
+  # High-performance presets for quick temperature changes
+  - name: Comfort
+    default_target_temperature_low: 22.22    # 72°F - narrow comfort zone
+    default_target_temperature_high: 23.33   # 74°F - precise temperature control
+    mode: HEAT_COOL
+    fan_mode: "HIGH"                          # High fan speed for quick response
+    swing_mode: "BOTH"
+
+  - name: Quick Cool
+    default_target_temperature_low: 18.33    # 65°F - aggressive cooling
+    default_target_temperature_high: 22.22   # 72°F - quick cool target
+    mode: COOL
+    fan_mode: "HIGH"                          # High speed for rapid cooling
+    swing_mode: "BOTH"
+
+  - name: Quick Heat
+    default_target_temperature_low: 21.11    # 70°F - quick heat target
+    default_target_temperature_high: 23.33   # 74°F - rapid heating
+    mode: HEAT
+    fan_mode: "HIGH"                          # High speed for rapid heating
+    swing_mode: "BOTH"
+
+  - name: Pre Cool
+    default_target_temperature_low: 18.33    # 65°F - pre-cooling for events
+    default_target_temperature_high: 22.22   # 72°F - preparation cooling
+    mode: COOL
+    fan_mode: "HIGH"
+    swing_mode: "BOTH"
+
+  # Fan-only preset for air circulation without heating/cooling
+  - name: Fan Only
+    default_target_temperature_low: 21.11    # 70°F - neutral temperature
+    default_target_temperature_high: 23.33   # 74°F - circulation only
+    mode: FAN_ONLY                            # No heating or cooling
+    fan_mode: "AUTO"
+    swing_mode: "BOTH"
+# Minimum temperature difference between low and high setpoints
+set_point_minimum_differential: 1.0
+
+# =============================================================================
+# PRESET CHANGE LOGGING
+# =============================================================================
+# Logs when presets are changed for debugging and monitoring
+preset_change:
+  then:
+    - logger.log:
+        level: INFO
+        format: "Preset changed to: %s"
+        args: ['id(meta_climate).preset']
+    - logger.log:
+        level: INFO
+        format: "New settings - Mode: %d, Fan: %d, Swing: %d, Low: %.1f, High: %.1f"
+        args: 
+          - 'id(meta_climate).mode'
+          - 'id(meta_climate).fan_mode'
+          - 'id(meta_climate).swing_mode'
+          - 'id(meta_climate).target_temperature_low'
+          - 'id(meta_climate).target_temperature_high'
+
+# =============================================================================
+# DUAL SETPOINT CONTROL LOGIC
+# =============================================================================
+# This is the core intelligence of the meta-thermostat. It continuously
+# monitors temperature and humidity, then automatically controls the CN105
+# unit to maintain comfort within the dual setpoint range.
+#
+# Control Logic:
+# 1. Humidity Control: If humidity > 65%, activate DRY mode regardless of temperature
+# 2. Temperature Control: Only applies in HEAT_COOL mode
+#    - If temp < (low_setpoint - deadband): HEAT
+#    - If temp > (high_setpoint + deadband): COOL  
+#    - If temp within range: IDLE (fan only)
+#
+# The thermostat directly controls the CN105 unit without changing its own mode,
+# allowing for intelligent dual-setpoint management.
+# =============================================================================
+on_state:
+  then:
+    - lambda: |-
+        // =================================================================
+        // HUMIDITY CONTROL - PRIORITY OVER TEMPERATURE
+        // =================================================================
+        // Check humidity first - if above 65%, activate DRY mode regardless of temperature
+        // This prevents mold and maintains air quality
+        auto current_humidity = id(room_humidity).state;
+        if (!isnan(current_humidity) && current_humidity >= 65.0) {
+          auto climate_unit = id(splitunit);
+          auto current_action = climate_unit->action;
+          
+          // Only switch to DRY mode if not already drying
+          if (current_action != climate::CLIMATE_ACTION_DRYING) {
+            ESP_LOGI("HUMIDITY_CONTROL", "High humidity detected: %.1f%%, switching CN105 to DRY mode", current_humidity);
+            // Control CN105 unit directly for drying without changing thermostat mode
+            auto call = id(splitunit).make_call();
+            call.set_mode(climate::CLIMATE_MODE_DRY);
+            // Set target temperature to middle of comfort range + 2°C for effective drying
+            call.set_target_temperature(((id(meta_climate).target_temperature_low + id(meta_climate).target_temperature_high) / 2) + 2.0);
+            call.perform();
+          }
+          return; // Exit early, don't process temperature logic
+        }
+        
+        // =================================================================
+        // TEMPERATURE CONTROL - DUAL SETPOINT LOGIC
+        // =================================================================
+        // Only apply dual setpoint logic if we're in HEAT_COOL mode
+        // Other modes (HEAT, COOL, FAN_ONLY) are handled by their respective actions
+        if (id(meta_climate).mode != climate::CLIMATE_MODE_HEAT_COOL) {
+          return;
+        }
+        
+        // Get current temperature and setpoints
+        auto current_temp = id(room_temperature).state;
+        auto target_low = id(meta_climate).target_temperature_low;
+        auto target_high = id(meta_climate).target_temperature_high;
+        
+        // Only run if we have valid temperatures (safety check)
+        if (isnan(current_temp) || isnan(target_low) || isnan(target_high)) {
+          return;
+        }
+        
+        // Hysteresis values to prevent rapid switching
+        float heat_deadband = 1.0;    // Temperature buffer for heating
+        float cool_deadband = 1.0;    // Temperature buffer for cooling
+        
+        // =================================================================
+        // DUAL SETPOINT DECISION LOGIC
+        // =================================================================
+        // Determine what action to take based on dual setpoints with hysteresis
+        bool should_heat = (current_temp < (target_low - heat_deadband));
+        bool should_cool = (current_temp > (target_high + cool_deadband));
+        bool should_idle = (current_temp >= (target_low + heat_deadband) && 
+                            current_temp <= (target_high - cool_deadband));
+        
+        // Get current climate state to avoid unnecessary changes
+        auto climate_unit = id(splitunit);
+        auto current_action = climate_unit->action;
+        
+        // =================================================================
+        // APPLY CONTROL ACTIONS
+        // =================================================================
+        // Control CN105 unit directly without changing thermostat mode
+        // This allows the thermostat to maintain its dual-setpoint logic
+        // while the CN105 unit handles the actual heating/cooling
+        
+        if (should_heat && current_action != climate::CLIMATE_ACTION_HEATING) {
+          ESP_LOGI("DUAL_SETPOINT", "Activating HEAT - temp: %.1f, target_low: %.1f", current_temp, target_low);
+          // Control CN105 unit directly for heating
+          auto call = id(splitunit).make_call();
+          call.set_mode(climate::CLIMATE_MODE_HEAT);
+          call.set_target_temperature(target_low);
+          call.perform();
+
+        } else if (should_cool && current_action != climate::CLIMATE_ACTION_COOLING) {
+          ESP_LOGI("DUAL_SETPOINT", "Activating COOL - temp: %.1f, target_high: %.1f", current_temp, target_high);
+          // Control CN105 unit directly for cooling
+          auto call = id(splitunit).make_call();
+          call.set_mode(climate::CLIMATE_MODE_COOL);
+          call.set_target_temperature(target_high);
+          call.perform();
+
+        } else if (should_idle && current_action != climate::CLIMATE_ACTION_IDLE) {
+          ESP_LOGI("DUAL_SETPOINT", "Going to IDLE - temp: %.1f, range: %.1f-%.1f", current_temp, target_low, target_high);
+          // Control CN105 unit directly for idle/fan only
+          auto call = id(splitunit).make_call();
+          call.set_mode(climate::CLIMATE_MODE_FAN_ONLY);
+          call.perform();
+
+        }
+
+
+# =============================================================================
+# TEMPERATURE SETPOINT CHANGE LOGGING
+# =============================================================================
+# Logs when temperature setpoints are manually adjusted
+target_temperature_change_action: 
+  then:
+    - logger.log:
+        level: INFO
+        format: "Thermostat setpoints changed - low: %.1f, high: %.1f"
+        args: 
+          - 'id(meta_climate).target_temperature_low'
+          - 'id(meta_climate).target_temperature_high'
+
+# =============================================================================
+# CLIMATE MODE AND ACTION DEFINITIONS
+# =============================================================================
+# These sections define how the meta-thermostat responds to different
+# climate modes and actions. Each mode/action directly controls the
+# underlying CN105 climate device.
+
+# Heat Mode: The climate device may heat but may not cool.
+# Heat Action: The climate device is actively distributing heated air into the dwelling.
+
+# =============================================================================
+# CLIMATE MODE HANDLERS
+# =============================================================================
+# These handlers are triggered when the thermostat mode changes.
+# They control the CN105 unit directly without changing the thermostat's mode.
+
+# Note: COOL and HEAT modes are commented out because the dual setpoint logic
+# in on_state handles these automatically. Uncomment if you want manual mode control.
+
+#cool_mode:
+#  then:
+#    - climate.control: 
+#        id: splitunit
+#        mode: "COOL"
+#        fan_mode: "AUTO"
+#        target_temperature: !lambda |-
+#          return id(meta_climate).target_temperature_high;
+          
+#heat_mode:
+#  then:
+#    - climate.control: 
+#        id: splitunit
+#        mode: "HEAT"
+#        fan_mode: "AUTO"
+#        target_temperature: !lambda |-
+#          return id(meta_climate).target_temperature_low;
+
+# =============================================================================
+# ACTIVE MODE HANDLERS
+# =============================================================================
+# These modes are actively used and control the CN105 unit directly
+
+# Fan-only mode: Air circulation without heating or cooling
+fan_only_mode:
+  then:
+    - climate.control: 
+        id: splitunit
+        mode: "FAN_ONLY"
+        fan_mode: "AUTO"
+        
+# Dry mode: Dehumidification with temperature control
+# Target temperature is set to middle of comfort range + 2°C for effective drying
+dry_mode:
+  then:
+    - climate.control: 
+        id: splitunit
+        mode: "DRY"
+        target_temperature: !lambda |-
+          return ((id(meta_climate).target_temperature_low + id(meta_climate).target_temperature_high) / 2) + 2.0;
+
+# Off mode: Complete shutdown of the climate unit
+off_mode:
+  then:
+    - climate.control: 
+        id: splitunit
+        mode: "OFF"
+
+# =============================================================================
+# CLIMATE ACTION HANDLERS
+# =============================================================================
+# These actions are triggered when the thermostat determines it needs to
+# perform specific climate operations. They directly control the CN105 unit.
+
+# Heat action: Actively heating to reach the low setpoint
+heat_action: 
+  then:
+    - climate.control: 
+        id: splitunit
+        mode: "HEAT"
+        fan_mode: "AUTO"
+        target_temperature: !lambda |-
+          return id(meta_climate).target_temperature_low;
+
+# Cool action: Actively cooling to reach the high setpoint
+cool_action: 
+  then:
+    - climate.control: 
+        id: splitunit
+        mode: "COOL"
+        fan_mode: "AUTO"
+        target_temperature: !lambda |-
+          return id(meta_climate).target_temperature_high;
+
+# Idle action: Temperature is within comfort range, fan only operation
+idle_action: 
+  then:    
+    - climate.control: 
+        id: splitunit
+        mode: "FAN_ONLY"
+        fan_mode: "AUTO"
+
+# Dry action: Dehumidification mode for high humidity conditions
+# Target temperature is set to middle of comfort range + 2°C for effective drying
+dry_action:
+  then:
+    - climate.control: 
+        id: splitunit
+        mode: "DRY"
+        fan_mode: "AUTO"
+        target_temperature: !lambda |-
+          return ((id(meta_climate).target_temperature_low + id(meta_climate).target_temperature_high) / 2) + 2.0;
+
+# Fan-only action: Air circulation without heating or cooling
+fan_only_action:
+  then: 
+    - climate.control: 
+        id: splitunit
+        mode: "FAN_ONLY"
+        fan_mode: "AUTO"
+
+
+
+# =============================================================================
+# FAN SPEED CONTROL ACTIONS
+# =============================================================================
+# These actions control the fan speed of the CN105 unit.
+# Fan speed affects air circulation and noise levels.
+
+# Automatic fan speed - lets the unit decide based on temperature demand
+fan_mode_auto_action:
+  then:
+    - climate.control:
+        id: splitunit
+        fan_mode: "AUTO"
+
+# Low fan speed - quiet operation, minimal air circulation
+fan_mode_low_action:
+  then:
+    - climate.control:
+        id: splitunit
+        fan_mode: "LOW"
+
+# Medium fan speed - balanced operation
+fan_mode_medium_action:
+  then:
+    - climate.control:
+        id: splitunit
+        fan_mode: "MEDIUM"
+
+# High fan speed - maximum air circulation and cooling/heating power
+fan_mode_high_action:
+  then:
+    - climate.control:
+        id: splitunit
+        fan_mode: "HIGH"
+
+# Middle fan speed - moderate air circulation
+fan_mode_middle_action:
+  then:
+    - climate.control:
+        id: splitunit
+        fan_mode: "MIDDLE"
+
+# Quiet fan speed - minimal noise operation
+fan_mode_quiet_action:
+  then:
+    - climate.control:
+        id: splitunit
+        fan_mode: "QUIET"
+
+# =============================================================================
+# SWING MODE CONTROL ACTIONS
+# =============================================================================
+# These actions control the air direction of the CN105 unit.
+# Swing modes affect air distribution throughout the room.
+
+# Swing off - fixed air direction
+swing_off_action:
+  then:
+    - climate.control:
+        id: splitunit
+        swing_mode: "OFF"
+
+# Vertical swing - up and down air movement
+swing_vertical_action:
+  then:
+    - climate.control:
+        id: splitunit
+        swing_mode: "VERTICAL"
+
+# Horizontal swing - left and right air movement
+swing_horizontal_action:
+  then:
+    - climate.control:
+        id: splitunit
+        swing_mode: "HORIZONTAL"
+
+# Both swing - full 3D air movement (vertical + horizontal)
+swing_both_action:
+  then:
+    - climate.control:
+        id: splitunit
+        swing_mode: "BOTH"

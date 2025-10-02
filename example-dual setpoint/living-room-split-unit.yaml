@@ -1,0 +1,70 @@
+substitutions:
+  devicename: LivingRoomSplitUnit
+  hostname: living-room-split-unit
+  friendly_name: Living Room Split Unit
+  location: Inside
+  floor: 1stfloor
+  room: Living Room
+  sensor_interval: 60s
+  remote_temp_sensor: sensor.living_room_average_remote_split_temp
+  remote_humid_sensor: sensor.living_room_average_humidity
+  comment: M5 S3 Orange Stamp w/ CN105 Component
+
+esphome:
+  name: ${hostname}
+  friendly_name: ${friendly_name}  
+  area: ${room}
+  comment: ${friendly_name} - ${comment}
+  on_boot:
+    priority: 200
+    then:
+      - delay: 120s  # Increased delay for CN105 initialization
+      - logger.log:
+          level: INFO
+          format: "CN105 initialization delay completed"
+          
+esp32:
+  board: m5stack-stamps3 #esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: esp-idf
+#    version: 5.4.1
+
+# =============================================================================
+# COMMON CONFIGURATION INCLUDES
+# =============================================================================
+# These includes provide common functionality shared across multiple devices.
+# Each include adds specific features to the device configuration.
+
+# Core system includes
+<<: !include common/ota.yaml                        # Over-the-air updates
+<<: !include common/web_server.yaml                  # Web interface
+<<: !include common/time.yaml                        # Time synchronization
+<<: !include common/climate-common-non-climate.yaml  # CN105 hardware configuration
+
+# Network configuration
+<<: !include common/wifi.yaml                        # WiFi connection settings
+# Alternative manual WiFi configuration (commented out):
+#wifi:
+#  use_address: 192.168.50.102                      # Static IP address
+#  ssid: !secret wifi_ssid                          # WiFi network name
+#  password: !secret wifi_password                  # WiFi password
+
+# =============================================================================
+# SENSOR CONFIGURATION INCLUDES
+# =============================================================================
+# Include common sensor configurations for WiFi and version information
+
+text_sensor:
+  - !include common/sensors/wifi_text_sensors.yaml    # WiFi status sensors
+  - !include common/sensors/version_text_sensors.yaml # Version information sensors
+
+# =============================================================================
+# CLIMATE CONTROL CONFIGURATION
+# =============================================================================
+# Include climate control configurations for the CN105 heat pump unit.
+# These files provide the actual climate device and meta-thermostat functionality.
+
+climate:
+  - !include common/climate-common-everything-but-office.yaml  # CN105 climate device
+  - !include common/climate-common-meta-thermostat.yaml         # Dual setpoint thermostat
