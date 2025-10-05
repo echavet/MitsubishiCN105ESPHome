@@ -1,0 +1,262 @@
+# =============================================================================
+# HOME ASSISTANT API CONFIGURATION
+# =============================================================================
+# This section configures the ESPHome API for communication with Home Assistant.
+# It provides custom services for remote temperature control and device management.
+
+api:
+  id: ha_api
+  services:
+    # Custom service to set remote temperature sensor value
+    # This allows Home Assistant to override the internal temperature sensor
+    # with a more accurate remote sensor (e.g., room temperature sensor)
+    - service: set_remote_temperature
+      variables:
+        temperature: float  # Temperature value in Celsius
+      then:
+        - lambda: 'id(splitunit).set_remote_temperature(temperature);'
+    
+    # Custom service to disable remote temperature and use internal sensor
+    # This reverts to using the ESP32's internal temperature sensor
+    - service: use_internal_temperature
+      then:
+        - lambda: 'id(splitunit).set_remote_temperature(0);'
+  
+  # API encryption key for secure communication with Home Assistant
+  encryption:
+    key: !secret api_key_1
+  
+  # Timeout for reboot operations (prevents hanging during restarts)
+  reboot_timeout: 2min
+
+# =============================================================================
+# BINARY SENSORS AND BUTTONS
+# =============================================================================
+# This section defines physical buttons and Home Assistant entity sensors
+# for device control and status monitoring.
+
+binary_sensor:
+  # Physical reset button connected to GPIO0
+  # This provides a hardware reset option for the device
+  - platform: gpio
+    pin: 
+      number: GPIO0                    # Boot button on ESP32 boards
+      inverted: true                   # Button is active low (pressed = 0V)
+      ignore_strapping_warning: true   # Allow use of strapping pin
+    name: "Reset Button"
+    on_press:
+      then:
+        - delay: 1s                    # Debounce delay to prevent accidental resets
+        - button.press: restart_button # Trigger software restart
+
+  # Home Assistant entity sensor for night mode detection
+  # This allows the device to respond to Home Assistant's night mode settings
+  - platform: homeassistant
+    id: household_night_mode
+    entity_id: binary_sensor.night_light_mode  # HA entity for night mode
+    internal: true                      # Don't expose as separate entity
+    #trigger_on_initial_state: true    # Uncomment to trigger on startup
+    publish_initial_state: true        # Publish current state on startup
+
+# =============================================================================
+# BUTTON CONTROLS
+# =============================================================================
+# Software buttons for device control and restart functionality
+
+button:
+  # Software restart button (triggered by physical reset button)
+  - platform: restart
+    name: "Restart"
+    id: restart_button
+            
+# =============================================================================
+# EXTERNAL COMPONENTS
+# =============================================================================
+# This section includes the Mitsubishi CN105 ESPHome component
+# which provides the climate control functionality for Mitsubishi heat pumps.
+
+external_components:
+  - source: github://echavet/MitsubishiCN105ESPHome  # CN105 component repository
+    refresh: 0s                                     # Don't auto-update (use specific version)
+
+# =============================================================================
+# UART COMMUNICATION
+# =============================================================================
+# UART configuration for communication with the Mitsubishi CN105 heat pump.
+# The CN105 protocol uses 2400 baud serial communication over specific pins.
+
+uart:
+  id: HP_UART           # UART instance ID for CN105 communication
+  baud_rate: 2400       # CN105 protocol baud rate (fixed at 2400)
+  tx_pin: 15            # Transmit pin (ESP32 -> CN105)
+  rx_pin: 13            # Receive pin (CN105 -> ESP32)
+
+# =============================================================================
+# SENSOR CONFIGURATION
+# =============================================================================
+# This section defines various sensors for temperature, humidity, and system monitoring.
+# Sensors can be either Home Assistant entities or local ESP32 sensors.
+
+sensor:
+  # =================================================================
+  # REMOTE TEMPERATURE SENSOR (Home Assistant Entity)
+  # =================================================================
+  # This sensor receives temperature data from Home Assistant entities
+  # (e.g., room temperature sensors) and provides it to the CN105 unit
+  # for more accurate temperature control than the ESP32's internal sensor.
+  - platform: homeassistant
+    name: Remote Temperature
+    id: room_temperature                    # ID used by meta-thermostat
+    entity_id: ${remote_temp_sensor}        # HA entity ID (from substitutions)
+    internal: false                         # Expose as separate entity
+    disabled_by_default: true               # Hidden by default in HA
+    device_class: temperature
+    state_class: measurement
+    unit_of_measurement: "°C"
+    filters:
+      # Convert Fahrenheit to Celsius (if needed)
+      - lambda: return (x - 32) * (5.0/9.0);
+      # Limit values to range accepted by Mitsubishi units (1-40°C)
+      - clamp:
+          min_value: 1
+          max_value: 40
+          ignore_out_of_range: true
+      # Throttle updates to prevent excessive communication
+      - throttle: 30s
+    on_value:
+      then:
+        - logger.log:
+            level: INFO
+            format: "Remote temperature received from HA: %.1f C"
+            args: [ 'x' ]
+        # Send temperature to CN105 unit for remote sensor mode
+        - lambda: 'id(splitunit).set_remote_temperature(x);'
+
+  # =================================================================
+  # REMOTE HUMIDITY SENSOR (Home Assistant Entity)
+  # =================================================================
+  # This sensor receives humidity data from Home Assistant entities
+  # for humidity-based climate control (e.g., DRY mode activation)
+  - platform: homeassistant
+    name: Remote Humidity
+    id: room_humidity                       # ID used by meta-thermostat
+    entity_id: ${remote_humid_sensor}       # HA entity ID (from substitutions)
+    internal: false                         # Expose as separate entity
+    disabled_by_default: true                # Hidden by default in HA
+    device_class: humidity
+    state_class: measurement
+    unit_of_measurement: "%"
+    
+  # =================================================================
+  # INTERNAL TEMPERATURE SENSOR (ESP32)
+  # =================================================================
+  # ESP32's internal temperature sensor for fallback temperature monitoring
+  - platform: internal_temperature
+    name: "Internal Temperature"
+    internal: true                          # Don't expose to HA
+
+  # =================================================================
+  # WIFI SIGNAL STRENGTH SENSORS
+  # =================================================================
+  # Monitor WiFi signal strength for network troubleshooting
+  - !include sensors/wifi_sensor_db.yaml     # WiFi signal in dBm
+  - !include sensors/wifi_sensor_percent.yaml # WiFi signal as percentage
+
+  # =================================================================
+  # SYSTEM UPTIME SENSOR
+  # =================================================================
+  # Monitor device uptime for system health monitoring
+  - platform: uptime
+    name: Uptime           
+    id: uptime_sensor
+
+# =============================================================================
+# STATUS LED CONFIGURATION
+# =============================================================================
+# RGB LED for visual status indication and debugging.
+# The LED provides visual feedback about device status and connection state.
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: status_led
+    rgb_order: GRB                    # Color order for SK6812 LEDs
+    pin: GPIO21                       # LED data pin
+    num_leds: 1                       # Single LED
+    #rmt_channel: 0                   # RMT channel (auto-assigned if not specified)
+    chipset: SK6812                   # LED chipset type
+    name: "ID LED"
+    restore_mode: ALWAYS_OFF          # Turn off LED on restart
+    internal: true                    # Don't expose to Home Assistant
+    effects:
+      - pulse:                        # Pulsing effect for status indication
+      - strobe:                       # Strobing effect for alerts
+      - addressable_rainbow:          # Rainbow effect for testing
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+# Configure logging levels for different components to balance
+# debugging information with performance and log clarity.
+
+logger:
+  level: INFO                        # Default log level
+  logs:
+    # System and network logging
+    EVT_SETS: INFO                    # Event settings
+    WIFI: INFO                        # WiFi connection status
+    MQTT: INFO                        # MQTT communication
+    WRITE_SETTINGS: INFO              # Settings persistence
+    SETTINGS: INFO                    # Settings management
+    STATUS: INFO                      # General status messages
+    
+    # CN105 component logging (reduced to prevent log spam)
+    CN105Climate: WARN                # CN105 climate component warnings only
+    CN105: INFO                       # CN105 protocol communication
+    climate: WARN                     # ESPHome climate component warnings
+    
+    # Sensor and data logging
+    sensor: WARN                      # Sensor warnings only
+    chkSum: INFO                      # Checksum validation
+    
+    # Communication protocol logging
+    WRITE: WARN                       # Write operations (reduced verbosity)
+    READ: WARN                        # Read operations (reduced verbosity)
+    Header: INFO                     # Protocol header information
+    Decoder: INFO                    # Protocol decoding
+    CONTROL_WANTED_SETTINGS: INFO    # Control settings changes
+
+# =============================================================================
+# STATUS LED AUTOMATION
+# =============================================================================
+# This interval automation controls the status LED based on connection state
+# and household night mode settings for visual status indication.
+
+interval:
+  - interval: 1s                      # Check every second
+    then:
+      if:
+        condition:
+          api.connected:              # Check if connected to Home Assistant
+        then:
+          # Connected: Turn off LED (normal operation)
+          - light.turn_off: status_led
+        else:
+          # Disconnected: Show red strobing LED to indicate connection issue
+          - light.turn_on:
+              id: status_led
+              red: 100%                # Red color for error indication
+              green: 0%
+              blue: 0%
+              effect: strobe           # Strobing effect for attention
+              brightness: !lambda |-
+                # Adjust brightness based on night mode
+                if (id(household_night_mode)) {
+                  // Night mode: Full brightness for visibility
+                  return 1.0;
+                } else {
+                  // Day mode: Dim brightness to avoid distraction
+                  return .05;
+                }
+
+
+
