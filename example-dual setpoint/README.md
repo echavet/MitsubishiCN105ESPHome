@@ -2,6 +2,8 @@
 
 This example demonstrates how to implement intelligent dual setpoint climate control for Mitsubishi CN105 heat pump units using ESPHome and Home Assistant. The system provides comfort zones with both heating and cooling setpoints, humidity-based DRY mode activation, and multiple comfort presets.
 
+> **⚠️ Important Note**: The logging code for preset changes in `climate-common-meta-thermostat.yaml` is currently commented out. If you want to monitor preset changes in the logs, uncomment the `preset_change` section in the meta-thermostat configuration file. But a few people (including the author of this YAML) noticed it caused faults for some reason, and it isnt critical to the functionality.
+
 ## 🌟 Key Features
 
 - **Dual Setpoint Control**: Maintains temperature within a comfort zone (low/high setpoints) rather than a single target
