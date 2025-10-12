@@ -133,21 +133,23 @@ set_point_minimum_differential: 1.0
 # PRESET CHANGE LOGGING
 # =============================================================================
 # Logs when presets are changed for debugging and monitoring
-preset_change:
-  then:
-    - logger.log:
-        level: INFO
-        format: "Preset changed to: %s"
-        args: ['id(meta_climate).preset']
-    - logger.log:
-        level: INFO
-        format: "New settings - Mode: %d, Fan: %d, Swing: %d, Low: %.1f, High: %.1f"
-        args: 
-          - 'id(meta_climate).mode'
-          - 'id(meta_climate).fan_mode'
-          - 'id(meta_climate).swing_mode'
-          - 'id(meta_climate).target_temperature_low'
-          - 'id(meta_climate).target_temperature_high'
+# THIS CODE SEEMS TO CAUSE ISSUES: some ESP's hault here, so I've commented it out
+# TODO: find a way to make it work without causing issues
+#preset_change:
+#  then:
+#    - logger.log:
+#        level: INFO
+#        format: "Preset changed to: %s"
+#          args: ['id(meta_climate).preset']
+#    - logger.log:
+#        level: INFO
+#        format: "New settings - Mode: %d, Fan: %d, Swing: %d, Low: %.1f, High: %.1f"
+#        args: 
+#          - 'id(meta_climate).mode'
+#          - 'id(meta_climate).fan_mode'
+#          - 'id(meta_climate).swing_mode'
+#          - 'id(meta_climate).target_temperature_low'
+#          - 'id(meta_climate).target_temperature_high'
 
 # =============================================================================
 # DUAL SETPOINT CONTROL LOGIC
