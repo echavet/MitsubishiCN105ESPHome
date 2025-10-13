@@ -154,6 +154,7 @@ namespace esphome {
         void controlTemperature();
         void controlFan();
         void controlSwing();
+        void calculate_and_apply_gliding_setpoint();
 
         // Configure the climate object with traits that we support.
 
@@ -183,6 +184,10 @@ namespace esphome {
 
         // helpers
         const char* getIfNotNull(const char* what, const char* defaultValue);
+
+        void set_heat_cool_update_interval(uint32_t interval_ms) {
+            this->heat_cool_update_interval_ms_ = interval_ms;
+        }
 
 #ifdef TEST_MODE
         void testMutex();
@@ -341,5 +346,13 @@ namespace esphome {
         int bytesRead = 0;
         int dataLength = 0;
         uint8_t command = 0;
+
+        // Variables pour la gestion HEAT_COOL
+        bool is_heat_cool_override_active_{ false };
+        float target_temp_low_stored_{ 20.0 };
+        float target_temp_high_stored_{ 24.0 };
+        float last_gliding_setpoint_{ -999.0 };  // Pour hysteresis
+        uint32_t heat_cool_update_interval_ms_{ 60000 };  // 60s par défaut
+        uint32_t last_heat_cool_update_ms_{ 0 };
     };
 }

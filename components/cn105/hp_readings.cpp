@@ -196,7 +196,7 @@ static float mapCelsiusForConversionToFahrenheit(const float c) {
             pair.second = (pair.second - 32.0f) / 1.8f;
         }
         return *m;
-    }();
+        }();
 
     auto it = mapping.find(c);
     if (it == mapping.end()) return c;
@@ -240,7 +240,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
 
     if ((data[10] != 0) && (this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {    // wideVane is not always supported
         receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 11, data[10], "wideVane reading");
-        this->wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;        
+        this->wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
         ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, this->wideVaneAdj);
     } else {
         ESP_LOGD("Decoder", "widevane is not supported");
@@ -543,6 +543,14 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
     this->currentSettings.iSee = settings.iSee;
     this->currentSettings.connected = true;
 
+    // Correction affichage AUTO fidèle ±2°C
+    if (this->mode == climate::CLIMATE_MODE_AUTO && !is_heat_cool_override_active_) {
+        float t_unique = this->currentSettings.temperature;
+        this->target_temperature_low = t_unique - 2.0f;
+        this->target_temperature_high = t_unique + 2.0f;
+        ESP_LOGD(TAG, "AUTO: Affichage HA corrigé %.1f ±2°C", t_unique);
+    }
+
     // publish to HA
     this->publish_state();
 
@@ -683,6 +691,12 @@ void CN105Climate::checkFanSettings(heatpumpSettings& settings, bool updateCurre
     }
 }
 void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
+    // Ne pas écraser le mode HEAT_COOL si override actif
+    if (is_heat_cool_override_active_ && this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
+        ESP_LOGD(TAG, "Mode HEAT_COOL protégé - feedback CN105 ignoré");
+        return;
+    }
+
     // currentSettings.power== NULL is true when it is the first time we get en answer from hp
     if (this->hasChanged(currentSettings.power, settings.power, "power") ||
         this->hasChanged(currentSettings.mode, settings.mode, "mode")) {           // mode or power change ?

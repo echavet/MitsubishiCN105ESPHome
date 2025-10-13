@@ -9,3 +9,4 @@ clim-chambre-awox.yaml
 .gitignore
 test.yaml
 
+snapshot.sh

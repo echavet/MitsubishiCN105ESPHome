@@ -54,6 +54,14 @@ void CN105Climate::loop() {
             }
         }
     }
+
+    // Mise à jour périodique HEAT_COOL
+    if (is_heat_cool_override_active_ &&
+        (CUSTOM_MILLIS - last_heat_cool_update_ms_) >= heat_cool_update_interval_ms_) {
+
+        calculate_and_apply_gliding_setpoint();
+        last_heat_cool_update_ms_ = CUSTOM_MILLIS;
+    }
 }
 
 uint32_t CN105Climate::get_update_interval() const { return this->update_interval_; }

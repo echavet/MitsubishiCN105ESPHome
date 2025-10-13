@@ -42,6 +42,18 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
         ESP_LOGD("control", "Mode change asked");
         // Changer le mode de climatisation
         this->mode = *call.get_mode();
+
+        // Gestion HEAT_COOL override
+        if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
+            this->is_heat_cool_override_active_ = true;
+            ESP_LOGI("control", "Mode HEAT_COOL activé - Consigne glissante");
+        } else {
+            this->is_heat_cool_override_active_ = false;
+            if (this->mode == climate::CLIMATE_MODE_AUTO) {
+                ESP_LOGI("control", "Mode AUTO natif - Fidélité ±2°C");
+            }
+        }
+
         updated = true;
         controlMode();
     }
@@ -52,6 +64,22 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
         this->target_temperature = *call.get_target_temperature();
         updated = true;
         controlTemperature();
+    }
+
+    if (call.get_target_temperature_low().has_value() &&
+        call.get_target_temperature_high().has_value()) {
+
+        target_temp_low_stored_ = *call.get_target_temperature_low();
+        target_temp_high_stored_ = *call.get_target_temperature_high();
+
+        ESP_LOGI("control", "Bornes HEAT_COOL: %.1f - %.1f°C",
+            target_temp_low_stored_, target_temp_high_stored_);
+
+        if (is_heat_cool_override_active_) {
+            // Calcul immédiat de la consigne glissante
+            this->calculate_and_apply_gliding_setpoint();
+        }
+        updated = true;
     }
 
     if (call.get_fan_mode().has_value()) {
@@ -164,7 +192,7 @@ static float mapCelsiusForConversionFromFahrenheit(const float c) {
             pair.first = (pair.first - 32.0f) / 1.8f;
         }
         return *new std::map<float, float>(v.begin(), v.end());
-    }();
+        }();
 
     // Due to vagaries of floating point math across architectures, we can't
     // just look up `c` in the map -- we're very unlikely to find a matching
@@ -181,13 +209,13 @@ static float mapCelsiusForConversionFromFahrenheit(const float c) {
 void CN105Climate::controlTemperature() {
     float setting = this->target_temperature;
     if (use_fahrenheit_support_mode_) {
-      setting = mapCelsiusForConversionFromFahrenheit(setting);
+        setting = mapCelsiusForConversionFromFahrenheit(setting);
     }
     if (!this->tempMode) {
         this->wantedSettings.temperature = this->lookupByteMapIndex(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
     } else {
         setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
-        this->wantedSettings.temperature =  setting < 10 ? 10 : (setting > 31 ? 31 : setting);
+        this->wantedSettings.temperature = setting < 10 ? 10 : (setting > 31 ? 31 : setting);
     }
 }
 
@@ -210,9 +238,24 @@ void CN105Climate::controlMode() {
         this->setPowerSetting("ON");
         break;
     case climate::CLIMATE_MODE_AUTO:
-        ESP_LOGI("control", "changing mode to AUTO");
+        if (is_heat_cool_override_active_) {
+            // Ne rien faire ici, géré par calculate_and_apply_gliding_setpoint()
+            ESP_LOGD("control", "AUTO via HEAT_COOL - consigne calculée ailleurs");
+        } else {
+            // Mode AUTO natif : calculer T_unique
+            float t_unique = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
+            ESP_LOGI("control", "Mode AUTO natif - T_unique: %.1f°C", t_unique);
+            this->setModeSetting("AUTO");
+            this->wantedSettings.temperature = t_unique;
+        }
+        this->setPowerSetting("ON");
+        break;
+    case climate::CLIMATE_MODE_HEAT_COOL:
+        ESP_LOGI("control", "changing mode to HEAT_COOL - utilise AUTO natif avec consigne glissante");
+        // Le mode HEAT_COOL utilise AUTO sur le CN105 avec calcul de consigne glissante
         this->setModeSetting("AUTO");
         this->setPowerSetting("ON");
+        // La température sera calculée par calculate_and_apply_gliding_setpoint()
         break;
     case climate::CLIMATE_MODE_FAN_ONLY:
         ESP_LOGI("control", "changing mode to FAN_ONLY");
@@ -413,9 +456,60 @@ void CN105Climate::setWideVaneSetting(const char* setting) {
 void CN105Climate::set_remote_temperature(float setting) {
     this->shouldSendExternalTemperature_ = true;
     if (use_fahrenheit_support_mode_) {
-      setting = mapCelsiusForConversionFromFahrenheit(setting);
+        setting = mapCelsiusForConversionFromFahrenheit(setting);
     }
     this->remoteTemperature_ = setting;
     ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
+}
+
+void CN105Climate::calculate_and_apply_gliding_setpoint() {
+    if (!is_heat_cool_override_active_) return;
+
+    float t_low = target_temp_low_stored_;
+    float t_high = target_temp_high_stored_;
+    float t_amb = this->current_temperature;
+
+    // Correction amplitude si < 4°C
+    float range = t_high - t_low;
+    if (range <= 4.0f) {
+        float median = (t_low + t_high) / 2.0f;
+        t_low = median - 2.0f;
+        t_high = median + 2.0f;
+        ESP_LOGD("control", "Range ajusté: %.1f - %.1f°C", t_low, t_high);
+    }
+
+    // Bornes glissantes
+    float t_min_glide = t_low + 2.0f;
+    float t_max_glide = t_high - 2.0f;
+
+    // Calcul T_glissante
+    float t_glissante;
+    if (t_amb <= t_low) {
+        t_glissante = t_min_glide;
+    } else if (t_amb >= t_high) {
+        t_glissante = t_max_glide;
+    } else {
+        // Interpolation linéaire
+        t_glissante = t_min_glide +
+            (t_amb - t_low) * (t_max_glide - t_min_glide) / (t_high - t_low);
+    }
+
+    // Hysteresis 0.5°C
+    if (abs(t_glissante - last_gliding_setpoint_) < 0.5f &&
+        last_gliding_setpoint_ != -999.0f) {
+        ESP_LOGD("control", "Hysteresis: pas de changement (delta < 0.5°C)");
+        return;
+    }
+
+    last_gliding_setpoint_ = t_glissante;
+
+    // Appliquer
+    this->setModeSetting("AUTO");
+    this->wantedSettings.temperature = t_glissante;
+    this->wantedSettings.hasChanged = true;
+    this->wantedSettings.hasBeenSent = false;
+
+    ESP_LOGI("control", "HEAT_COOL: T_amb=%.1f -> T_glissante=%.1f°C",
+        t_amb, t_glissante);
 }
 
