@@ -1,61 +1,64 @@
 #include "cn105_mqtt_mim.h"
-#include "cn105.h"  // Include pour définition complète de CN105Climate
-#include "esphome/components/mqtt/mqtt_client.h"
+#include "cn105.h"  // Pour CN105Climate
 #include "esphome/core/log.h"
+#include <sstream>
+#include <iomanip>
 
 namespace esphome {
     namespace cn105 {
 
-        static const char* const MIM_TAG = "cn105_mqtt_mim";
+        static const char* const TAG_MIM = "cn105.mqtt_mim";
 
         void CN105MqttMim::setup() {
-            auto* mqtt = mqtt::global_mqtt_client;
-            if (mqtt == nullptr) {
-                ESP_LOGW(MIM_TAG, "MQTT client not initialized");
-                return;
+            if (mqtt::global_mqtt_client != nullptr) {
+                std::string subscribe_topic = this->trace_topic_ + "/to_hvac";  // Suffixe pour écoute
+                mqtt::global_mqtt_client->subscribe(subscribe_topic, [this](const std::string& topic, const std::string& payload) {
+                    this->on_mim_command_received_(topic, payload);
+                    });
+                ESP_LOGCONFIG(TAG_MIM, "Souscription au topic MIM: %s", subscribe_topic.c_str());
             }
-            mqtt->subscribe(trace_topic_, [this](const std::string& topic, const std::string& payload) {
-                this->on_melcloud_command_received_(topic, payload);
-                });
         }
 
-        void CN105MqttMim::on_melcloud_command_received_(const std::string& topic, const std::string& payload) {
-            ESP_LOGD(MIM_TAG, "Commande Melcloud reçue sur %s: %s", topic.c_str(), payload.c_str());
+        void CN105MqttMim::dump_config() {
+            ESP_LOGCONFIG(TAG_MIM, "CN105 MQTT MIM:");
+            ESP_LOGCONFIG(TAG_MIM, "  Topic de base: %s", this->trace_topic_.c_str());
+            ESP_LOGCONFIG(TAG_MIM, "  Buffer size: %u", this->forward_buffer_size_);
+        }
 
-            std::vector<uint8_t> trame;
-            for (size_t i = 0; i < payload.length(); i += 2) {
-                trame.push_back(std::stoi(payload.substr(i, 2), nullptr, 16));
+        void CN105MqttMim::on_mim_command_received_(const std::string& topic, const std::string& payload) {
+            // Parser le payload en bytes (ex. hex string to vector<uint8_t>)
+            std::vector<uint8_t> data;
+            std::stringstream ss(payload);
+            std::string byte_str;
+            while (std::getline(ss, byte_str, ' ')) {  // Assumant payload comme "FC 41 ..." (hex séparé par espaces)
+                uint8_t byte = static_cast<uint8_t>(std::stoi(byte_str, nullptr, 16));
+                data.push_back(byte);
             }
-            if (parent_ == nullptr) {
-                ESP_LOGW(MIM_TAG, "Parent not set");
-                return;
-            }
-            parent_->activate_passive_mode();
-            parent_->send_raw_hvac_command(trame);
-            mqtt::global_mqtt_client->publish(trace_topic_, "RX: " + payload);
-            forward_buffer_.insert(forward_buffer_.end(), trame.begin(), trame.end());
-            if (forward_buffer_.size() > forward_buffer_size_ / 2) {
-                parent_->send_raw_hvac_command(forward_buffer_);
-                mqtt::global_mqtt_client->publish(trace_topic_, "TX: " + payload);
-                forward_buffer_.clear();
+
+            if (this->parent_ != nullptr) {
+                this->parent_->send_raw_hvac_command(data);  // Forward vers le climatiseur
+                this->parent_->activate_passive_mode();  // Réinitialise le timer du mode passif
+                ESP_LOGD(TAG_MIM, "Commande MIM reçue et forwardée. Mode passif réinitialisé.");
             }
         }
 
         void CN105MqttMim::on_hvac_response_received(const std::vector<uint8_t>& data) {
-            std::string hex;
-            for (uint8_t byte : data) {
-                char buf[3];
-                snprintf(buf, sizeof(buf), "%02X", byte);
-                hex += buf;
+            if (this->parent_ == nullptr || !this->parent_->is_in_passive_mode()) {
+                ESP_LOGD(TAG_MIM, "Publication MIM ignorée car mode passif expiré ou parent non défini.");
+                return;  // Ne publie pas si timeout expiré
             }
-            ESP_LOGD(MIM_TAG, "Réponse HVAC reçue: %s", hex.c_str());
-            mqtt::global_mqtt_client->publish(trace_topic_, "RX: " + hex);
-        }
 
-        void CN105MqttMim::dump_config() {
-            ESP_LOGCONFIG(MIM_TAG, "CN105MqttMim:");
-            ESP_LOGCONFIG(MIM_TAG, "  Topic Prefix: %s", trace_topic_.c_str());
-            ESP_LOGCONFIG(MIM_TAG, "  Forward Buffer Size: %u", forward_buffer_size_);
+            // Construire le payload (ex. hex string)
+            std::stringstream ss;
+            for (size_t i = 0; i < data.size(); ++i) {
+                ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);
+                if (i < data.size() - 1) ss << " ";
+            }
+            std::string payload = ss.str();
+
+            std::string publish_topic = this->trace_topic_ + "/from_hvac";  // Suffixe pour publication
+            mqtt::global_mqtt_client->publish(publish_topic, payload);
+            ESP_LOGD(TAG_MIM, "Réponse HVAC publiée sur %s (mode passif actif).", publish_topic.c_str());
         }
 
     }  // namespace cn105

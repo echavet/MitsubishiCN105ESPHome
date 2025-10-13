@@ -21,7 +21,7 @@ namespace esphome {
             void on_hvac_response_received(const std::vector<uint8_t>& data);
 
         protected:
-            void on_melcloud_command_received_(const std::string& topic, const std::string& payload);
+            void on_mim_command_received_(const std::string& topic, const std::string& payload);  // Renommé pour clarté
 
             CN105Climate* parent_ = nullptr;
             std::string trace_topic_ = "debug/cn105/trames";

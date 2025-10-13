@@ -50,6 +50,8 @@ namespace esphome {
         void CN105Climate::activate_passive_mode() {
             if (!this->passive_mode_active_) {
                 ESP_LOGI(TAG, "Dispositif officiel détecté. Passage en mode passif pour %u ms.", this->passive_mode_duration_ms_);
+            } else {
+                ESP_LOGD(TAG, "Mode passif réinitialisé (nouveau paquet reçu).");
             }
             // On active le mode et on réinitialise le timer à chaque commande
             this->passive_mode_active_ = true;
