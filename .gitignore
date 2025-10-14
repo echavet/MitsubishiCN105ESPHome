@@ -1,3 +1,5 @@
+**/.DS_Store
+.DS_Store
 secrets.yaml
 atoms3/.DS_Store
 atoms3/.gitignore
@@ -5,8 +7,7 @@ atoms3/.gitignore
 __pycache__
 clim-chambre-awox.yaml
 .github/.DS_Store
-.DS_Store
-.gitignore
 test.yaml
-
 snapshot.sh
+components/cn105/.DS_Store
+.venv/*
