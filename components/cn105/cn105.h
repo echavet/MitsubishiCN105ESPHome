@@ -155,6 +155,7 @@ namespace esphome {
         void controlFan();
         void controlSwing();
         void calculate_and_apply_gliding_setpoint();
+        void prepare_display_temperatures();
 
         // Configure the climate object with traits that we support.
 

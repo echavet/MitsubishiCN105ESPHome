@@ -236,15 +236,8 @@ void CN105Climate::publishWantedSettingsStateToHA() {
     // HA Temp
     this->target_temperature = this->getTemperatureSetting();
 
-    // Correction affichage AUTO fidèle ±2°C
-    if (this->mode == climate::CLIMATE_MODE_AUTO && !is_heat_cool_override_active_) {
-        float t_unique = this->currentSettings.temperature;
-        this->target_temperature_low = t_unique - 2.0f;
-        this->target_temperature_high = t_unique + 2.0f;
-        ESP_LOGD(TAG, "AUTO: Affichage HA corrigé %.1f ±2°C", t_unique);
-    }
-
-    // publish to HA
+    // Préparer l'affichage des températures puis publier à HA
+    this->prepare_display_temperatures();
     this->publish_state();
 
 }
@@ -262,6 +255,22 @@ void CN105Climate::sendWantedSettingsDelegate() {
     this->hpPacketDebug(packet, 22, "WRITE_SETTINGS");
 
     this->publishWantedSettingsStateToHA();
+
+    // IMPORTANT : Sauvegarder la nouvelle température dans currentSettings AVANT le reset
+    // pour qu'elle ne soit pas écrasée au prochain cycle
+    if (this->wantedSettings.temperature != -1) {
+        this->currentSettings.temperature = this->wantedSettings.temperature;
+        this->target_temperature = this->wantedSettings.temperature;
+        ESP_LOGD(LOG_HEAT_COOL_TAG, "Température sauvegardée: currentSettings=%.1f, target=%.1f°C",
+            this->currentSettings.temperature, this->target_temperature);
+    }
+    // Sauvegarder aussi les bornes d'affichage stockées
+    if (this->mode == climate::CLIMATE_MODE_HEAT || this->mode == climate::CLIMATE_MODE_COOL ||
+        this->mode == climate::CLIMATE_MODE_FAN_ONLY) {
+        // Pour modes à consigne unique, synchroniser
+        target_temp_low_stored_ = this->target_temperature;
+        target_temp_high_stored_ = this->target_temperature;
+    }
 
     // as soon as the packet is sent, we reset the settings
     this->wantedSettings.resetSettings();

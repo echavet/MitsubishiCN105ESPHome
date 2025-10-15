@@ -489,6 +489,7 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->current_temperature = currentStatus.roomTemperature;
 
         this->updateAction();       // update action info on HA climate component
+        this->prepare_display_temperatures();
         this->publish_state();
 
         if (this->compressor_frequency_sensor_ != nullptr) {
@@ -543,15 +544,8 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
     this->currentSettings.iSee = settings.iSee;
     this->currentSettings.connected = true;
 
-    // Correction affichage AUTO fidèle ±2°C
-    if (this->mode == climate::CLIMATE_MODE_AUTO && !is_heat_cool_override_active_) {
-        float t_unique = this->currentSettings.temperature;
-        this->target_temperature_low = t_unique - 2.0f;
-        this->target_temperature_high = t_unique + 2.0f;
-        ESP_LOGD(TAG, "AUTO: Affichage HA corrigé %.1f ±2°C", t_unique);
-    }
-
-    // publish to HA
+    // Préparer l'affichage des températures puis publier à HA
+    this->prepare_display_temperatures();
     this->publish_state();
 
 }

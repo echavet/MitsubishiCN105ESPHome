@@ -43,6 +43,12 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->powerRequestWithoutResponses = 0;     // power request is not supported by all heatpump #112
 
     this->remote_temp_timeout_ = 4294967295;    // uint32_t max
+    
+    // Initialiser les bornes d'affichage pour éviter NaN au démarrage
+    float default_temp = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
+    this->target_temperature_low = default_temp;
+    this->target_temperature_high = default_temp;
+    
     this->generateExtraComponents();
     this->loopCycle.init();
     this->wantedSettings.resetSettings();

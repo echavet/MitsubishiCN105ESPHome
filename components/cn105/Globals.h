@@ -22,6 +22,7 @@ static const char* LOG_SETTINGS_TAG = "SETTINGS";   // Logging settings changes
 static const char* LOG_STATUS_TAG = "STATUS";       // Logging status changes
 static const char* LOG_CYCLE_TAG = "CYCLE";         // loop cycles logs
 static const char* LOG_UPD_INT_TAG = "UPDT_ITVL";   // update interval logging
+static const char* LOG_HEAT_COOL_TAG = "HEAT_COOL"; // Logging HEAT_COOL mode and gliding setpoint
 
 
 static const char* SHEDULER_REMOTE_TEMP_TIMEOUT = "->remote_temp_timeout";

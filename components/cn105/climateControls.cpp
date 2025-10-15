@@ -40,6 +40,7 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
     // Traiter les commandes de climatisation ici
     if (call.get_mode().has_value()) {
         ESP_LOGD("control", "Mode change asked");
+        auto previous_mode = this->mode;
         // Changer le mode de climatisation
         this->mode = *call.get_mode();
 
@@ -47,10 +48,47 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
         if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
             this->is_heat_cool_override_active_ = true;
             ESP_LOGI("control", "Mode HEAT_COOL activé - Consigne glissante");
+            // Si passage depuis un mode à consigne unique, initialiser les bornes
+            if (previous_mode == climate::CLIMATE_MODE_HEAT ||
+                previous_mode == climate::CLIMATE_MODE_COOL ||
+                previous_mode == climate::CLIMATE_MODE_FAN_ONLY) {
+                float current_temp = this->target_temperature;
+                target_temp_low_stored_ = current_temp - 1.0f;
+                target_temp_high_stored_ = current_temp + 1.0f;
+                ESP_LOGD(LOG_HEAT_COOL_TAG, "Init bornes HEAT_COOL depuis consigne unique: [%.1f - %.1f]°C",
+                    target_temp_low_stored_, target_temp_high_stored_);
+            }
+            // Si passage depuis AUTO ou DRY (qui ont déjà des bornes), garder les bornes existantes
         } else {
             this->is_heat_cool_override_active_ = false;
             if (this->mode == climate::CLIMATE_MODE_AUTO) {
                 ESP_LOGI("control", "Mode AUTO natif - Fidélité ±2°C");
+                // Si passage depuis un mode à consigne unique, utiliser cette consigne pour AUTO
+                if (previous_mode == climate::CLIMATE_MODE_HEAT ||
+                    previous_mode == climate::CLIMATE_MODE_COOL ||
+                    previous_mode == climate::CLIMATE_MODE_FAN_ONLY) {
+                    float current_temp = this->target_temperature;
+                    target_temp_low_stored_ = current_temp - 2.0f;
+                    target_temp_high_stored_ = current_temp + 2.0f;
+                    ESP_LOGD(LOG_HEAT_COOL_TAG, "Init bornes AUTO depuis consigne unique: [%.1f - %.1f]°C",
+                        target_temp_low_stored_, target_temp_high_stored_);
+                }
+            } else if (this->mode == climate::CLIMATE_MODE_HEAT ||
+                this->mode == climate::CLIMATE_MODE_COOL ||
+                this->mode == climate::CLIMATE_MODE_FAN_ONLY) {
+                // Si passage depuis AUTO/HEAT_COOL/DRY, prendre la moyenne des bornes comme consigne
+                if (previous_mode == climate::CLIMATE_MODE_AUTO ||
+                    previous_mode == climate::CLIMATE_MODE_HEAT_COOL ||
+                    previous_mode == climate::CLIMATE_MODE_DRY) {
+                    float single_temp = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
+                    this->target_temperature = single_temp;
+                    // Synchroniser les bornes
+                    this->target_temperature_low = single_temp;
+                    this->target_temperature_high = single_temp;
+                    target_temp_low_stored_ = single_temp;
+                    target_temp_high_stored_ = single_temp;
+                    ESP_LOGD(LOG_HEAT_COOL_TAG, "Init consigne unique depuis AUTO/HEAT_COOL: %.1f°C", single_temp);
+                }
             }
         }
 
@@ -72,12 +110,53 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
         target_temp_low_stored_ = *call.get_target_temperature_low();
         target_temp_high_stored_ = *call.get_target_temperature_high();
 
-        ESP_LOGI("control", "Bornes HEAT_COOL: %.1f - %.1f°C",
-            target_temp_low_stored_, target_temp_high_stored_);
+        ESP_LOGI(LOG_HEAT_COOL_TAG, "Bornes reçues: T_low=%.1f°C, T_high=%.1f°C (range=%.1f°C)",
+            target_temp_low_stored_, target_temp_high_stored_,
+            target_temp_high_stored_ - target_temp_low_stored_);
 
-        if (is_heat_cool_override_active_) {
-            // Calcul immédiat de la consigne glissante
+        // Traiter les bornes selon le mode
+        if (this->mode == climate::CLIMATE_MODE_HEAT ||
+            this->mode == climate::CLIMATE_MODE_COOL ||
+            this->mode == climate::CLIMATE_MODE_FAN_ONLY) {
+            // HEAT/COOL/FAN : consigne unique = moyenne des bornes
+            float single_temp = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
+            this->target_temperature = single_temp;
+            // Définir les bornes d'affichage (synchronisées)
+            this->target_temperature_low = single_temp;
+            this->target_temperature_high = single_temp;
+            // Synchroniser les valeurs stockées aussi
+            target_temp_low_stored_ = single_temp;
+            target_temp_high_stored_ = single_temp;
+            ESP_LOGD(LOG_HEAT_COOL_TAG, "HEAT/COOL/FAN: consigne=%.1f, bornes=[%.1f - %.1f]",
+                single_temp, this->target_temperature_low, this->target_temperature_high);
+            controlTemperature();
+        } else if (is_heat_cool_override_active_) {
+            // HEAT_COOL : calculer consigne glissante
+            ESP_LOGD(LOG_HEAT_COOL_TAG, "Mode HEAT_COOL actif -> Calcul consigne glissante");
             this->calculate_and_apply_gliding_setpoint();
+            // Définir les bornes d'affichage
+            this->target_temperature_low = target_temp_low_stored_;
+            this->target_temperature_high = target_temp_high_stored_;
+        } else if (this->mode == climate::CLIMATE_MODE_AUTO) {
+            // AUTO natif : T_unique = moyenne des bornes
+            float t_unique = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
+            this->target_temperature = t_unique;
+            // Définir les bornes d'affichage (±2°C)
+            this->target_temperature_low = t_unique - 2.0f;
+            this->target_temperature_high = t_unique + 2.0f;
+            ESP_LOGD(LOG_HEAT_COOL_TAG, "AUTO: T=%.1f, bornes=[%.1f - %.1f]",
+                t_unique, this->target_temperature_low, this->target_temperature_high);
+            controlTemperature();
+        } else if (this->mode == climate::CLIMATE_MODE_DRY) {
+            // DRY : conserver bornes indépendantes, consigne = moyenne
+            float avg_temp = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
+            this->target_temperature = avg_temp;
+            // Définir les bornes d'affichage (indépendantes)
+            this->target_temperature_low = target_temp_low_stored_;
+            this->target_temperature_high = target_temp_high_stored_;
+            ESP_LOGD(LOG_HEAT_COOL_TAG, "DRY: consigne=%.1f, bornes=[%.1f - %.1f]",
+                avg_temp, this->target_temperature_low, this->target_temperature_high);
+            controlTemperature();
         }
         updated = true;
     }
@@ -104,6 +183,12 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
         this->wantedSettings.hasBeenSent = false;
         this->wantedSettings.lastChange = CUSTOM_MILLIS;
         this->debugSettings("control (wantedSettings)", this->wantedSettings);
+
+        // Préparer l'affichage des températures puis publier à HA
+        this->prepare_display_temperatures();
+        this->publish_state();
+        ESP_LOGD(LOG_HEAT_COOL_TAG, "État publié à HA: T=%.1f, T_low=%.1f, T_high=%.1f",
+            this->target_temperature, this->target_temperature_low, this->target_temperature_high);
     }
 
 }
@@ -217,6 +302,8 @@ void CN105Climate::controlTemperature() {
         setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
         this->wantedSettings.temperature = setting < 10 ? 10 : (setting > 31 ? 31 : setting);
     }
+    ESP_LOGD(LOG_HEAT_COOL_TAG, "controlTemperature: target=%.1f -> wantedSettings.temperature=%.1f",
+        this->target_temperature, this->wantedSettings.temperature);
 }
 
 
@@ -226,41 +313,95 @@ void CN105Climate::controlMode() {
         ESP_LOGI("control", "changing mode to COOL");
         this->setModeSetting("COOL");
         this->setPowerSetting("ON");
+        // Initialiser bornes d'affichage : utiliser target_temperature ou moyenne des stored
+        if (!std::isnan(this->target_temperature)) {
+            this->target_temperature_low = this->target_temperature;
+            this->target_temperature_high = this->target_temperature;
+            // Synchroniser les valeurs stockées
+            target_temp_low_stored_ = this->target_temperature;
+            target_temp_high_stored_ = this->target_temperature;
+        } else {
+            float default_temp = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
+            this->target_temperature = default_temp;
+            this->target_temperature_low = default_temp;
+            this->target_temperature_high = default_temp;
+            target_temp_low_stored_ = default_temp;
+            target_temp_high_stored_ = default_temp;
+        }
+        ESP_LOGD(LOG_HEAT_COOL_TAG, "COOL: T=%.1f, bornes=[%.1f - %.1f]",
+            this->target_temperature, this->target_temperature_low, this->target_temperature_high);
         break;
     case climate::CLIMATE_MODE_HEAT:
         ESP_LOGI("control", "changing mode to HEAT");
         this->setModeSetting("HEAT");
         this->setPowerSetting("ON");
+        // Initialiser bornes d'affichage : utiliser target_temperature ou moyenne des stored
+        if (!std::isnan(this->target_temperature)) {
+            this->target_temperature_low = this->target_temperature;
+            this->target_temperature_high = this->target_temperature;
+            // Synchroniser les valeurs stockées
+            target_temp_low_stored_ = this->target_temperature;
+            target_temp_high_stored_ = this->target_temperature;
+        } else {
+            float default_temp = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
+            this->target_temperature = default_temp;
+            this->target_temperature_low = default_temp;
+            this->target_temperature_high = default_temp;
+            target_temp_low_stored_ = default_temp;
+            target_temp_high_stored_ = default_temp;
+        }
+        ESP_LOGD(LOG_HEAT_COOL_TAG, "HEAT: T=%.1f, bornes=[%.1f - %.1f]",
+            this->target_temperature, this->target_temperature_low, this->target_temperature_high);
         break;
     case climate::CLIMATE_MODE_DRY:
         ESP_LOGI("control", "changing mode to DRY");
         this->setModeSetting("DRY");
         this->setPowerSetting("ON");
+        // Initialiser bornes d'affichage depuis les valeurs stockées
+        this->target_temperature_low = target_temp_low_stored_;
+        this->target_temperature_high = target_temp_high_stored_;
         break;
     case climate::CLIMATE_MODE_AUTO:
-        if (is_heat_cool_override_active_) {
-            // Ne rien faire ici, géré par calculate_and_apply_gliding_setpoint()
-            ESP_LOGD("control", "AUTO via HEAT_COOL - consigne calculée ailleurs");
-        } else {
-            // Mode AUTO natif : calculer T_unique
-            float t_unique = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
-            ESP_LOGI("control", "Mode AUTO natif - T_unique: %.1f°C", t_unique);
-            this->setModeSetting("AUTO");
-            this->wantedSettings.temperature = t_unique;
-        }
-        this->setPowerSetting("ON");
-        break;
-    case climate::CLIMATE_MODE_HEAT_COOL:
-        ESP_LOGI("control", "changing mode to HEAT_COOL - utilise AUTO natif avec consigne glissante");
-        // Le mode HEAT_COOL utilise AUTO sur le CN105 avec calcul de consigne glissante
+    {
+        ESP_LOGI("control", "changing mode to AUTO");
         this->setModeSetting("AUTO");
         this->setPowerSetting("ON");
-        // La température sera calculée par calculate_and_apply_gliding_setpoint()
+        // Calculer et initialiser bornes d'affichage
+        float t_unique_auto = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
+        this->target_temperature = t_unique_auto;
+        this->target_temperature_low = t_unique_auto - 2.0f;
+        this->target_temperature_high = t_unique_auto + 2.0f;
+        this->wantedSettings.temperature = t_unique_auto;
+    }
+    break;
+    case climate::CLIMATE_MODE_HEAT_COOL:
+        ESP_LOGI("control", "changing mode to HEAT_COOL - consigne glissante");
+        this->setModeSetting("AUTO");
+        this->setPowerSetting("ON");
+        // Initialiser bornes d'affichage depuis les valeurs stockées
+        this->target_temperature_low = target_temp_low_stored_;
+        this->target_temperature_high = target_temp_high_stored_;
         break;
     case climate::CLIMATE_MODE_FAN_ONLY:
         ESP_LOGI("control", "changing mode to FAN_ONLY");
         this->setModeSetting("FAN");
         this->setPowerSetting("ON");
+        // Initialiser bornes d'affichage : utiliser target_temperature ou moyenne des stored
+        if (!std::isnan(this->target_temperature)) {
+            this->target_temperature_low = this->target_temperature;
+            this->target_temperature_high = this->target_temperature;
+            target_temp_low_stored_ = this->target_temperature;
+            target_temp_high_stored_ = this->target_temperature;
+        } else {
+            float default_temp = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
+            this->target_temperature = default_temp;
+            this->target_temperature_low = default_temp;
+            this->target_temperature_high = default_temp;
+            target_temp_low_stored_ = default_temp;
+            target_temp_high_stored_ = default_temp;
+        }
+        ESP_LOGD(LOG_HEAT_COOL_TAG, "FAN: T=%.1f, bornes=[%.1f - %.1f]",
+            this->target_temperature, this->target_temperature_low, this->target_temperature_high);
         break;
     case climate::CLIMATE_MODE_OFF:
         ESP_LOGI("control", "changing mode to OFF");
@@ -462,6 +603,83 @@ void CN105Climate::set_remote_temperature(float setting) {
     ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
 }
 
+void CN105Climate::prepare_display_temperatures() {
+    // Méthode centralisée pour préparer l'affichage des températures dans HA
+    // Appelée juste avant chaque publish_state()
+
+    // PROTECTION : Ne recalculer QUE si pas de commande en cours OU déjà envoyée
+    // Si commande en cours, les bornes ont déjà été définies dans control()
+    bool skip_recalculation = (this->wantedSettings.hasChanged && !this->wantedSettings.hasBeenSent);
+    if (skip_recalculation) {
+        ESP_LOGD(LOG_HEAT_COOL_TAG, "Commande en cours - utilise bornes déjà définies: [%.1f - %.1f]",
+            this->target_temperature_low, this->target_temperature_high);
+        return;
+    }
+
+    switch (this->mode) {
+    case climate::CLIMATE_MODE_HEAT:
+    case climate::CLIMATE_MODE_COOL:
+    case climate::CLIMATE_MODE_FAN_ONLY:
+    {
+        // Modes à consigne unique : utiliser currentSettings (persistant) au lieu de target_temperature
+        float current_temp = this->currentSettings.temperature;
+        if (!std::isnan(current_temp) && current_temp > 0) {
+            this->target_temperature = current_temp;
+            this->target_temperature_low = current_temp;
+            this->target_temperature_high = current_temp;
+            ESP_LOGV(LOG_HEAT_COOL_TAG, "Display HEAT/COOL/FAN: %.1f (from currentSettings)", current_temp);
+        } else {
+            // Fallback si currentSettings vide
+            this->target_temperature_low = this->target_temperature;
+            this->target_temperature_high = this->target_temperature;
+            ESP_LOGV(LOG_HEAT_COOL_TAG, "Display HEAT/COOL/FAN: %.1f (from target_temperature)",
+                this->target_temperature);
+        }
+    }
+    break;
+
+    case climate::CLIMATE_MODE_AUTO:
+    {
+        if (!is_heat_cool_override_active_) {
+            // AUTO natif : calculer T_unique à partir des bornes stockées
+            float t_unique = (target_temp_low_stored_ + target_temp_high_stored_) / 2.0f;
+            this->target_temperature = t_unique;
+            // Affichage ±2°C autour de T_unique pour fidélité Mitsubishi
+            this->target_temperature_low = t_unique - 2.0f;
+            this->target_temperature_high = t_unique + 2.0f;
+            ESP_LOGV(LOG_HEAT_COOL_TAG, "Display AUTO: T=%.1f, [%.1f - %.1f] (±2°C)",
+                t_unique, this->target_temperature_low, this->target_temperature_high);
+        }
+        // Sinon HEAT_COOL override : les bornes sont déjà dans target_temp_low/high_stored_
+    }
+    break;
+
+    case climate::CLIMATE_MODE_HEAT_COOL:
+    {
+        // HEAT_COOL : utiliser les bornes stockées
+        this->target_temperature_low = target_temp_low_stored_;
+        this->target_temperature_high = target_temp_high_stored_;
+        ESP_LOGV(LOG_HEAT_COOL_TAG, "Display HEAT_COOL: [%.1f - %.1f]",
+            this->target_temperature_low, this->target_temperature_high);
+    }
+    break;
+
+    case climate::CLIMATE_MODE_DRY:
+    {
+        // DRY : utiliser les bornes stockées
+        this->target_temperature_low = target_temp_low_stored_;
+        this->target_temperature_high = target_temp_high_stored_;
+        ESP_LOGV(LOG_HEAT_COOL_TAG, "Display DRY: [%.1f - %.1f]",
+            this->target_temperature_low, this->target_temperature_high);
+    }
+    break;
+
+    default:
+        // Pas de mise à jour pour OFF ou autres
+        break;
+    }
+}
+
 void CN105Climate::calculate_and_apply_gliding_setpoint() {
     if (!is_heat_cool_override_active_) return;
 
@@ -469,13 +687,16 @@ void CN105Climate::calculate_and_apply_gliding_setpoint() {
     float t_high = target_temp_high_stored_;
     float t_amb = this->current_temperature;
 
+    ESP_LOGD(LOG_HEAT_COOL_TAG, "Calcul consigne glissante: T_amb=%.1f, Bornes=[%.1f - %.1f]°C",
+        t_amb, t_low, t_high);
+
     // Correction amplitude si < 4°C
     float range = t_high - t_low;
     if (range <= 4.0f) {
         float median = (t_low + t_high) / 2.0f;
         t_low = median - 2.0f;
         t_high = median + 2.0f;
-        ESP_LOGD("control", "Range ajusté: %.1f - %.1f°C", t_low, t_high);
+        ESP_LOGD(LOG_HEAT_COOL_TAG, "Range < 4°C ajusté: %.1f - %.1f°C", t_low, t_high);
     }
 
     // Bornes glissantes
@@ -486,18 +707,22 @@ void CN105Climate::calculate_and_apply_gliding_setpoint() {
     float t_glissante;
     if (t_amb <= t_low) {
         t_glissante = t_min_glide;
+        ESP_LOGD(LOG_HEAT_COOL_TAG, "T_amb <= T_low -> T_glissante = T_min_glide = %.1f°C", t_glissante);
     } else if (t_amb >= t_high) {
         t_glissante = t_max_glide;
+        ESP_LOGD(LOG_HEAT_COOL_TAG, "T_amb >= T_high -> T_glissante = T_max_glide = %.1f°C", t_glissante);
     } else {
         // Interpolation linéaire
         t_glissante = t_min_glide +
             (t_amb - t_low) * (t_max_glide - t_min_glide) / (t_high - t_low);
+        ESP_LOGD(LOG_HEAT_COOL_TAG, "Interpolation linéaire -> T_glissante = %.1f°C", t_glissante);
     }
 
     // Hysteresis 0.5°C
     if (abs(t_glissante - last_gliding_setpoint_) < 0.5f &&
         last_gliding_setpoint_ != -999.0f) {
-        ESP_LOGD("control", "Hysteresis: pas de changement (delta < 0.5°C)");
+        ESP_LOGD(LOG_HEAT_COOL_TAG, "Hysteresis: pas de changement (delta=%.2f < 0.5°C)",
+            abs(t_glissante - last_gliding_setpoint_));
         return;
     }
 
@@ -509,7 +734,7 @@ void CN105Climate::calculate_and_apply_gliding_setpoint() {
     this->wantedSettings.hasChanged = true;
     this->wantedSettings.hasBeenSent = false;
 
-    ESP_LOGI("control", "HEAT_COOL: T_amb=%.1f -> T_glissante=%.1f°C",
+    ESP_LOGI(LOG_HEAT_COOL_TAG, "✓ Consigne appliquée: T_amb=%.1f -> T_glissante=%.1f°C",
         t_amb, t_glissante);
 }
 

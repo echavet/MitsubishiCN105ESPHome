@@ -92,6 +92,17 @@ void CN105Climate::debugClimate(const char* settingName) {
         this->target_temperature,
         this->fan_mode.has_value() ? LOG_STR_ARG(climate_fan_mode_to_string(this->fan_mode.value())) : "-",
         LOG_STR_ARG(climate_swing_mode_to_string(this->swing_mode)));
+
+    // Affichage spécifique HEAT_COOL / AUTO avec dual setpoint
+    if (this->traits_.get_supports_two_point_target_temperature()) {
+        ESP_LOGD(LOG_SETTINGS_TAG, "[%s]-> [HEAT_COOL mode: %s, T_low: %.1f, T_high: %.1f, T_low_stored: %.1f, T_high_stored: %.1f]",
+            settingName,
+            is_heat_cool_override_active_ ? "ACTIVE" : "INACTIVE",
+            this->target_temperature_low,
+            this->target_temperature_high,
+            target_temp_low_stored_,
+            target_temp_high_stored_);
+    }
 }
 
 
