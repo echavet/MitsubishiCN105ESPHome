@@ -240,7 +240,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
     // --- START OF MODIFIED SECTION - Reverted widevane section back to more or less original state
     if ((data[10] != 0) && (this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {    // wideVane is not always supported
         receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 8, data[10] & 0x0F, "wideVane reading");
-        this->wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;        
+        this->wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
         ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, this->wideVaneAdj);
     } else {
         ESP_LOGD("Decoder", "widevane is not supported");
@@ -254,10 +254,9 @@ void CN105Climate::getSettingsFromResponsePacket() {
     // --- AIRFLOW CONTROL START
     if (this->airflow_control_select_ != nullptr) {
         if (data[10] == 0x80) {
-            if (receivedSettings.iSee) { 
+            if (receivedSettings.iSee) {
                 receivedRunStates.airflow_control = lookupByteMapValue(AIRFLOW_CONTROL_MAP, AIRFLOW_CONTROL, 3, data[14], "airflow control reading");
-            }
-            else { 
+            } else {
                 // For some reason data[10] is 0x80, but the i-See sensor is not active. 
                 // Some units let us do this, but the real mode is unknown (might be powersave) and the i-See sensor does not get activated.
                 //receivedRunStates.airflow_control = "N/A";
@@ -272,7 +271,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
             this->airflow_control_select_->publish_state(receivedRunStates.airflow_control);
         }
     }
-    
+
     // --- AIRFLOW CONTROL END
 
     this->heatpumpUpdate(receivedSettings);
@@ -364,7 +363,7 @@ void CN105Climate::getHVACOptionsFromResponsePacket() {
     // CL = circulator (1 = on, 0 = off) ! MIGHT BE SAME BYTE AS ECONOCOOL - NEEDS TESTING !
     heatpumpRunStates receivedRunStates{};
     ESP_LOGD("Decoder", "[0x42 is HVAC options]");
-    
+
     if (this->air_purifier_switch_ != nullptr) {
         receivedRunStates.air_purifier = data[1];
         ESP_LOGD("Decoder", "[Air purifier : %s]", receivedRunStates.air_purifier ? "ON" : "OFF");
@@ -499,7 +498,7 @@ void CN105Climate::getDataFromResponsePacket() {
             }
         }
     }
-        break;
+             break;
 
     case 0x42:
         /* HVAC Options */
@@ -617,7 +616,7 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
     }
 
     this->currentSettings.iSee = settings.iSee;
-    
+
     this->currentSettings.connected = true;
 
     // publish to HA
@@ -626,19 +625,20 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
 }
 
 
+
 void CN105Climate::heatpumpUpdate(heatpumpSettings& settings) {
     // settings correponds to current settings
     ESP_LOGV(LOG_SETTINGS_TAG, "Settings received");
-
-    this->debugSettings("current", this->currentSettings);
-    this->debugSettings("received", settings);
-    this->debugSettings("wanted", this->wantedSettings);
-    this->debugClimate("climate");
-
-    if (this->currentSettings != settings) {
-        ESP_LOGD(LOG_SETTINGS_TAG, "Settings changed, updating HA states");
+    // if received settings are different from current settings 
+    if (settings != this->currentSettings) {
+        ESP_LOGI(LOG_SETTINGS_TAG, "Settings changed, updating HA states");
+        this->debugSettings("current", this->currentSettings);
+        this->debugSettings("received", settings);
+        this->debugSettings("wanted", this->wantedSettings);
+        this->debugClimate("climate");
         this->publishStateToHA(settings);
     }
+
 }
 
 void CN105Climate::checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings) {

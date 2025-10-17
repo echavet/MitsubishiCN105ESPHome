@@ -398,6 +398,11 @@ void CN105Climate::updateAction() {
 }
 
 climate::ClimateTraits CN105Climate::traits() {
+    if (this->mode == climate::CLIMATE_MODE_AUTO) {
+        this->traits_.set_supports_two_point_target_temperature(true);
+    } else {
+        this->traits_.set_supports_two_point_target_temperature(false);
+    }
     return traits_;
 }
 
