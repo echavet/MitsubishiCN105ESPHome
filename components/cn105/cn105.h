@@ -285,8 +285,9 @@ namespace esphome {
         void checkFanSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
         void checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
         void checkWideVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
-//        void checkAirflowControlSettings(heatpumpRunStates& settings, bool updateCurrentSettings = true);
+        //        void checkAirflowControlSettings(heatpumpRunStates& settings, bool updateCurrentSettings = true);
         void updateExtraSelectComponents(heatpumpSettings& settings);
+        void updateTargetTemperaturesFromSettings(float temperature);
 
         //void statusChanged();
         void updateAction();

@@ -57,6 +57,26 @@ const char* CN105Climate::getIfNotNull(const char* what, const char* defaultValu
     return what;
 }
 
+void CN105Climate::updateTargetTemperaturesFromSettings(float temperature) {
+    if (this->mode == climate::CLIMATE_MODE_AUTO) {
+        //if (this->traits().get_supports_two_point_target_temperature()) {
+            // Mode AUTO : Afficher la plage corrigée ±2°C autour de la médiane            
+        this->traits().set_supports_two_point_target_temperature(true);
+        this->target_temperature_low = temperature - 2.0f;
+        this->target_temperature_high = temperature + 2.0f;
+        ESP_LOGD(LOG_SETTINGS_TAG, "DUAL SETPOINT [%.1f - %.1f], median %.1f",
+            this->target_temperature_low, this->target_temperature_high, temperature);
+        //this->target_temperature = NAN;
+    } else {
+        ESP_LOGD(LOG_SETTINGS_TAG, "SINGLE SETPOINT %.1f",
+            temperature);
+        this->traits().set_supports_two_point_target_temperature(false);
+        this->target_temperature = temperature;
+        //this->target_temperature_low = NAN;
+        //this->target_temperature_high = NAN;
+    }
+}
+
 void CN105Climate::debugSettings(const char* settingName, wantedHeatpumpSettings& settings) {
 #ifdef USE_ESP32
     ESP_LOGD(LOG_ACTION_EVT_TAG, "[%s]-> [power: %s, target °C: %.1f, mode: %s, fan: %s, vane: %s, wvane: %s, hasChanged ? -> %s, hasBeenSent ? -> %s]",

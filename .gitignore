@@ -13,3 +13,4 @@ DIFF-MODIFICATIONS.md
 RESUME-CORRECTIONS.md
 snapshot.sh
 myfirmware/.gitignore
+.vscode/*

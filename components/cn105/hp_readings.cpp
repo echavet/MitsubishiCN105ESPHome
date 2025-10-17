@@ -611,7 +611,7 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
 
     // HA Temp
     if (this->wantedSettings.temperature == -1) { // to prevent overwriting a user demand
-        this->target_temperature = settings.temperature;
+        this->updateTargetTemperaturesFromSettings(settings.temperature);
         this->currentSettings.temperature = settings.temperature;
     }
 
@@ -759,6 +759,8 @@ void CN105Climate::checkFanSettings(heatpumpSettings& settings, bool updateCurre
         }
     }
 }
+
+
 void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
     // currentSettings.power== NULL is true when it is the first time we get en answer from hp
     if (this->hasChanged(currentSettings.power, settings.power, "power") ||
