@@ -65,7 +65,7 @@ const char* CN105Climate::getIfNotNull(const char* what, const char* defaultValu
  */
 float CN105Climate::calculateTemperatureSetting(float setting) {
     if (use_fahrenheit_support_mode_) {
-        setting = mapCelsiusForConversionFromFahrenheit(setting);
+        setting = this->fahrenheitSupport_.normalizeCelsiusForConversionFromFahrenheit(setting);
     }
     if (!this->tempMode) {
         return this->lookupByteMapIndex(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];

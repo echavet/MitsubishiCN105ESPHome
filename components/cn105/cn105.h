@@ -16,6 +16,7 @@
 #include "functions_button.h"
 #include "sub_mode_sensor.h"
 #include "hvac_option_switch.h"
+#include "localization.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/button/button.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
@@ -69,6 +70,7 @@ namespace esphome {
         text_sensor::TextSensor* stage_sensor_{ nullptr }; // to save ref if needed
         bool use_stage_for_operating_status_{ false };
         bool use_fahrenheit_support_mode_ = false;
+        FahrenheitSupport fahrenheitSupport_;
         text_sensor::TextSensor* Functions_sensor_ = nullptr;
         FunctionsButton* Functions_get_button_ = nullptr;
         FunctionsButton* Functions_set_button_ = nullptr;

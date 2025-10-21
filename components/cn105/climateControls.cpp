@@ -504,7 +504,7 @@ void CN105Climate::setAirflowControlSetting(const char* setting) {
 void CN105Climate::set_remote_temperature(float setting) {
     this->shouldSendExternalTemperature_ = true;
     if (use_fahrenheit_support_mode_) {
-        setting = mapCelsiusForConversionFromFahrenheit(setting);
+        setting = this->fahrenheitSupport_.normalizeCelsiusForConversionFromFahrenheit(setting);
     }
     this->remoteTemperature_ = setting;
     ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
