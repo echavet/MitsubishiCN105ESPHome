@@ -10,6 +10,7 @@
     "*.ipp": "cpp",
     "random": "cpp",
     "ranges": "cpp",
-    "map": "cpp"
+    "map": "cpp",
+    "regex": "cpp"
   }
 }

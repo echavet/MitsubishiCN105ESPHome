@@ -1,5 +1,6 @@
 #include "cn105.h"
 #include "Globals.h"
+#include <math.h>
 
 using namespace esphome;
 
@@ -214,16 +215,32 @@ void CN105Climate::debugSettings(const char* settingName, heatpumpSettings& sett
 
 
 void CN105Climate::debugStatus(const char* statusName, heatpumpStatus status) {
+    // Déclarez un buffer (tableau de char) pour la conversion float -> string
+    // 6 caractères suffisent pour "-99.9\0"
+    static char outside_temp_buffer[6];
+
 #ifdef USE_ESP32
-    ESP_LOGI(LOG_STATUS_TAG, "[%s]-> [room C°: %.1f, operating: %s, compressor freq: %.1f Hz]",
+    ESP_LOGI(LOG_STATUS_TAG, "[%s]-> [room C°: %.1f, outside C°: %s, operating: %s, compressor freq: %.1f Hz]",
         statusName,
         status.roomTemperature,
+        // Utilisation de snprintf dans l'expression ternaire
+        isnan(status.outsideAirTemperature)
+        ? "N/A"
+        : (snprintf(outside_temp_buffer, sizeof(outside_temp_buffer), "%.1f", status.outsideAirTemperature) > 0 ? outside_temp_buffer : "ERR"),
         status.operating ? "YES" : "NO ",
         status.compressorFrequency);
 #else
-    ESP_LOGI(LOG_STATUS_TAG, "[%-*s]-> [room C°: %.1f, operating: %-*s, compressor freq: %.1f Hz]",
+    // Le buffer doit être dans la portée pour le bloc #else aussi
+    // Si on veut qu'il soit statique, il faut le définir avant #ifdef
+    // Si la définition est locale, c'est bon :
+
+    ESP_LOGI(LOG_STATUS_TAG, "[%-*s]-> [room C°: %.1f, outside C°: %s, operating: %-*s, compressor freq: %.1f Hz]",
         15, statusName,
         status.roomTemperature,
+        // Utilisation de snprintf dans l'expression ternaire
+        isnan(status.outsideAirTemperature)
+        ? "N/A"
+        : (snprintf(outside_temp_buffer, sizeof(outside_temp_buffer), "%.1f", status.outsideAirTemperature) > 0 ? outside_temp_buffer : "ERR"),
         3, status.operating ? "YES" : "NO ",
         status.compressorFrequency);
 #endif

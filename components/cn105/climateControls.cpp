@@ -323,48 +323,31 @@ void CN105Climate::controlMode() {
 
 
 void CN105Climate::setActionIfOperatingTo(climate::ClimateAction action_if_operating) {
-    bool effective_operating_status = this->currentStatus.operating; // Valeur par défaut depuis paquet 0x06
+
+
+    ESP_LOGD(LOG_OPERATING_STATUS_TAG, "Setting action to %d (effective_operating: %s, use_stage_fallback: %s, current_stage: %s)",
+        static_cast<int>(this->action),
+        this->currentStatus.operating ? "true" : "false",
+        this->use_stage_for_operating_status_ ? "yes" : "no",
+        getIfNotNull(this->currentSettings.stage, "N/A"));
+
 
     if (this->use_stage_for_operating_status_) {
-        bool stage_is_active = false;
-        // Accéder à l'état actuel du stage_sensor
-        // this->currentSettings.stage est mis à jour dans getPowerFromResponsePacket
-        // lorsque le stage_sensor_ (s'il est configuré) publie son état.
+        ESP_LOGD(LOG_OPERATING_STATUS_TAG, "using stage for operating status because use_stage_for_operating_status_ is true");
         if (this->currentSettings.stage != nullptr &&
             strcmp(this->currentSettings.stage, STAGE_MAP[0 /*IDLE*/]) != 0) {
-            stage_is_active = true;
+            this->action = action_if_operating;
+            ESP_LOGD(LOG_OPERATING_STATUS_TAG, "stage is active");
+        } else {
+            ESP_LOGD(LOG_OPERATING_STATUS_TAG, "stage is iddle or null");
+            this->action = climate::CLIMATE_ACTION_IDLE;
         }
-
-        // for fwump38 issue #277 (where paquet 0x06 does not give a reliable state for 'operating'),
-        // on se base principalement sur 'stage_is_active'.
-        // Si le paquet 0x06 *donne* un 'operating = true', on le garde.
-        // Sinon (0x06 dit false OU 0x06 n'est pas fiable/reçu), on regarde stage.
-        // Une logique possible: si 0x06 dit "operating", c'est "operating". Sinon, si fallback activé, stage décide.
-        if (!effective_operating_status) { // Si 0x06 n'a pas dit "operating"
-            effective_operating_status = stage_is_active;
-        }
-        // Autre logique plus directe pour fwump38:
-        // effective_operating_status = stage_is_active; // Si on veut que stage ait la priorité ou soit la seule source quand fallback est true.
-        // Choisissons pour l'instant: le stage peut rendre "operating" true si 0x06 ne l'a pas déjà fait,
-        // mais ne peut pas le rendre false si 0x06 l'a mis à true (sauf si stage est IDLE).
-        // Pour fwump38, son 0x06 ne renvoyait rien, donc effective_operating_status serait false au départ.
-        // Sa logique était: effective_operating_status = stage_is_active;
-        // Adoptons cela pour le fallback:
-        effective_operating_status = stage_is_active; // Si fallback est activé, stage dicte.
-        // Attention: cela ignore complètement le data[4] de 0x06 si fallback est true.
-        // C'est ce que fwump38 a fait pour son cas.
-    }
-
-    if (effective_operating_status) {
-        this->action = action_if_operating;
     } else {
-        this->action = climate::CLIMATE_ACTION_IDLE;
+        ESP_LOGD(LOG_OPERATING_STATUS_TAG, "using currentStatus.operating for operating status because use_stage_for_operating_status_ is false");
+        this->action = this->currentStatus.operating ? action_if_operating : climate::CLIMATE_ACTION_IDLE;
     }
-    ESP_LOGD(TAG, "Setting action to %d (effective_operating: %s, use_stage_fallback: %s, current_stage: %s)",
-        static_cast<int>(this->action),
-        effective_operating_status ? "true" : "false",
-        this->use_stage_for_operating_status_ ? "yes" : "no",
-        this->currentSettings.stage ? this->currentSettings.stage : "N/A");
+
+
 }
 
 /**
@@ -397,33 +380,38 @@ void CN105Climate::updateAction() {
         this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
         break;
     case climate::CLIMATE_MODE_AUTO:
+
         if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
             this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
             // If the unit supports both heating and cooling
-            this->setActionIfOperatingTo(
-                (this->current_temperature > this->target_temperature ?
-                    climate::CLIMATE_ACTION_COOLING :
-                    climate::CLIMATE_ACTION_HEATING));
+            if (this->current_temperature >= this->target_temperature_high) {
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
+            } else if (this->current_temperature <= this->target_temperature_low) {
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
+            } else {
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
+            }
         } else if (this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
             // If the unit only supports cooling
-            if (this->current_temperature <= this->target_temperature) {
+            if (this->current_temperature < this->target_temperature_high) {
                 // If the temperature meets or exceeds the target, switch to fan-only mode
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
             } else {
                 // Otherwise, continue cooling
                 this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
             }
         } else if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT)) {
             // If the unit only supports heating
-            if (this->current_temperature >= this->target_temperature) {
+            if (this->current_temperature >= this->target_temperature_low) {
                 // If the temperature meets or exceeds the target, switch to fan-only mode
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
             } else {
                 // Otherwise, continue heating
                 this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
             }
         } else {
             ESP_LOGE(TAG, "AUTO mode is not supported by this unit");
+            this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
         }
         break;
 

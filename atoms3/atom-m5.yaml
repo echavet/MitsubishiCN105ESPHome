@@ -65,6 +65,7 @@ logger:
     esp32_ble_tracker: INFO
     esp32_ble_client: INFO
     esp-idf: INFO
+    OPERATING_STATUS: DEBUG
 # mqtt, api, ota, wifi, captive, web, time
 <<: !include includes/ha-integration-config.yaml
 
