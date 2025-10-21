@@ -304,8 +304,10 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
         int temp = data[6];
         temp -= 128;
         receivedStatus.roomTemperature = temp / 2.0f;
+        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[6]  --> [Room °C: %f]", receivedStatus.roomTemperature);
     } else {
         receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
+        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[3] map --> [Room °C : %f]", receivedStatus.roomTemperature);
     }
     if (use_fahrenheit_support_mode_) {
         receivedStatus.roomTemperature = mapCelsiusForConversionToFahrenheit(receivedStatus.roomTemperature);

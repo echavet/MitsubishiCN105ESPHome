@@ -24,6 +24,7 @@ static const char* LOG_CYCLE_TAG = "CYCLE";         // loop cycles logs
 static const char* LOG_UPD_INT_TAG = "UPDT_ITVL";   // update interval logging
 static const char* LOG_SET_RUN_STATE = "SET_RUN_STATE";
 static const char* LOG_OPERATING_STATUS_TAG = "OPERATING_STATUS"; // Logging tag
+static const char* LOG_TEMP_SENSOR_TAG = "TEMP_SENSOR"; // Logging tag
 
 static const char* SHEDULER_REMOTE_TEMP_TIMEOUT = "->remote_temp_timeout";
 
