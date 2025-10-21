@@ -26,15 +26,15 @@ esp32:
   flash_size: 8MB
 ```
 
-### Solution 2: Automatic Workaround (Since v1.3.5)
+### Solution 2: Manual Workaround (Required)
 
-**GOOD NEWS**: Starting from version 1.3.5 of the CN105 component, an automatic workaround has been integrated into the code. The component automatically resets UART GPIO pins during initialization to prevent cold boot issues.
+**IMPORTANT**: Due to the nature of ESP boot sequence, the GPIO reset must be performed before UART initialization. This requires adding a manual workaround in your YAML configuration.
 
-You no longer need to manually add the workaround in your YAML.
+The CN105 component cannot automatically add this workaround because it would need to modify the boot sequence before the component itself is initialized.
 
-### Solution 3: Manual Workaround (Legacy Method)
+### Solution 3: Manual Workaround Implementation
 
-If you are using an earlier version of the component, you can add this workaround in your YAML:
+Add this workaround in your YAML configuration:
 
 ```yaml
 esphome:
@@ -50,30 +50,19 @@ esphome:
 
 ## Technical Implementation
 
-The automatic workaround has been implemented in `components/cn105/componentEntries.cpp`:
+The workaround must be implemented at the ESPHome configuration level using the `on_boot` mechanism. This is because:
 
-```cpp
-void CN105Climate::setup() {
-    ESP_LOGD(TAG, "Component initialization: setup call");
+1. **Boot Sequence Timing**: The GPIO reset must happen before UART initialization
+2. **Component Lifecycle**: The CN105 component is initialized after the UART, so it cannot modify the boot sequence
+3. **ESPHome Architecture**: Only the `on_boot` mechanism can reliably execute code before component initialization
 
-    // Workaround for ESP-IDF 5.4.1 GPIO regression
-    // Reset GPIO pins to ensure proper UART initialization after cold boot
-    if (this->tx_pin_ >= 0) {
-        gpio_reset_pin((gpio_num_t)this->tx_pin_);
-        ESP_LOGI(TAG, "Reset TX pin %d for ESP-IDF 5.4.1 workaround", this->tx_pin_);
-    }
-    if (this->rx_pin_ >= 0) {
-        gpio_reset_pin((gpio_num_t)this->rx_pin_);
-        ESP_LOGI(TAG, "Reset RX pin %d for ESP-IDF 5.4.1 workaround", this->rx_pin_);
-    }
+## Why Automatic Implementation is Not Possible
 
-    // ... rest of initialization code
-}
-```
+The CN105 component cannot automatically add this workaround because:
 
-## Migration
-
-If you had already added the manual workaround in your YAML, you can now safely remove it. The component automatically handles this reset.
+- The component is initialized after the UART configuration
+- The `on_boot` sequence must be defined at the ESPHome configuration level
+- Modifying the boot sequence from within a component would require complex workarounds that could break other components
 
 ## References
 
