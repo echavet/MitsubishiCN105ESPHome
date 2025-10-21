@@ -11,6 +11,18 @@ using namespace esphome;
 void CN105Climate::setup() {
 
     ESP_LOGD(TAG, "Component initialization: setup call");
+
+    // Workaround for ESP-IDF 5.4.1 GPIO regression
+    // Reset GPIO pins to ensure proper UART initialization after cold boot
+    if (this->tx_pin_ >= 0) {
+        gpio_reset_pin((gpio_num_t)this->tx_pin_);
+        ESP_LOGI(TAG, "Reset TX pin %d for ESP-IDF 5.4.1 workaround", this->tx_pin_);
+    }
+    if (this->rx_pin_ >= 0) {
+        gpio_reset_pin((gpio_num_t)this->rx_pin_);
+        ESP_LOGI(TAG, "Reset RX pin %d for ESP-IDF 5.4.1 workaround", this->rx_pin_);
+    }
+
     this->current_temperature = NAN;
     this->target_temperature = NAN;
     this->target_temperature_low = NAN;
