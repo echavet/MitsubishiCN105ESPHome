@@ -14,3 +14,4 @@ RESUME-CORRECTIONS.md
 snapshot.sh
 myfirmware/.gitignore
 .vscode/*
+.vscode/settings.json

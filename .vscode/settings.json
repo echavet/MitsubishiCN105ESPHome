@@ -1,5 +1,15 @@
 {
-    "files.associations": {
-        "cinttypes": "cpp"
-    }
+  "files.associations": {
+    "cinttypes": "cpp",
+    "bitset": "cpp",
+    "set": "cpp",
+    "any": "cpp",
+    "memory": "cpp",
+    "future": "cpp",
+    "optional": "cpp",
+    "*.ipp": "cpp",
+    "random": "cpp",
+    "ranges": "cpp",
+    "map": "cpp"
+  }
 }

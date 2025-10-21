@@ -11,6 +11,26 @@ esphome:
   project:
     name: esphome.clim_and_nt_proxy
     version: "24.7.4.1"
+  
+  on_boot:
+    - priority: 1001
+      then:
+        - lambda: |-
+            gpio_reset_pin((gpio_num_t)01);
+            gpio_reset_pin((gpio_num_t)02);    
+
+esp32:
+  board: esp32-s3-devkitc-1
+
+  #board: m5stack-cores3
+  #variant: ESP32S3
+  framework:
+    #type: arduino
+    type: esp-idf
+    version: recommended
+  flash_size: 8MB
+
+
 
 debug:
   update_interval: 5s
@@ -45,17 +65,6 @@ logger:
     esp32_ble_tracker: INFO
     esp32_ble_client: INFO
     esp-idf: INFO
-esp32:
-  board: esp32-s3-devkitc-1
-
-  #board: m5stack-cores3
-  #variant: ESP32S3
-  framework:
-    #type: arduino
-    type: esp-idf
-    version: recommended
-  flash_size: 8MB
-
 # mqtt, api, ota, wifi, captive, web, time
 <<: !include includes/ha-integration-config.yaml
 

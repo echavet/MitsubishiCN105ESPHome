@@ -53,35 +53,53 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
         this->mode = *call.get_mode();
         updated = true;
         controlMode();
+
+        if (this->traits_.get_supports_two_point_target_temperature()) {
+            // then update the temperature setting because mode change can change the temperature setting to low or high
+            ESP_LOGD("control", "Mode change asked, controling temperature setting...");
+            this->controlTemperature();
+        }
     }
 
-    bool tempHasValue = (traits().get_supports_two_point_target_temperature() ? call.get_target_temperature_low().has_value() || call.get_target_temperature_high().has_value() : call.get_target_temperature().has_value());
+    // Vérifier si une température est fournie selon les traits
+    bool tempHasValue = this->traits_.get_supports_two_point_target_temperature() ?
+        (call.get_target_temperature_low().has_value() || call.get_target_temperature_high().has_value()) :
+        call.get_target_temperature().has_value();
 
-    //call.get_target_temperature_low().has_value()) 
     if (tempHasValue) {
-        // Changer la température cible
-
-        if (call.get_target_temperature_low().has_value() && call.get_target_temperature_high().has_value()) {
-            this->target_temperature_low = *call.get_target_temperature_low();
-            this->target_temperature_high = *call.get_target_temperature_high();
-            ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);
-        } else if (call.get_target_temperature_low().has_value()) {
-            this->target_temperature_low = *call.get_target_temperature_low();
-            this->target_temperature_high = this->target_temperature_low + 4.0f;
-            ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);
-        } else if (call.get_target_temperature_high().has_value()) {
-            this->target_temperature_high = *call.get_target_temperature_high();
-            this->target_temperature_low = this->target_temperature_high - 4.0f;
-            ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);
-        }
-
-        if (call.get_target_temperature().has_value()) {
-            this->target_temperature = *call.get_target_temperature();
-            ESP_LOGI("control", "Setting heatpump setpoint : %.1f", *call.get_target_temperature());
+        if (this->traits_.get_supports_two_point_target_temperature()) {
+            // Dual setpoint : gérer target_temperature_low et target_temperature_high
+            if (call.get_target_temperature_low().has_value() && call.get_target_temperature_high().has_value()) {
+                // Les deux bornes sont fournies (mode AUTO)
+                this->target_temperature_low = *call.get_target_temperature_low();
+                this->target_temperature_high = *call.get_target_temperature_high();
+                ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);
+            } else if (call.get_target_temperature_low().has_value()) {
+                // Seule la borne basse est fournie
+                this->target_temperature_low = *call.get_target_temperature_low();
+                // Synchroniser seulement en mode AUTO
+                if (this->mode == climate::CLIMATE_MODE_AUTO) {
+                    this->target_temperature_high = this->target_temperature_low + 4.0f;
+                }
+                ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);
+            } else if (call.get_target_temperature_high().has_value()) {
+                // Seule la borne haute est fournie
+                this->target_temperature_high = *call.get_target_temperature_high();
+                // Synchroniser seulement en mode AUTO
+                if (this->mode == climate::CLIMATE_MODE_AUTO) {
+                    this->target_temperature_low = this->target_temperature_high - 4.0f;
+                }
+                ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);
+            }
+        } else {
+            // Single setpoint : gérer target_temperature
+            if (call.get_target_temperature().has_value()) {
+                this->target_temperature = *call.get_target_temperature();
+                ESP_LOGI("control", "Setting heatpump setpoint : %.1f", this->target_temperature);
+            }
         }
         updated = true;
         this->controlTemperature();
-
     }
 
     if (call.get_fan_mode().has_value()) {
@@ -215,52 +233,45 @@ void CN105Climate::controlFan() {
     }
 }
 
-// Given a temperature in Celsius that was converted from Fahrenheit, converts
-// it to the Celsius value (at half-degree precision) that matches what
-// Mitsubishi thermostats would have converted the Fahrenheit value to. For
-// instance, 72°F is 22.22°C, but this function returns 22.5°C.
-static float mapCelsiusForConversionFromFahrenheit(const float c) {
-    static const auto& mapping = [] {
-        std::vector<std::pair<float, float>> v = {
-            {61, 16.0}, {62, 16.5}, {63, 17.0}, {64, 17.5}, {65, 18.0},
-            {66, 18.5}, {67, 19.0}, {68, 20.0}, {69, 21.0}, {70, 21.5},
-            {71, 22.0}, {72, 22.5}, {73, 23.0}, {74, 23.5}, {75, 24.0},
-            {76, 24.5}, {77, 25.0}, {78, 25.5}, {79, 26.0}, {80, 26.5},
-            {81, 27.0}, {82, 27.5}, {83, 28.0}, {84, 28.5}, {85, 29.0},
-            {86, 29.5}, {87, 30.0}, {88, 30.5}
-        };
-        for (auto& pair : v) {
-            pair.first = (pair.first - 32.0f) / 1.8f;
-        }
-        return *new std::map<float, float>(v.begin(), v.end());
-        }();
-
-    // Due to vagaries of floating point math across architectures, we can't
-    // just look up `c` in the map -- we're very unlikely to find a matching
-    // value. Instead, we find the first value greater than `c`, and the
-    // next-lowest value in the map. We return whichever `c` is closer to.
-    auto it = mapping.upper_bound(c);
-    if (it == mapping.begin() || it == mapping.end()) return c;
-
-    auto prev = it;
-    --prev;
-    return c - prev->first < it->first - c ? prev->second : it->second;
-}
 
 void CN105Climate::controlTemperature() {
-    float setting =
-        (traits().get_supports_two_point_target_temperature() ? (this->target_temperature_low + this->target_temperature_high) / 2.0f : this->target_temperature);
+    float setting;
 
-    if (use_fahrenheit_support_mode_) {
-        setting = mapCelsiusForConversionFromFahrenheit(setting);
-    }
-    if (!this->tempMode) {
-        this->wantedSettings.temperature = this->lookupByteMapIndex(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
+    // Utiliser la logique appropriée selon les traits
+    if (this->traits_.get_supports_two_point_target_temperature()) {
+        // Dual setpoint : choisir la bonne consigne selon le mode
+        switch (this->mode) {
+        case climate::CLIMATE_MODE_AUTO:
+            // Mode AUTO : utiliser la moyenne des deux bornes            
+            setting = (this->target_temperature_low + this->target_temperature_high) / 2.0f;
+            ESP_LOGD("control", "AUTO mode : getting median temperature low:%1.f, high:%1.f, result:%.1f", this->target_temperature_low, this->target_temperature_high, setting);
+            break;
+        case climate::CLIMATE_MODE_HEAT:
+            // Mode HEAT : utiliser la consigne de chauffage (borne basse)
+            setting = this->target_temperature_low;
+            ESP_LOGD("control", "HEAT mode : getting temperature low:%1.f", this->target_temperature_low);
+            break;
+        case climate::CLIMATE_MODE_COOL:
+            // Mode COOL : utiliser la consigne de climatisation (borne haute)
+            setting = this->target_temperature_high;
+            ESP_LOGD("control", "COOL mode : getting temperature high:%1.f", this->target_temperature_high);
+            break;
+        default:
+            // Autres modes : utiliser la consigne de chauffage par défaut
+            setting = (this->target_temperature_low + this->target_temperature_high) / 2.0f;
+            ESP_LOGD("control", "DEFAULT mode : getting temperature median:%1.f", setting);
+            break;
+        }
     } else {
-        setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
-        this->wantedSettings.temperature = setting < 10 ? 10 : (setting > 31 ? 31 : setting);
+        // Single setpoint : utiliser target_temperature
+        setting = this->target_temperature;
     }
+
+    setting = this->calculateTemperatureSetting(setting);
+    this->wantedSettings.temperature = setting;
+    ESP_LOGI("control", "setting wanted temperature to %.1f", setting);
 }
+
 
 
 void CN105Climate::controlMode() {
@@ -269,36 +280,41 @@ void CN105Climate::controlMode() {
         ESP_LOGI("control", "changing mode to COOL");
         this->setModeSetting("COOL");
         this->setPowerSetting("ON");
-        this->traits().set_supports_two_point_target_temperature(false);
         break;
     case climate::CLIMATE_MODE_HEAT:
         ESP_LOGI("control", "changing mode to HEAT");
         this->setModeSetting("HEAT");
         this->setPowerSetting("ON");
-        this->traits().set_supports_two_point_target_temperature(false);
+
         break;
     case climate::CLIMATE_MODE_DRY:
         ESP_LOGI("control", "changing mode to DRY");
         this->setModeSetting("DRY");
         this->setPowerSetting("ON");
-        this->traits().set_supports_two_point_target_temperature(true);
+
         break;
     case climate::CLIMATE_MODE_AUTO:
         ESP_LOGI("control", "changing mode to AUTO");
         this->setModeSetting("AUTO");
         this->setPowerSetting("ON");
-        this->traits().set_supports_two_point_target_temperature(true);
+        // Initialiser les températures low/high si on vient d'un mode à consigne unique
+        // On utilise currentSettings.temperature qui reflète l'état réel de la PAC
+        if (currentSettings.temperature > 0) {
+            this->target_temperature_low = currentSettings.temperature - 2.0f;
+            this->target_temperature_high = currentSettings.temperature + 2.0f;
+            ESP_LOGI("control", "Initializing AUTO mode temps from current PAC temp: %.1f -> [%.1f - %.1f]",
+                currentSettings.temperature, this->target_temperature_low, this->target_temperature_high);
+        }
+        this->publish_state();
         break;
     case climate::CLIMATE_MODE_FAN_ONLY:
         ESP_LOGI("control", "changing mode to FAN_ONLY");
         this->setModeSetting("FAN");
         this->setPowerSetting("ON");
-        this->traits().set_supports_two_point_target_temperature(false);
         break;
     case climate::CLIMATE_MODE_OFF:
         ESP_LOGI("control", "changing mode to OFF");
         this->setPowerSetting("OFF");
-        this->traits().set_supports_two_point_target_temperature(false);
         break;
     default:
         ESP_LOGW("control", "unsupported mode");
@@ -427,6 +443,7 @@ void CN105Climate::updateAction() {
 }
 
 climate::ClimateTraits CN105Climate::traits() {
+    //ESP_LOGD(LOG_SETTINGS_TAG, "traits() called (dual: %d)", traits_.get_supports_two_point_target_temperature());
     return traits_;
 }
 

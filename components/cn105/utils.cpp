@@ -57,23 +57,75 @@ const char* CN105Climate::getIfNotNull(const char* what, const char* defaultValu
     return what;
 }
 
+/**
+ * This function calculates the temperature setting based on the mode and the temperature points.
+ * It also converts the temperature to Fahrenheit if the unit supports Fahrenheit.
+ * It returns the temperature setting.
+ */
+float CN105Climate::calculateTemperatureSetting(float setting) {
+    if (use_fahrenheit_support_mode_) {
+        setting = mapCelsiusForConversionFromFahrenheit(setting);
+    }
+    if (!this->tempMode) {
+        return this->lookupByteMapIndex(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
+    } else {
+        setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
+        return setting < 10 ? 10 : (setting > 31 ? 31 : setting);
+    }
+}
+
+/**
+ * This function updates the target temperatures from the settings.
+ * It also calculates the temperature setting based on the mode and the temperature points.
+ * It also converts the temperature to Fahrenheit if the unit supports Fahrenheit.
+ * It returns the temperature setting.
+ */
+
 void CN105Climate::updateTargetTemperaturesFromSettings(float temperature) {
-    if (this->mode == climate::CLIMATE_MODE_AUTO) {
-        //if (this->traits().get_supports_two_point_target_temperature()) {
-            // Mode AUTO : Afficher la plage corrigée ±2°C autour de la médiane            
-        this->traits().set_supports_two_point_target_temperature(true);
-        this->target_temperature_low = temperature - 2.0f;
-        this->target_temperature_high = temperature + 2.0f;
-        ESP_LOGD(LOG_SETTINGS_TAG, "DUAL SETPOINT [%.1f - %.1f], median %.1f",
-            this->target_temperature_low, this->target_temperature_high, temperature);
-        //this->target_temperature = NAN;
+    if (this->traits().get_supports_two_point_target_temperature()) {
+
+        if (this->mode == climate::CLIMATE_MODE_HEAT) {
+            this->target_temperature_low = temperature;
+            if (std::isnan(this->target_temperature_high)) {
+                this->target_temperature_high = temperature;
+            }
+        } else if (this->mode == climate::CLIMATE_MODE_COOL) {
+            this->target_temperature_high = temperature;
+            if (std::isnan(this->target_temperature_low)) {
+                this->target_temperature_low = temperature;
+            }
+        } else if (this->mode == climate::CLIMATE_MODE_DRY) {
+            this->target_temperature_high = temperature;
+            if (std::isnan(this->target_temperature_low)) {
+                this->target_temperature_low = temperature;
+            }
+        } else if (this->mode == climate::CLIMATE_MODE_AUTO) {
+            this->target_temperature_low = temperature - 2.0f;
+            this->target_temperature_high = temperature + 2.0f;
+            ESP_LOGD(LOG_SETTINGS_TAG, "DUAL SETPOINT [%.1f - %.1f], median %.1f",
+                this->target_temperature_low, this->target_temperature_high, temperature);
+        } else {
+
+            if (std::isnan(this->target_temperature_low)) {
+                this->target_temperature_low = temperature;
+            }
+            if (std::isnan(this->target_temperature_high)) {
+                this->target_temperature_high = temperature;
+            }
+
+            float theoricalSetPoint = this->calculateTemperatureSetting((this->target_temperature_low + this->target_temperature_high) / 2.0f);
+
+            if (theoricalSetPoint != temperature) {
+                float delta = (this->target_temperature_high - this->target_temperature_low) / 2.0f;
+                this->target_temperature_low = theoricalSetPoint - delta;
+                this->target_temperature_high = theoricalSetPoint + delta;
+            }
+
+        }
     } else {
         ESP_LOGD(LOG_SETTINGS_TAG, "SINGLE SETPOINT %.1f",
             temperature);
-        this->traits().set_supports_two_point_target_temperature(false);
         this->target_temperature = temperature;
-        //this->target_temperature_low = NAN;
-        //this->target_temperature_high = NAN;
     }
 }
 
@@ -105,11 +157,27 @@ void CN105Climate::debugSettings(const char* settingName, wantedHeatpumpSettings
 #endif
 }
 
+float CN105Climate::getTargetTemperatureInCurrentMode() {
+    if (this->traits_.get_supports_two_point_target_temperature()) {
+        if (this->mode == climate::CLIMATE_MODE_HEAT) {
+            return this->target_temperature_low;
+        } else if (this->mode == climate::CLIMATE_MODE_COOL) {
+            return this->target_temperature_high;
+        } else if (this->mode == climate::CLIMATE_MODE_DRY) {
+            return this->target_temperature_high;
+        } else {
+            return (this->target_temperature_low + this->target_temperature_high) / 2.0f;
+        }
+    } else {
+        return this->target_temperature;
+    }
+}
+
 void CN105Climate::debugClimate(const char* settingName) {
     ESP_LOGD(LOG_SETTINGS_TAG, "[%s]-> [mode: %s, target °C: %.1f, fan: %s, swing: %s]",
         settingName,
         LOG_STR_ARG(climate_mode_to_string(this->mode)), // Utilisation de LOG_STR_ARG
-        this->target_temperature,
+        this->getModeTargetTemperature(),
         this->fan_mode.has_value() ? LOG_STR_ARG(climate_fan_mode_to_string(this->fan_mode.value())) : "-",
         LOG_STR_ARG(climate_swing_mode_to_string(this->swing_mode)));
 }

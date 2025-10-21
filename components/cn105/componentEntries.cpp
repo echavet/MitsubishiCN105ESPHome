@@ -12,9 +12,9 @@ void CN105Climate::setup() {
 
     ESP_LOGD(TAG, "Component initialization: setup call");
     this->current_temperature = NAN;
-
     this->target_temperature = NAN;
-
+    this->target_temperature_low = NAN;
+    this->target_temperature_high = NAN;
     this->fan_mode = climate::CLIMATE_FAN_OFF;
     this->swing_mode = climate::CLIMATE_SWING_OFF;
     this->initBytePointer();
@@ -46,7 +46,7 @@ void CN105Climate::loop() {
             this->checkPendingWantedSettings();
         } else if ((this->wantedRunStates.hasChanged) && (!this->loopCycle.isCycleRunning())) {
             this->checkPendingWantedRunStates();
-        }else {
+        } else {
             if (this->loopCycle.isCycleRunning()) {                         // if we are  running an update cycle
                 this->loopCycle.checkTimeout(this->update_interval_);
             } else { // we are not running a cycle

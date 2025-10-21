@@ -283,14 +283,14 @@ struct heatpumpRunStates {
     int8_t night_mode;
     int8_t circulator;
     const char* airflow_control;
-    
+
     void resetSettings() {
         air_purifier = -1;
         night_mode = -1;
         circulator = -1;
         airflow_control = nullptr;
     }
-    
+
     heatpumpRunStates& operator=(const heatpumpRunStates& other) {
         if (this != &other) {
             air_purifier = other.air_purifier;
@@ -300,14 +300,14 @@ struct heatpumpRunStates {
         }
         return *this;
     }
-    
+
     bool operator==(const heatpumpRunStates& other) const {
         return air_purifier == other.air_purifier &&
             night_mode == other.night_mode &&
             circulator == other.circulator &&
             airflow_control == other.airflow_control;
     }
-    
+
     bool operator!=(const heatpumpRunStates& other) {
         return !(this->operator==(other));
     }
@@ -317,14 +317,14 @@ struct wantedHeatpumpRunStates : heatpumpRunStates {
     bool hasChanged;
     bool hasBeenSent;
     long lastChange;
-    
+
     void resetSettings() {
         heatpumpRunStates::resetSettings();
-        
+
         hasChanged = false;
         hasBeenSent = false;
     }
-    
+
     wantedHeatpumpRunStates& operator=(const wantedHeatpumpRunStates& other) {
         if (this != &other) {
             heatpumpRunStates::operator=(other);
@@ -333,7 +333,7 @@ struct wantedHeatpumpRunStates : heatpumpRunStates {
         }
         return *this;
     }
-    
+
     wantedHeatpumpRunStates& operator=(const heatpumpRunStates& other) {
         if (this != &other) {
             heatpumpRunStates::operator=(other);
@@ -341,3 +341,35 @@ struct wantedHeatpumpRunStates : heatpumpRunStates {
         return *this;
     }
 };
+
+// Given a temperature in Celsius that was converted from Fahrenheit, converts
+// it to the Celsius value (at half-degree precision) that matches what
+// Mitsubishi thermostats would have converted the Fahrenheit value to. For
+// instance, 72°F is 22.22°C, but this function returns 22.5°C.
+static float mapCelsiusForConversionFromFahrenheit(const float c) {
+    static const auto& mapping = [] {
+        std::vector<std::pair<float, float>> v = {
+            {61, 16.0}, {62, 16.5}, {63, 17.0}, {64, 17.5}, {65, 18.0},
+            {66, 18.5}, {67, 19.0}, {68, 20.0}, {69, 21.0}, {70, 21.5},
+            {71, 22.0}, {72, 22.5}, {73, 23.0}, {74, 23.5}, {75, 24.0},
+            {76, 24.5}, {77, 25.0}, {78, 25.5}, {79, 26.0}, {80, 26.5},
+            {81, 27.0}, {82, 27.5}, {83, 28.0}, {84, 28.5}, {85, 29.0},
+            {86, 29.5}, {87, 30.0}, {88, 30.5}
+        };
+        for (auto& pair : v) {
+            pair.first = (pair.first - 32.0f) / 1.8f;
+        }
+        return *new std::map<float, float>(v.begin(), v.end());
+        }();
+
+    // Due to vagaries of floating point math across architectures, we can't
+    // just look up `c` in the map -- we're very unlikely to find a matching
+    // value. Instead, we find the first value greater than `c`, and the
+    // next-lowest value in the map. We return whichever `c` is closer to.
+    auto it = mapping.upper_bound(c);
+    if (it == mapping.begin() || it == mapping.end()) return c;
+
+    auto prev = it;
+    --prev;
+    return c - prev->first < it->first - c ? prev->second : it->second;
+}

@@ -166,6 +166,9 @@ namespace esphome {
         void control(const esphome::climate::ClimateCall& call) override;
         void controlMode();
         void controlTemperature();
+        float calculateTemperatureSetting(float setting);
+        float getTargetTemperatureInCurrentMode();
+
         void controlFan();
         void controlSwing();
 
