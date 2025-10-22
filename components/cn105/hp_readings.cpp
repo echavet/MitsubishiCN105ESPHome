@@ -183,8 +183,9 @@ void CN105Climate::getPowerFromResponsePacket() {
 // instance, 21.5°C is 70.7°F, but to get it to map to 70°F, this function
 // returns 21.1°C.
 static float mapCelsiusForConversionToFahrenheit(const float c) {
-    static const auto& mapping = [] {
-        auto* const m = new std::map<float, float>{
+    // Bugfix: éviter fuite mémoire en supprimant l'allocation dynamique
+    static const std::map<float, float> mapping = [] {
+        std::map<float, float> m = {
             {16.0, 61}, {16.5, 62}, {17.0, 63}, {17.5, 64}, {18.0, 65},
             {18.5, 66}, {19.0, 67}, {20.0, 68}, {21.0, 69}, {21.5, 70},
             {22.0, 71}, {22.5, 72}, {23.0, 73}, {23.5, 74}, {24.0, 75},
@@ -192,10 +193,10 @@ static float mapCelsiusForConversionToFahrenheit(const float c) {
             {27.0, 81}, {27.5, 82}, {28.0, 83}, {28.5, 84}, {29.0, 85},
             {29.5, 86}, {30.0, 87}, {30.5, 88}
         };
-        for (auto& pair : *m) {
-            pair.second = (pair.second - 32.0f) / 1.8f;
+        for (auto& kv : m) {
+            kv.second = (kv.second - 32.0f) / 1.8f;
         }
-        return *m;
+        return m;
         }();
 
     auto it = mapping.find(c);

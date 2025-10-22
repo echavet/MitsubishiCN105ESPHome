@@ -1,5 +1,6 @@
 #include "cn105.h"
 #include "Globals.h"
+#include <string>
 
 using namespace esphome;
 
@@ -41,9 +42,10 @@ bool CN105Climate::isWantedSettingApplied(const char* wantedSettingProp, const c
         ESP_LOGD(TAG, "Wanted %s is not set yet, want:%s, got: %s", field, wantedSettingProp, currentSettingProp);
     }
 
-    if (wantedSettingProp != NULL) {
-        ESP_LOGE(TAG, "CAUTION: expected value in hasChanged() function for %s, got NULL", field);
-        ESP_LOGD(TAG, "No value in hasChanged() function for %s", field);
+    // Log si la valeur courante est absente (diagnostic utile)
+    if (currentSettingProp == NULL) {
+        ESP_LOGE(TAG, "CAUTION: expected value in isWantedSettingApplied() for %s, got NULL current value", field);
+        ESP_LOGD(TAG, "No current value provided for %s", field);
     }
 
     return isEqual;
@@ -150,26 +152,29 @@ void CN105Climate::debugSettingsAndStatus(const char* settingName, heatpumpSetti
 
 
 void CN105Climate::hpPacketDebug(uint8_t* packet, unsigned int length, const char* packetDirection) {
-    char buffer[4]; // Small buffer to store each byte as text
-    char outputBuffer[length * 4 + 1]; // Buffer to store all bytes as text
+    // Construire la chaîne de sortie de façon sûre et performante
+    std::string output;
+    output.reserve(length * 3 + 1); // "FF " par octet
 
-    // Initialisation du tampon de sortie avec une chaîne vide
-    outputBuffer[0] = '\0';
-
+    char byteBuf[4];
     for (unsigned int i = 0; i < length; i++) {
-        snprintf(buffer, sizeof(buffer), "%02X ", packet[i]); // Using snprintf to avoid buffer overflows
-        strcat(outputBuffer, buffer);
+        // Toujours borné à 3 caractères + NUL
+        int written = snprintf(byteBuf, sizeof(byteBuf), "%02X ", packet[i]);
+        if (written > 0) {
+            output.append(byteBuf, static_cast<size_t>(written));
+        }
     }
 
     char outputForSensor[15];
-    strncpy(outputForSensor, outputBuffer, 14);
-    outputForSensor[14] = '\0'; // Ajouter un caract
+    // Tronquer proprement pour la publication éventuelle sur un capteur
+    strncpy(outputForSensor, output.c_str(), sizeof(outputForSensor) - 1);
+    outputForSensor[sizeof(outputForSensor) - 1] = '\0';
 
     /*if (strcasecmp(packetDirection, "WRITE") == 0) {
         this->last_sent_packet_sensor->publish_state(outputForSensor);
     }*/
 
-    ESP_LOGD(packetDirection, "%s", outputBuffer);
+    ESP_LOGD(packetDirection, "%s", output.c_str());
 }
 
 

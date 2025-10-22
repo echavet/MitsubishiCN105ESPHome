@@ -22,7 +22,8 @@ void CN105Climate::checkPendingWantedSettings() {
 
 void CN105Climate::checkPendingWantedRunStates() {
     long now = CUSTOM_MILLIS;
-    if (!(this->wantedRunStates.hasChanged) || (now - this->wantedSettings.lastChange < this->debounce_delay_)) {
+    // Bugfix: utiliser le bon horodatage pour le debounce des run states
+    if (!(this->wantedRunStates.hasChanged) || (now - this->wantedRunStates.lastChange < this->debounce_delay_)) {
         return;
     }
     ESP_LOGI(LOG_ACTION_EVT_TAG, "checkPendingWantedRunStates - wanted run states have changed, sending them to the heatpump...");
@@ -199,7 +200,8 @@ void CN105Climate::controlFan() {
 // Mitsubishi thermostats would have converted the Fahrenheit value to. For
 // instance, 72°F is 22.22°C, but this function returns 22.5°C.
 static float mapCelsiusForConversionFromFahrenheit(const float c) {
-    static const auto& mapping = [] {
+    // Bugfix: éviter fuite mémoire en supprimant l'allocation dynamique
+    static const std::map<float, float> mapping = [] {
         std::vector<std::pair<float, float>> v = {
             {61, 16.0}, {62, 16.5}, {63, 17.0}, {64, 17.5}, {65, 18.0},
             {66, 18.5}, {67, 19.0}, {68, 20.0}, {69, 21.0}, {70, 21.5},
@@ -208,11 +210,11 @@ static float mapCelsiusForConversionFromFahrenheit(const float c) {
             {81, 27.0}, {82, 27.5}, {83, 28.0}, {84, 28.5}, {85, 29.0},
             {86, 29.5}, {87, 30.0}, {88, 30.5}
         };
-        for (auto& pair : v) {
-            pair.first = (pair.first - 32.0f) / 1.8f;
+        for (auto& p : v) {
+            p.first = (p.first - 32.0f) / 1.8f;
         }
-        return *new std::map<float, float>(v.begin(), v.end());
-        }();
+        return std::map<float, float>(v.begin(), v.end());
+    }();
 
     // Due to vagaries of floating point math across architectures, we can't
     // just look up `c` in the map -- we're very unlikely to find a matching
