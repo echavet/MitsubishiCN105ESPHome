@@ -146,8 +146,8 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
             }
         }
         updated = true;
-        ESP_LOGD("control", "sanitizing dual setpoints..."),
-            this->sanitizeDualSetpoints();
+        ESP_LOGD("control", "sanitizing dual setpoints...");
+        this->sanitizeDualSetpoints();
         ESP_LOGD("control", "sanitized dual setpoints: low: %.1f - high: %.1f", this->target_temperature_low, this->target_temperature_high);
         this->controlTemperature();
         ESP_LOGD("control", "controlled temperature to: %.1f", this->wantedSettings.temperature);
