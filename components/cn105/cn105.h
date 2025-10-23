@@ -372,5 +372,12 @@ namespace esphome {
         int bytesRead = 0;
         int dataLength = 0;
         uint8_t command = 0;
+
+        // Ensure dual setpoints are valid (no NaN, enforce spread in AUTO)
+        void sanitizeDualSetpoints();
+
+        // Anti-rebond UI: mémorise le dernier côté modifié et l'instant
+        uint32_t last_dual_setpoint_change_ms_ = 0;
+        char last_dual_setpoint_side_ = 'N'; // 'L' (low), 'H' (high), 'N' (none)
     };
 }

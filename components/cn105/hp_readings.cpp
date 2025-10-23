@@ -501,7 +501,7 @@ void CN105Climate::updateSuccess() {
 void CN105Climate::processCommand() {
     switch (this->command) {
     case 0x61:  /* last update was successful */
-        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "Update-ACK");
+        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, LOG_ACK);
         this->updateSuccess();
         break;
 
@@ -586,9 +586,17 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
     }
 
     // HA Temp
-    if (this->wantedSettings.temperature == -1) { // to prevent overwriting a user demand
-        this->updateTargetTemperaturesFromSettings(settings.temperature);
-        this->currentSettings.temperature = settings.temperature;
+    // Ignorer temporairement une consigne entrante si une consigne utilisateur est en cours
+    bool hasPendingUserTemp = (this->wantedSettings.temperature != -1.0f) && (this->wantedSettings.hasChanged) && (!this->wantedSettings.hasBeenSent);
+    uint32_t graceWindowMs = this->get_update_interval() + DEFER_SCHEDULE_UPDATE_LOOP_DELAY;
+    bool graceAfterSend = (this->wantedSettings.hasBeenSent) && ((CUSTOM_MILLIS - this->wantedSettings.lastChange) < graceWindowMs);
+    if (!hasPendingUserTemp && !graceAfterSend) {
+        if (this->wantedSettings.temperature == -1) { // to prevent overwriting a user demand
+            this->updateTargetTemperaturesFromSettings(settings.temperature);
+            this->currentSettings.temperature = settings.temperature;
+        }
+    } else {
+        ESP_LOGD(LOG_SETTINGS_TAG, "Ignoring incoming setpoint due to pending user change or grace window");
     }
 
     this->currentSettings.iSee = settings.iSee;

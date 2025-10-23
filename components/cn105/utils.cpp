@@ -101,10 +101,32 @@ void CN105Climate::updateTargetTemperaturesFromSettings(float temperature) {
                 this->target_temperature_low = temperature;
             }
         } else if (this->mode == climate::CLIMATE_MODE_AUTO) {
-            this->target_temperature_low = temperature - 2.0f;
-            this->target_temperature_high = temperature + 2.0f;
-            ESP_LOGD(LOG_SETTINGS_TAG, "DUAL SETPOINT [%.1f - %.1f], median %.1f",
-                this->target_temperature_low, this->target_temperature_high, temperature);
+            // En AUTO: si les deux bornes existent déjà, ne pas recentrer
+            bool lowDefined = !std::isnan(this->target_temperature_low);
+            bool highDefined = !std::isnan(this->target_temperature_high);
+
+            if (lowDefined && highDefined) {
+                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO keep dual setpoints [%.1f - %.1f], median %.1f",
+                    this->target_temperature_low, this->target_temperature_high, temperature);
+            } else if (lowDefined && !highDefined) {
+                this->target_temperature_high = this->target_temperature_low + 2.0f;
+                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO fill missing high: [%.1f - %.1f]",
+                    this->target_temperature_low, this->target_temperature_high);
+            } else if (!lowDefined && highDefined) {
+                this->target_temperature_low = this->target_temperature_high - 2.0f;
+                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO fill missing low: [%.1f - %.1f]",
+                    this->target_temperature_low, this->target_temperature_high);
+            } else {
+                // aucune borne connue: initialiser autour de la médiane fournie
+                this->target_temperature_low = temperature - 2.0f;
+                this->target_temperature_high = temperature + 2.0f;
+                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO init dual setpoints [%.1f - %.1f], median %.1f",
+                    this->target_temperature_low, this->target_temperature_high, temperature);
+            }
+
+            // Mémoriser dans currentSettings pour détection de glissement ultérieur
+            this->currentSettings.dual_low_target = this->target_temperature_low;
+            this->currentSettings.dual_high_target = this->target_temperature_high;
         } else {
 
             if (std::isnan(this->target_temperature_low)) {
@@ -171,6 +193,50 @@ float CN105Climate::getTargetTemperatureInCurrentMode() {
         }
     } else {
         return this->target_temperature;
+    }
+}
+
+void CN105Climate::sanitizeDualSetpoints() {
+    if (!this->traits_.get_supports_two_point_target_temperature()) {
+        return;
+    }
+
+    // Si une borne est NaN, la reconstruire à partir de l'autre borne ou d'une valeur raisonnable
+    bool lowIsNaN = std::isnan(this->target_temperature_low);
+    bool highIsNaN = std::isnan(this->target_temperature_high);
+
+    if (lowIsNaN && highIsNaN) {
+        // Rien à faire si on n'a aucune info; essayer currentSettings.temperature si valide
+        if (!std::isnan(this->currentSettings.temperature) && this->currentSettings.temperature > 0) {
+            this->target_temperature_low = this->currentSettings.temperature - 2.0f;
+            this->target_temperature_high = this->currentSettings.temperature + 2.0f;
+        }
+        return;
+    }
+
+    if (lowIsNaN && !highIsNaN) {
+        // Reconstruire low à partir de high
+        this->target_temperature_low = (this->mode == climate::CLIMATE_MODE_AUTO)
+            ? (this->target_temperature_high - 4.0f)
+            : this->target_temperature_high; // en HEAT/COOL, une seule consigne peut suffire
+    } else if (!lowIsNaN && highIsNaN) {
+        // Reconstruire high à partir de low
+        this->target_temperature_high = (this->mode == climate::CLIMATE_MODE_AUTO)
+            ? (this->target_temperature_low + 4.0f)
+            : this->target_temperature_low;
+    }
+
+    // En AUTO, s'assurer d'un écart minimum cohérent
+    if (this->mode == climate::CLIMATE_MODE_AUTO) {
+        float low = this->target_temperature_low;
+        float high = this->target_temperature_high;
+        if (!std::isnan(low) && !std::isnan(high)) {
+            if (high - low < 1.0f) {
+                float median = (low + high) / 2.0f;
+                this->target_temperature_low = median - 2.0f;
+                this->target_temperature_high = median + 2.0f;
+            }
+        }
     }
 }
 

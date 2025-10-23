@@ -57,6 +57,7 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
         if (this->traits_.get_supports_two_point_target_temperature()) {
             // then update the temperature setting because mode change can change the temperature setting to low or high
             ESP_LOGD("control", "Mode change asked, controling temperature setting...");
+            this->sanitizeDualSetpoints();
             this->controlTemperature();
         }
     }
@@ -73,24 +74,70 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
                 // Les deux bornes sont fournies (mode AUTO)
                 this->target_temperature_low = *call.get_target_temperature_low();
                 this->target_temperature_high = *call.get_target_temperature_high();
-                ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);
+                ESP_LOGD("control", "received both target_temperature_low and target_temperature_high: %.1f - %.1f", this->target_temperature_low, this->target_temperature_high);
+                // Mémo UI
+                this->last_dual_setpoint_side_ = 'N';
+                this->last_dual_setpoint_change_ms_ = CUSTOM_MILLIS;
+                this->currentSettings.dual_low_target = this->target_temperature_low;
+                this->currentSettings.dual_high_target = this->target_temperature_high;
             } else if (call.get_target_temperature_low().has_value()) {
-                // Seule la borne basse est fournie
-                this->target_temperature_low = *call.get_target_temperature_low();
-                // Synchroniser seulement en mode AUTO
-                if (this->mode == climate::CLIMATE_MODE_AUTO) {
-                    this->target_temperature_high = this->target_temperature_low + 4.0f;
+                ESP_LOGD("control", "received only target_temperature_low: %.1f", *call.get_target_temperature_low());
+                // Anti-rebond: si on vient de changer HIGH tout juste, ignorer un LOW quasi simultané
+                if (this->last_dual_setpoint_side_ == 'H' && (CUSTOM_MILLIS - this->last_dual_setpoint_change_ms_) < UI_SETPOINT_ANTIREBOUND_MS) {
+                    ESP_LOGD("control", "ignored low setpoint due to UI anti-rebound after high change");
+                } else {
+                    float requested_low = *call.get_target_temperature_low();
+                    // Déterminer si low change réellement par rapport à la cible actuelle
+                    if (!std::isnan(this->target_temperature_low) && fabsf(requested_low - this->target_temperature_low) < 0.05f) {
+                        ESP_LOGD("control", "ignored low setpoint: no effective change vs current low target");
+                    } else {
+                        // Seule la borne basse est fournie
+                        this->target_temperature_low = requested_low;
+                        // En AUTO, faire glisser l'autre borne pour préserver l'amplitude fixe (4.0)
+                        if (this->mode == climate::CLIMATE_MODE_AUTO) {
+                            const float amplitude = 4.0f;
+                            this->target_temperature_high = this->target_temperature_low + amplitude;
+                            ESP_LOGD("control", "mode auto: sliding high to preserve amplitude %.1f => [%.1f - %.1f]", amplitude, this->target_temperature_low, this->target_temperature_high);
+                        }
+                        // Mémo UI
+                        this->last_dual_setpoint_side_ = 'L';
+                        this->last_dual_setpoint_change_ms_ = CUSTOM_MILLIS;
+                        // Mettre à jour la mémoire des bornes courantes
+                        this->currentSettings.dual_low_target = this->target_temperature_low;
+                        this->currentSettings.dual_high_target = this->target_temperature_high;
+                    }
                 }
-                ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);
             } else if (call.get_target_temperature_high().has_value()) {
-                // Seule la borne haute est fournie
-                this->target_temperature_high = *call.get_target_temperature_high();
-                // Synchroniser seulement en mode AUTO
-                if (this->mode == climate::CLIMATE_MODE_AUTO) {
-                    this->target_temperature_low = this->target_temperature_high - 4.0f;
+                ESP_LOGD("control", "received only target_temperature_high: %.1f", *call.get_target_temperature_high());
+                // Anti-rebond: si on vient de changer LOW tout juste, ignorer un HIGH quasi simultané
+                if (this->last_dual_setpoint_side_ == 'L' && (CUSTOM_MILLIS - this->last_dual_setpoint_change_ms_) < UI_SETPOINT_ANTIREBOUND_MS) {
+                    ESP_LOGD("control", "ignored high setpoint due to UI anti-rebound after low change");
+                } else {
+                    float requested_high = *call.get_target_temperature_high();
+                    // Déterminer si high change réellement vs cible actuelle
+                    if (!std::isnan(this->target_temperature_high) && fabsf(requested_high - this->target_temperature_high) < 0.05f) {
+                        ESP_LOGD("control", "ignored high setpoint: no effective change vs current high target");
+                    } else {
+                        // Seule la borne haute est fournie
+                        this->target_temperature_high = requested_high;
+                        // En AUTO, faire glisser l'autre borne pour préserver l'amplitude fixe (4.0)
+                        if (this->mode == climate::CLIMATE_MODE_AUTO) {
+                            const float amplitude = 4.0f;
+                            this->target_temperature_low = this->target_temperature_high - amplitude;
+                            ESP_LOGD("control", "mode auto: sliding low to preserve amplitude %.1f => [%.1f - %.1f]", amplitude, this->target_temperature_low, this->target_temperature_high);
+                        }
+                        // Mémo UI
+                        this->last_dual_setpoint_side_ = 'H';
+                        this->last_dual_setpoint_change_ms_ = CUSTOM_MILLIS;
+                        // Mettre à jour la mémoire des bornes courantes
+                        this->currentSettings.dual_low_target = this->target_temperature_low;
+                        this->currentSettings.dual_high_target = this->target_temperature_high;
+                    }
                 }
-                ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);
             }
+            ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);
+            // Répercuter immédiatement les nouvelles bornes dans HA pour éviter l'écrasement visuel par une lecture suivante
+            this->publish_state();
         } else {
             // Single setpoint : gérer target_temperature
             if (call.get_target_temperature().has_value()) {
@@ -99,7 +146,11 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
             }
         }
         updated = true;
+        ESP_LOGD("control", "sanitizing dual setpoints..."),
+            this->sanitizeDualSetpoints();
+        ESP_LOGD("control", "sanitized dual setpoints: low: %.1f - high: %.1f", this->target_temperature_low, this->target_temperature_high);
         this->controlTemperature();
+        ESP_LOGD("control", "controlled temperature to: %.1f", this->wantedSettings.temperature);
     }
 
     if (call.get_fan_mode().has_value()) {
@@ -239,6 +290,7 @@ void CN105Climate::controlTemperature() {
 
     // Utiliser la logique appropriée selon les traits
     if (this->traits_.get_supports_two_point_target_temperature()) {
+        this->sanitizeDualSetpoints();
         // Dual setpoint : choisir la bonne consigne selon le mode
         switch (this->mode) {
         case climate::CLIMATE_MODE_AUTO:
@@ -247,17 +299,22 @@ void CN105Climate::controlTemperature() {
             ESP_LOGD("control", "AUTO mode : getting median temperature low:%1.f, high:%1.f, result:%.1f", this->target_temperature_low, this->target_temperature_high, setting);
             break;
         case climate::CLIMATE_MODE_HEAT:
-            // Mode HEAT : utiliser la consigne de chauffage (borne basse)
+            // Mode HEAT : using low target temperature
             setting = this->target_temperature_low;
             ESP_LOGD("control", "HEAT mode : getting temperature low:%1.f", this->target_temperature_low);
             break;
         case climate::CLIMATE_MODE_COOL:
-            // Mode COOL : utiliser la consigne de climatisation (borne haute)
+            // Mode COOL : using high target temperature
+            setting = this->target_temperature_high;
+            ESP_LOGD("control", "COOL mode : getting temperature high:%1.f", this->target_temperature_high);
+            break;
+        case climate::CLIMATE_MODE_DRY:
+            // Mode DRY : using high target temperature
             setting = this->target_temperature_high;
             ESP_LOGD("control", "COOL mode : getting temperature high:%1.f", this->target_temperature_high);
             break;
         default:
-            // Autres modes : utiliser la consigne de chauffage par défaut
+            // Other modes : use median temperature
             setting = (this->target_temperature_low + this->target_temperature_high) / 2.0f;
             ESP_LOGD("control", "DEFAULT mode : getting temperature median:%1.f", setting);
             break;
@@ -370,6 +427,9 @@ void CN105Climate::setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateA
 //inside the below we could implement an internal only HEAT_COOL doing the math with an offset or something
 void CN105Climate::updateAction() {
     ESP_LOGV(TAG, "updating action back to espHome...");
+    if (this->traits().get_supports_two_point_target_temperature()) {
+        this->sanitizeDualSetpoints();
+    }
     switch (this->mode) {
     case climate::CLIMATE_MODE_HEAT:
         //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_HEATING);       

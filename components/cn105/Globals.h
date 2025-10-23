@@ -30,6 +30,10 @@ static const char* SHEDULER_REMOTE_TEMP_TIMEOUT = "->remote_temp_timeout";
 
 // defering delay for update_interval when we've just sent a wentedSettings
 static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 750;
+// Fenêtre de grâce (ms) après envoi d'une consigne pour ignorer une consigne entrante
+static const uint32_t RECEIVED_SETPOINT_GRACE_WINDOW_MS = 3000;
+// Anti-rebond UI entre deux mises à jour successives low/high
+static const uint32_t UI_SETPOINT_ANTIREBOUND_MS = 600;
 
 static const int PACKET_LEN = 22;
 static const int PACKET_TYPE_DEFAULT = 99;
@@ -136,6 +140,9 @@ struct heatpumpSettings {
     const char* power;
     const char* mode;
     float temperature;
+    // Mémoire des consignes duales (interne au composant)
+    float dual_low_target;   // < 0 si inconnu
+    float dual_high_target;  // < 0 si inconnu
     const char* fan;
     const char* vane; //vertical vane, up/down
     const char* wideVane; //horizontal vane, left/right
@@ -149,6 +156,8 @@ struct heatpumpSettings {
         power = nullptr;
         mode = nullptr;
         temperature = -1.0f;
+        dual_low_target = -100.0f;
+        dual_high_target = -100.0f;
         fan = nullptr;
         vane = nullptr;
         wideVane = nullptr;
@@ -159,6 +168,8 @@ struct heatpumpSettings {
             power = other.power;
             mode = other.mode;
             temperature = other.temperature;
+            dual_low_target = other.dual_low_target;
+            dual_high_target = other.dual_high_target;
             fan = other.fan;
             vane = other.vane;
             wideVane = other.wideVane;
