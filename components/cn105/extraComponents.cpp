@@ -47,17 +47,17 @@ void CN105Climate::set_horizontal_vane_select(
         this->wantedSettings.hasChanged = true;
         this->wantedSettings.hasBeenSent = false;
         this->wantedSettings.lastChange = CUSTOM_MILLIS;
-    });
+        });
 
 }
 
 void CN105Climate::set_airflow_control_select(
     VaneOrientationSelect* airflow_control_select) {
     this->airflow_control_select_ = airflow_control_select;
-        
+
     std::vector<std::string> airflowControlOptions(std::begin(AIRFLOW_CONTROL_MAP), std::end(AIRFLOW_CONTROL_MAP));
     this->airflow_control_select_->traits.set_options(airflowControlOptions);
-    
+
     this->airflow_control_select_->setCallbackFunction([this](const char* setting) {
         if (strcmp(this->currentSettings.wideVane, lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 8, 0x80 & 0x0F)) == 0) {
             ESP_LOGD("EVT", "airFlow -> Request for change of airflow control setting: %s", setting);
@@ -69,7 +69,7 @@ void CN105Climate::set_airflow_control_select(
         } else {
             this->airflow_control_select_->publish_state(this->currentRunStates.airflow_control);
         }
-    });
+        });
 }
 
 void CN105Climate::set_compressor_frequency_sensor(
@@ -163,33 +163,33 @@ void CN105Climate::set_air_purifier_switch(HVACOptionSwitch* Switch) {
     this->air_purifier_switch_ = Switch;
     this->air_purifier_switch_->setCallbackFunction([this](bool state) {
         this->wantedRunStates.air_purifier = state;
-        
+
         this->wantedRunStates.hasChanged = true;
         this->wantedRunStates.hasBeenSent = false;
         this->wantedRunStates.lastChange = CUSTOM_MILLIS;
-    });
+        });
 }
 
 void CN105Climate::set_night_mode_switch(HVACOptionSwitch* Switch) {
     this->night_mode_switch_ = Switch;
     this->night_mode_switch_->setCallbackFunction([this](bool state) {
         this->wantedRunStates.night_mode = state;
-        
+
         this->wantedRunStates.hasChanged = true;
         this->wantedRunStates.hasBeenSent = false;
         this->wantedRunStates.lastChange = CUSTOM_MILLIS;
-    });
+        });
 }
 
 void CN105Climate::set_circulator_switch(HVACOptionSwitch* Switch) { // only in HEAT mode? Manual says so, but it is possible to set the bit. The remote will not do it.
     this->circulator_switch_ = Switch;
     this->circulator_switch_->setCallbackFunction([this](bool state) {
         this->wantedRunStates.circulator = state;
-        
+
         this->wantedRunStates.hasChanged = true;
         this->wantedRunStates.hasBeenSent = false;
         this->wantedRunStates.lastChange = CUSTOM_MILLIS;
-    });
+        });
 }
 
 void CN105Climate::set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor) {
@@ -206,5 +206,6 @@ void CN105Climate::set_hp_uptime_connection_sensor(uptime::HpUpTimeConnectionSen
 
 void CN105Climate::set_use_fahrenheit_support_mode(bool value) {
     this->use_fahrenheit_support_mode_ = value;
+    this->fahrenheitSupport_.setUseFahrenheitSupportMode(value);
     ESP_LOGI(TAG, "Fahrenheit compatibility mode enabled: %s", value ? "true" : "false");
 }

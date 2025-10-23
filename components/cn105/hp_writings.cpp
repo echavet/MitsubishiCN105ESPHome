@@ -264,7 +264,7 @@ void CN105Climate::publishWantedSettingsStateToHA() {
     }
 
     // HA Temp
-    this->target_temperature = this->getTemperatureSetting();
+    this->updateTargetTemperaturesFromSettings(this->getTemperatureSetting());
 
     // publish to HA
     this->publish_state();
@@ -446,9 +446,9 @@ void CN105Climate::sendRemoteTemperature() {
 
 void CN105Climate::sendWantedRunStates() {
     uint8_t packet[PACKET_LEN] = {};
-    
+
     prepareSetPacket(packet, PACKET_LEN);
-    
+
     packet[5] = 0x08;
     if (this->wantedRunStates.airflow_control != nullptr) {
         ESP_LOGD(TAG, "airflow control -> %s", getAirflowControlSetting());
@@ -476,15 +476,15 @@ void CN105Climate::sendWantedRunStates() {
             packet[7] += RUN_STATE_PACKET_2[3];
         }
     }
-    
+
     // Add the checksum
     uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
     ESP_LOGD(LOG_SET_RUN_STATE, "Sending set run state package (0x08)");
     writePacket(packet, PACKET_LEN);
-    
+
     this->publishWantedRunStatesStateToHA();
-    
+
     this->wantedRunStates.resetSettings();
     this->loopCycle.deferCycle();
 }

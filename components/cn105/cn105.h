@@ -16,6 +16,7 @@
 #include "functions_button.h"
 #include "sub_mode_sensor.h"
 #include "hvac_option_switch.h"
+#include "localization.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/button/button.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
@@ -69,6 +70,7 @@ namespace esphome {
         text_sensor::TextSensor* stage_sensor_{ nullptr }; // to save ref if needed
         bool use_stage_for_operating_status_{ false };
         bool use_fahrenheit_support_mode_ = false;
+        FahrenheitSupport fahrenheitSupport_;
         text_sensor::TextSensor* Functions_sensor_ = nullptr;
         FunctionsButton* Functions_get_button_ = nullptr;
         FunctionsButton* Functions_set_button_ = nullptr;
@@ -118,7 +120,7 @@ namespace esphome {
 
         // checks if the field has changed
         bool hasChanged(const char* before, const char* now, const char* field, bool checkNotNull = false);
-        bool isWantedSettingApplied(const char* wantedSettingProp, const char* currentSettingProp, const char* field);
+
 
         float get_setup_priority() const override {
             return setup_priority::AFTER_WIFI;  // Configurez ce composant après le WiFi
@@ -166,6 +168,9 @@ namespace esphome {
         void control(const esphome::climate::ClimateCall& call) override;
         void controlMode();
         void controlTemperature();
+        float calculateTemperatureSetting(float setting);
+        float getTargetTemperatureInCurrentMode();
+
         void controlFan();
         void controlSwing();
 
@@ -285,8 +290,9 @@ namespace esphome {
         void checkFanSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
         void checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
         void checkWideVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings = true);
-//        void checkAirflowControlSettings(heatpumpRunStates& settings, bool updateCurrentSettings = true);
+        //        void checkAirflowControlSettings(heatpumpRunStates& settings, bool updateCurrentSettings = true);
         void updateExtraSelectComponents(heatpumpSettings& settings);
+        void updateTargetTemperaturesFromSettings(float temperature);
 
         //void statusChanged();
         void updateAction();
@@ -366,5 +372,12 @@ namespace esphome {
         int bytesRead = 0;
         int dataLength = 0;
         uint8_t command = 0;
+
+        // Ensure dual setpoints are valid (no NaN, enforce spread in AUTO)
+        void sanitizeDualSetpoints();
+
+        // Anti-rebond UI: mémorise le dernier côté modifié et l'instant
+        uint32_t last_dual_setpoint_change_ms_ = 0;
+        char last_dual_setpoint_side_ = 'N'; // 'L' (low), 'H' (high), 'N' (none)
     };
 }

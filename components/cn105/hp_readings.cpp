@@ -177,32 +177,6 @@ void CN105Climate::getPowerFromResponsePacket() {
     }
 }
 
-// Given a temperature in Celsius that will be converted to Fahrenheit, converts
-// it to the Celsius value corresponding to the the Fahrenheit value that
-// Mitsubishi thermostats would have converted the Celsius value to. For
-// instance, 21.5°C is 70.7°F, but to get it to map to 70°F, this function
-// returns 21.1°C.
-static float mapCelsiusForConversionToFahrenheit(const float c) {
-    static const auto& mapping = [] {
-        auto* const m = new std::map<float, float>{
-            {16.0, 61}, {16.5, 62}, {17.0, 63}, {17.5, 64}, {18.0, 65},
-            {18.5, 66}, {19.0, 67}, {20.0, 68}, {21.0, 69}, {21.5, 70},
-            {22.0, 71}, {22.5, 72}, {23.0, 73}, {23.5, 74}, {24.0, 75},
-            {24.5, 76}, {25.0, 77}, {25.5, 78}, {26.0, 79}, {26.5, 80},
-            {27.0, 81}, {27.5, 82}, {28.0, 83}, {28.5, 84}, {29.0, 85},
-            {29.5, 86}, {30.0, 87}, {30.5, 88}
-        };
-        for (auto& pair : *m) {
-            pair.second = (pair.second - 32.0f) / 1.8f;
-        }
-        return *m;
-        }();
-
-    auto it = mapping.find(c);
-    if (it == mapping.end()) return c;
-    return it->second;
-}
-
 void CN105Climate::getSettingsFromResponsePacket() {
     heatpumpSettings receivedSettings{};
     heatpumpRunStates receivedRunStates{};
@@ -226,7 +200,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
     }
     if (use_fahrenheit_support_mode_) {
-        receivedSettings.temperature = mapCelsiusForConversionToFahrenheit(receivedSettings.temperature);
+        receivedSettings.temperature = this->fahrenheitSupport_.normalizeCelsiusForConversionToFahrenheit(receivedSettings.temperature);
     }
 
     ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
@@ -240,7 +214,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
     // --- START OF MODIFIED SECTION - Reverted widevane section back to more or less original state
     if ((data[10] != 0) && (this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {    // wideVane is not always supported
         receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 8, data[10] & 0x0F, "wideVane reading");
-        this->wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;        
+        this->wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
         ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, this->wideVaneAdj);
     } else {
         ESP_LOGD("Decoder", "widevane is not supported");
@@ -254,10 +228,9 @@ void CN105Climate::getSettingsFromResponsePacket() {
     // --- AIRFLOW CONTROL START
     if (this->airflow_control_select_ != nullptr) {
         if (data[10] == 0x80) {
-            if (receivedSettings.iSee) { 
+            if (receivedSettings.iSee) {
                 receivedRunStates.airflow_control = lookupByteMapValue(AIRFLOW_CONTROL_MAP, AIRFLOW_CONTROL, 3, data[14], "airflow control reading");
-            }
-            else { 
+            } else {
                 // For some reason data[10] is 0x80, but the i-See sensor is not active. 
                 // Some units let us do this, but the real mode is unknown (might be powersave) and the i-See sensor does not get activated.
                 //receivedRunStates.airflow_control = "N/A";
@@ -272,7 +245,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
             this->airflow_control_select_->publish_state(receivedRunStates.airflow_control);
         }
     }
-    
+
     // --- AIRFLOW CONTROL END
 
     this->heatpumpUpdate(receivedSettings);
@@ -295,7 +268,7 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
     if (data[5] > 1) {
         receivedStatus.outsideAirTemperature = (data[5] - 128) / 2.0f;
         if (use_fahrenheit_support_mode_) {
-            receivedStatus.outsideAirTemperature = mapCelsiusForConversionToFahrenheit(receivedStatus.outsideAirTemperature);
+            receivedStatus.outsideAirTemperature = this->fahrenheitSupport_.normalizeCelsiusForConversionToFahrenheit(receivedStatus.outsideAirTemperature);
         }
     } else {
         receivedStatus.outsideAirTemperature = NAN;
@@ -305,11 +278,13 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
         int temp = data[6];
         temp -= 128;
         receivedStatus.roomTemperature = temp / 2.0f;
+        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[6]  --> [Room °C: %f]", receivedStatus.roomTemperature);
     } else {
         receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
+        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[3] map --> [Room °C : %f]", receivedStatus.roomTemperature);
     }
     if (use_fahrenheit_support_mode_) {
-        receivedStatus.roomTemperature = mapCelsiusForConversionToFahrenheit(receivedStatus.roomTemperature);
+        receivedStatus.roomTemperature = this->fahrenheitSupport_.normalizeCelsiusForConversionToFahrenheit(receivedStatus.roomTemperature);
     }
 
     receivedStatus.runtimeHours = float((data[11] << 16) | (data[12] << 8) | data[13]) / 60;
@@ -364,7 +339,7 @@ void CN105Climate::getHVACOptionsFromResponsePacket() {
     // CL = circulator (1 = on, 0 = off) ! MIGHT BE SAME BYTE AS ECONOCOOL - NEEDS TESTING !
     heatpumpRunStates receivedRunStates{};
     ESP_LOGD("Decoder", "[0x42 is HVAC options]");
-    
+
     if (this->air_purifier_switch_ != nullptr) {
         receivedRunStates.air_purifier = data[1];
         ESP_LOGD("Decoder", "[Air purifier : %s]", receivedRunStates.air_purifier ? "ON" : "OFF");
@@ -499,7 +474,7 @@ void CN105Climate::getDataFromResponsePacket() {
             }
         }
     }
-        break;
+             break;
 
     case 0x42:
         /* HVAC Options */
@@ -526,7 +501,7 @@ void CN105Climate::updateSuccess() {
 void CN105Climate::processCommand() {
     switch (this->command) {
     case 0x61:  /* last update was successful */
-        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "Update-ACK");
+        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, LOG_ACK);
         this->updateSuccess();
         break;
 
@@ -611,13 +586,21 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
     }
 
     // HA Temp
-    if (this->wantedSettings.temperature == -1) { // to prevent overwriting a user demand
-        this->target_temperature = settings.temperature;
-        this->currentSettings.temperature = settings.temperature;
+    // Ignorer temporairement une consigne entrante si une consigne utilisateur est en cours
+    bool hasPendingUserTemp = (this->wantedSettings.temperature != -1.0f) && (this->wantedSettings.hasChanged) && (!this->wantedSettings.hasBeenSent);
+    uint32_t graceWindowMs = this->get_update_interval() + DEFER_SCHEDULE_UPDATE_LOOP_DELAY;
+    bool graceAfterSend = (this->wantedSettings.hasBeenSent) && ((CUSTOM_MILLIS - this->wantedSettings.lastChange) < graceWindowMs);
+    if (!hasPendingUserTemp && !graceAfterSend) {
+        if (this->wantedSettings.temperature == -1) { // to prevent overwriting a user demand
+            this->updateTargetTemperaturesFromSettings(settings.temperature);
+            this->currentSettings.temperature = settings.temperature;
+        }
+    } else {
+        ESP_LOGD(LOG_SETTINGS_TAG, "Ignoring incoming setpoint due to pending user change or grace window");
     }
 
     this->currentSettings.iSee = settings.iSee;
-    
+
     this->currentSettings.connected = true;
 
     // publish to HA
@@ -626,19 +609,20 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
 }
 
 
+
 void CN105Climate::heatpumpUpdate(heatpumpSettings& settings) {
     // settings correponds to current settings
     ESP_LOGV(LOG_SETTINGS_TAG, "Settings received");
-
-    this->debugSettings("current", this->currentSettings);
-    this->debugSettings("received", settings);
-    this->debugSettings("wanted", this->wantedSettings);
-    this->debugClimate("climate");
-
-    if (this->currentSettings != settings) {
-        ESP_LOGD(LOG_SETTINGS_TAG, "Settings changed, updating HA states");
+    // if received settings are different from current settings 
+    if (settings != this->currentSettings) {
+        ESP_LOGI(LOG_SETTINGS_TAG, "Settings changed, updating HA states");
+        this->debugSettings("current", this->currentSettings);
+        this->debugSettings("received", settings);
+        this->debugSettings("wanted", this->wantedSettings);
+        this->debugClimate("climate");
         this->publishStateToHA(settings);
     }
+
 }
 
 void CN105Climate::checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
@@ -759,6 +743,8 @@ void CN105Climate::checkFanSettings(heatpumpSettings& settings, bool updateCurre
         }
     }
 }
+
+
 void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
     // currentSettings.power== NULL is true when it is the first time we get en answer from hp
     if (this->hasChanged(currentSettings.power, settings.power, "power") ||

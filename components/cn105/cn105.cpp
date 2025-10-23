@@ -9,7 +9,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
     this->traits_.set_supports_action(true);
     this->traits_.set_supports_current_temperature(true);
-    this->traits_.set_supports_two_point_target_temperature(false);
+    // supports_two_point_target_temperature sera défini dans setup() selon les modes supportés
     this->traits_.set_visual_min_temperature(ESPMHP_MIN_TEMPERATURE);
     this->traits_.set_visual_max_temperature(ESPMHP_MAX_TEMPERATURE);
     this->traits_.set_visual_temperature_step(ESPMHP_TEMPERATURE_STEP);
@@ -55,6 +55,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 #ifndef USE_ESP32
     this->wantedSettingsMutex = false;
 #endif
+
 }
 
 

@@ -12,21 +12,37 @@
 > [!WARNING]  
 > Due to a change in ESPHome 2025.8.0, some users are facing UART connection issues after a cold boot. Forcing the firmware esphome version to a previous release (2025.7.5 and below) solves the issue (no cold boot required). Alternative is to force ESP32 IDF version to 5.4.0. Note that OTA updates to 2025.8.0+ may work but can break after a subsequent cold boot.
 >
-> *"commit 116c91e9c5fc6d0d32191bd4e6d6e406e2bff6bf Author: Jonathan Swoboda <154711427+swoboda1337@users.noreply.github.com> Date:   Tue Jul 22 19:15:31 2025 -0400*
-> 
->    *Bump ESP32 IDF version to 5.4.2 and Arduino version to 3.2.1 (#9770)"*
+> _"commit 116c91e9c5fc6d0d32191bd4e6d6e406e2bff6bf Author: Jonathan Swoboda <154711427+swoboda1337@users.noreply.github.com> Date: Tue Jul 22 19:15:31 2025 -0400_
 >
+> _Bump ESP32 IDF version to 5.4.2 and Arduino version to 3.2.1 (#9770)"_
+>
+> **IMPORTANT**: Due to ESP-IDF 5.4.1 GPIO regression, you need to add a manual workaround in your YAML configuration. The GPIO reset must be performed before UART initialization, which requires using the `on_boot` mechanism.
+>
+> Add this workaround to your YAML configuration:
+>
+> ```yaml
+> esphome:
+>   on_boot:
+>     - priority: 1001
+>       then:
+>         - lambda: |-
+>             gpio_reset_pin((gpio_num_t)00);  # Replace with your TX pin
+>             gpio_reset_pin((gpio_num_t)04);  # Replace with your RX pin
+> ```
+>
+> **Note**: Replace `00` and `04` with your actual TX and RX pin numbers from your UART configuration.
 >
 > ```yaml
 > esp32:
->   board: esp32-s3-devkitc-1  
+>   board: esp32-s3-devkitc-1
 >   framework:
 >     type: esp-idf
 >     version: 5.4.0
 >   variant: esp32s3
 >   flash_size: 8MB
 > ```
-This project is a firmware for ESP32 microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump through Home Assistant, a web interface, or any MQTT client.
+>
+> This project is a firmware for ESP32 microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump through Home Assistant, a web interface, or any MQTT client.
 
 It uses the ESPHome framework and is compatible with the Arduino framework and ESP-IDF.
 
@@ -345,60 +361,76 @@ esphome:
   friendly_name: My Heatpump 1
 
 # For ESP8266 Devices
+
 #esp8266:
-#  board: d1_mini
+
+# board: d1_mini
 
 #uart:
-#  id: HP_UART
-#  baud_rate: 2400
-#  tx_pin: 1
-#  rx_pin: 3
+
+# id: HP_UART
+
+# baud_rate: 2400
+
+# tx_pin: 1
+
+# rx_pin: 3
 
 # For ESP32 Devices
 
 esp32:
-  board: esp32doit-devkit-v1
-  framework:
-    type: esp-idf
+board: esp32doit-devkit-v1
+framework:
+type: esp-idf
 
 uart:
-  id: HP_UART
-  baud_rate: 2400
-  tx_pin: GPIO17
-  rx_pin: GPIO16
+id: HP_UART
+baud_rate: 2400
+tx_pin: GPIO17
+rx_pin: GPIO16
 
 external_components:
-  - source: github://echavet/MitsubishiCN105ESPHome
+
+- source: github://echavet/MitsubishiCN105ESPHome
 
 # Climate entity configuration
+
 climate:
+
 - platform: cn105
   name: "My Heat Pump"
   update_interval: 2s
 
 # Default logging level
+
 logger:
-#  hardware_uart: UART1 # Uncomment on ESP8266 devices
-  level: INFO
+
+# hardware_uart: UART1 # Uncomment on ESP8266 devices
+
+level: INFO
 
 # Enable Home Assistant API
+
 api:
- encryption:
- key: !secret api_key
+encryption:
+key: !secret api_key
 
 ota:
-  platform: esphome # Required for ESPhome 2024.6.0 and greater
-  password: !secret ota_password
+platform: esphome # Required for ESPhome 2024.6.0 and greater
+password: !secret ota_password
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ap:
-    ssid: "Heatpump Fallback Hotspot"
-    password: !secret fallback_password
+ssid: !secret wifi_ssid
+password: !secret wifi_password
+
+# Enable fallback hotspot (captive portal) in case wifi connection fails
+
+ap:
+ssid: "Heatpump Fallback Hotspot"
+password: !secret fallback_password
 
 captive_portal:
+
 ````
 </details>
 

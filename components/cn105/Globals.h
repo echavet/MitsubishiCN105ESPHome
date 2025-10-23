@@ -23,12 +23,17 @@ static const char* LOG_STATUS_TAG = "STATUS";       // Logging status changes
 static const char* LOG_CYCLE_TAG = "CYCLE";         // loop cycles logs
 static const char* LOG_UPD_INT_TAG = "UPDT_ITVL";   // update interval logging
 static const char* LOG_SET_RUN_STATE = "SET_RUN_STATE";
-
+static const char* LOG_OPERATING_STATUS_TAG = "OPERATING_STATUS"; // Logging tag
+static const char* LOG_TEMP_SENSOR_TAG = "TEMP_SENSOR"; // Logging tag
 
 static const char* SHEDULER_REMOTE_TEMP_TIMEOUT = "->remote_temp_timeout";
 
 // defering delay for update_interval when we've just sent a wentedSettings
 static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 750;
+// Fenêtre de grâce (ms) après envoi d'une consigne pour ignorer une consigne entrante
+static const uint32_t RECEIVED_SETPOINT_GRACE_WINDOW_MS = 3000;
+// Anti-rebond UI entre deux mises à jour successives low/high
+static const uint32_t UI_SETPOINT_ANTIREBOUND_MS = 600;
 
 static const int PACKET_LEN = 22;
 static const int PACKET_TYPE_DEFAULT = 99;
@@ -135,6 +140,9 @@ struct heatpumpSettings {
     const char* power;
     const char* mode;
     float temperature;
+    // Mémoire des consignes duales (interne au composant)
+    float dual_low_target;   // < 0 si inconnu
+    float dual_high_target;  // < 0 si inconnu
     const char* fan;
     const char* vane; //vertical vane, up/down
     const char* wideVane; //horizontal vane, left/right
@@ -148,6 +156,8 @@ struct heatpumpSettings {
         power = nullptr;
         mode = nullptr;
         temperature = -1.0f;
+        dual_low_target = -100.0f;
+        dual_high_target = -100.0f;
         fan = nullptr;
         vane = nullptr;
         wideVane = nullptr;
@@ -158,6 +168,8 @@ struct heatpumpSettings {
             power = other.power;
             mode = other.mode;
             temperature = other.temperature;
+            dual_low_target = other.dual_low_target;
+            dual_high_target = other.dual_high_target;
             fan = other.fan;
             vane = other.vane;
             wideVane = other.wideVane;
@@ -283,14 +295,14 @@ struct heatpumpRunStates {
     int8_t night_mode;
     int8_t circulator;
     const char* airflow_control;
-    
+
     void resetSettings() {
         air_purifier = -1;
         night_mode = -1;
         circulator = -1;
         airflow_control = nullptr;
     }
-    
+
     heatpumpRunStates& operator=(const heatpumpRunStates& other) {
         if (this != &other) {
             air_purifier = other.air_purifier;
@@ -300,14 +312,14 @@ struct heatpumpRunStates {
         }
         return *this;
     }
-    
+
     bool operator==(const heatpumpRunStates& other) const {
         return air_purifier == other.air_purifier &&
             night_mode == other.night_mode &&
             circulator == other.circulator &&
             airflow_control == other.airflow_control;
     }
-    
+
     bool operator!=(const heatpumpRunStates& other) {
         return !(this->operator==(other));
     }
@@ -317,14 +329,14 @@ struct wantedHeatpumpRunStates : heatpumpRunStates {
     bool hasChanged;
     bool hasBeenSent;
     long lastChange;
-    
+
     void resetSettings() {
         heatpumpRunStates::resetSettings();
-        
+
         hasChanged = false;
         hasBeenSent = false;
     }
-    
+
     wantedHeatpumpRunStates& operator=(const wantedHeatpumpRunStates& other) {
         if (this != &other) {
             heatpumpRunStates::operator=(other);
@@ -333,7 +345,7 @@ struct wantedHeatpumpRunStates : heatpumpRunStates {
         }
         return *this;
     }
-    
+
     wantedHeatpumpRunStates& operator=(const heatpumpRunStates& other) {
         if (this != &other) {
             heatpumpRunStates::operator=(other);
