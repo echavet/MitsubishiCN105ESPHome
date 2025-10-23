@@ -22,7 +22,7 @@ void CN105Climate::checkPendingWantedSettings() {
 
 void CN105Climate::checkPendingWantedRunStates() {
     long now = CUSTOM_MILLIS;
-    if (!(this->wantedRunStates.hasChanged) || (now - this->wantedSettings.lastChange < this->debounce_delay_)) {
+    if (!(this->wantedRunStates.hasChanged) || (now - this->wantedRunStates.lastChange < this->debounce_delay_)) {
         return;
     }
     ESP_LOGI(LOG_ACTION_EVT_TAG, "checkPendingWantedRunStates - wanted run states have changed, sending them to the heatpump...");
