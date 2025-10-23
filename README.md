@@ -32,6 +32,7 @@
 >
 > **Note**: Replace `00` and `04` with your actual TX and RX pin numbers from your UART configuration.
 >
+> Alternatively, you can force the use of 5.4.0 esp-idf version :
 > ```yaml
 > esp32:
 >   board: esp32-s3-devkitc-1
