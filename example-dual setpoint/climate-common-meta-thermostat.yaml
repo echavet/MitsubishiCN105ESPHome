@@ -343,6 +343,21 @@ off_mode:
         id: splitunit
         mode: "OFF"
 
+heat_cool_mode:
+  then:
+    - logger.log:
+        level: INFO
+        format: "Thermostat set to HEAT_COOL mode - dual setpoint control active"
+    - logger.log:
+        level: INFO
+        format: "Target range: %.1f°C - %.1f°C"
+        args: 
+          - 'id(meta_climate).target_temperature_low'
+          - 'id(meta_climate).target_temperature_high'
+    # The actual control logic is handled by the on_state lambda
+    # which continuously monitors temperature and controls the CN105 unit
+    # This mode action just logs the mode change for debugging
+
 # =============================================================================
 # CLIMATE ACTION HANDLERS
 # =============================================================================
