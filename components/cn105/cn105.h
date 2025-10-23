@@ -120,7 +120,7 @@ namespace esphome {
 
         // checks if the field has changed
         bool hasChanged(const char* before, const char* now, const char* field, bool checkNotNull = false);
-        bool isWantedSettingApplied(const char* wantedSettingProp, const char* currentSettingProp, const char* field);
+
 
         float get_setup_priority() const override {
             return setup_priority::AFTER_WIFI;  // Configurez ce composant après le WiFi
