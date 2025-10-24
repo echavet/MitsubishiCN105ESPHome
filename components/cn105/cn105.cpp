@@ -114,7 +114,8 @@ void CN105Climate::sendInfoRequest(uint8_t code) {
         this->buildAndSendInfoPacket(req.code);
         if (req.soft_timeout_ms > 0) {
             uint8_t code_copy = req.code;
-            this->set_timeout("info_soft_timeout", req.soft_timeout_ms, [this, code_copy]() {
+            const std::string tname = req.timeout_name.empty() ? (std::string("info_timeout_") + std::to_string(code_copy)) : req.timeout_name;
+            this->set_timeout(tname.c_str(), req.soft_timeout_ms, [this, code_copy]() {
                 // If still awaiting this code's response, consider it a soft failure and move on
                 for (auto& r : this->info_requests_) {
                     if (r.code == code_copy && r.awaiting) {
