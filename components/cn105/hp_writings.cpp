@@ -361,8 +361,25 @@ void CN105Climate::sendWantedSettings() {
 }
 
 void CN105Climate::buildAndSendRequestPacket(int packetType) {
+    // Legacy path kept temporarily if some callsites still pass packetType indices.
+    // Map legacy indices to real codes and delegate to buildAndSendInfoPacket.
+    uint8_t code = 0x02; // default to settings
+    switch (packetType) {
+    case 0: code = 0x02; break; // RQST_PKT_SETTINGS
+    case 1: code = 0x03; break; // RQST_PKT_ROOM_TEMP
+    case 2: code = 0x04; break; // RQST_PKT_UNKNOWN
+    case 3: code = 0x05; break; // RQST_PKT_TIMERS
+    case 4: code = 0x06; break; // RQST_PKT_STATUS
+    case 5: code = 0x09; break; // RQST_PKT_STANDBY
+    case 6: code = 0x42; break; // RQST_PKT_HVAC_OPTIONS
+    default: code = 0x02; break;
+    }
+    this->buildAndSendInfoPacket(code);
+}
+
+void CN105Climate::buildAndSendInfoPacket(uint8_t code) {
     uint8_t packet[PACKET_LEN] = {};
-    createInfoPacket(packet, packetType);
+    createInfoPacket(packet, code);
     this->writePacket(packet, PACKET_LEN);
 }
 
@@ -372,11 +389,10 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
     if (this->isHeatpumpConnected_) {
         ESP_LOGV(LOG_UPD_INT_TAG, "triggering infopacket because of update interval tick");
         ESP_LOGV("CONTROL_WANTED_SETTINGS", "hasChanged is %s", wantedSettings.hasChanged ? "true" : "false");
-        ESP_LOGD(TAG, "sending a request for settings packet (0x02)");
         this->loopCycle.cycleStarted();
         this->nbCycles_++;
-        ESP_LOGD(LOG_CYCLE_TAG, "2a: Sending settings request (0x02)");
-        this->buildAndSendRequestPacket(RQST_PKT_SETTINGS);
+        // Envoie la première requête activable (la liste est enregistrée une fois au constructeur)
+        this->sendNextAfter(0x00); // 0x00 -> start, pick first eligible
     } else {
         this->reconnectIfConnectionLost();
     }
@@ -386,25 +402,15 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
 
 
 
-void CN105Climate::createInfoPacket(uint8_t* packet, uint8_t packetType) {
+void CN105Climate::createInfoPacket(uint8_t* packet, uint8_t code) {
     ESP_LOGD(TAG, "creating Info packet");
     // add the header to the packet
     for (int i = 0; i < INFOHEADER_LEN; i++) {
         packet[i] = INFOHEADER[i];
     }
 
-    // set the mode - settings or room temperature
-    if (packetType != PACKET_TYPE_DEFAULT) {
-        packet[5] = INFOMODE[packetType];
-    } else {
-        // request current infoMode, and increment for the next request
-        packet[5] = INFOMODE[infoMode];
-        if (infoMode == (INFOMODE_LEN - 1)) {
-            infoMode = 0;
-        } else {
-            infoMode++;
-        }
-    }
+    // directly set requested info code (0x02, 0x03, 0x06, 0x09, 0x42, ...)
+    packet[5] = code;
 
     // pad the packet out
     for (int i = 0; i < 15; i++) {

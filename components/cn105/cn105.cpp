@@ -56,6 +56,131 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->wantedSettingsMutex = false;
 #endif
 
+    // Register info requests once at construction time
+    this->registerInfoRequests();
+}
+
+void CN105Climate::registerInfoRequests() {
+    info_requests_.clear();
+    // 0x02 Settings
+    InfoRequest r_settings("settings", "Settings", 0x02, 3, 0);
+    r_settings.onResponse = [this](CN105Climate& self) { (void)self; this->getSettingsFromResponsePacket(); };
+    info_requests_.push_back(r_settings);
+
+    // 0x03 Room temperature
+    InfoRequest r_room("room_temp", "Room temperature", 0x03, 3, 0);
+    r_room.onResponse = [this](CN105Climate& self) { (void)self; this->getRoomTemperatureFromResponsePacket(); };
+    info_requests_.push_back(r_room);
+
+    // 0x42 HVAC options (conditional)
+    InfoRequest r_hvac_opts("hvac_options", "HVAC options", 0x42, 3, 500);
+    r_hvac_opts.canSend = [this](const CN105Climate& self) {
+        (void)self; // unused
+        return (this->air_purifier_switch_ != nullptr || this->night_mode_switch_ != nullptr || this->circulator_switch_ != nullptr);
+        };
+    r_hvac_opts.onResponse = [this](CN105Climate& self) { (void)self; this->getHVACOptionsFromResponsePacket(); };
+    info_requests_.push_back(r_hvac_opts);
+
+    // 0x06 Status
+    InfoRequest r_status("status", "Status", 0x06, 3, 0);
+    r_status.onResponse = [this](CN105Climate& self) { (void)self; this->getOperatingAndCompressorFreqFromResponsePacket(); };
+    info_requests_.push_back(r_status);
+
+    // 0x09 Standby/Power (existing non-support behavior)
+    InfoRequest r_power("standby", "Power/Standby", 0x09, 3, 500);
+    r_power.onResponse = [this](CN105Climate& self) { (void)self; this->getPowerFromResponsePacket(); };
+    info_requests_.push_back(r_power);
+
+    // Optional placeholders 0x04/0x05 disabled by default
+    InfoRequest r_unknown("unknown", "Unknown", 0x04, 1, 0);
+    r_unknown.disabled = true;
+    info_requests_.push_back(r_unknown);
+
+    InfoRequest r_timers("timers", "Timers", 0x05, 1, 0);
+    r_timers.disabled = true;
+    info_requests_.push_back(r_timers);
+
+    current_request_index_ = -1;
+}
+
+void CN105Climate::sendInfoRequest(uint8_t code) {
+    for (size_t i = 0; i < info_requests_.size(); ++i) {
+        auto& req = info_requests_[i];
+        if (req.code != code) continue;
+        if (req.disabled) { return; }
+        if (req.canSend && !req.canSend(*this)) { return; }
+        ESP_LOGD(LOG_CYCLE_TAG, "Sending %s (0x%02X)", req.description, req.code);
+        req.awaiting = true;
+        this->buildAndSendInfoPacket(req.code);
+        if (req.soft_timeout_ms > 0) {
+            uint8_t code_copy = req.code;
+            this->set_timeout("info_soft_timeout", req.soft_timeout_ms, [this, code_copy]() {
+                // If still awaiting this code's response, consider it a soft failure and move on
+                for (auto& r : this->info_requests_) {
+                    if (r.code == code_copy && r.awaiting) {
+                        r.awaiting = false;
+                        r.failures++;
+                        if (r.failures >= r.maxFailures) {
+                            r.disabled = true;
+                            ESP_LOGW(LOG_CYCLE_TAG, "%s (0x%02X) disabled (not supported)", r.description, r.code);
+                        }
+                        this->sendNextAfter(code_copy);
+                        break;
+                    }
+                }
+                });
+        }
+        current_request_index_ = static_cast<int>(i);
+        return;
+    }
+}
+
+void CN105Climate::markResponseSeenFor(uint8_t code) {
+    for (auto& req : info_requests_) {
+        if (req.code == code) {
+            req.awaiting = false;
+            req.failures = 0;
+            ESP_LOGD(LOG_CYCLE_TAG, "Receiving %s (0x%02X)", req.description, req.code);
+            if (req.onResponse) {
+                req.onResponse(*this);
+            }
+            return;
+        }
+    }
+}
+
+void CN105Climate::sendNextAfter(uint8_t code) {
+    // Find current index (by code) then try next activable entries in order
+    int start = -1;
+    for (size_t i = 0; i < info_requests_.size(); ++i) {
+        if (info_requests_[i].code == code) { start = static_cast<int>(i); break; }
+    }
+    int idx = (start < 0) ? 0 : start + 1;
+    for (; idx < static_cast<int>(info_requests_.size()); ++idx) {
+        auto& req = info_requests_[idx];
+        if (req.disabled) continue;
+        if (req.canSend && !req.canSend(*this)) continue;
+        this->sendInfoRequest(req.code);
+        return;
+    }
+    // No more requests → end cycle
+    this->terminateCycle();
+}
+
+bool CN105Climate::processInfoResponse(uint8_t code) {
+    // Cherche si le code est géré par l'orchestrateur
+    bool handled = false;
+    for (auto& req : info_requests_) {
+        if (req.code == code) {
+            handled = true;
+            break;
+        }
+    }
+    if (!handled) return false;
+
+    this->markResponseSeenFor(code);
+    this->sendNextAfter(code);
+    return true;
 }
 
 

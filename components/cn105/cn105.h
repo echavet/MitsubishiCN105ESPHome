@@ -17,10 +17,12 @@
 #include "sub_mode_sensor.h"
 #include "hvac_option_switch.h"
 #include "localization.h"
+#include "info_request.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/button/button.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
 #include "cycle_management.h"
+#include <vector>
 
 #ifdef USE_ESP32
 #include <mutex>
@@ -139,6 +141,7 @@ namespace esphome {
         void reconnectUART();
         void buildAndSendRequestsInfoPackets();
         void buildAndSendRequestPacket(int packetType);
+        void buildAndSendInfoPacket(uint8_t code);
         bool isHeatpumpConnectionActive();
         void reconnectIfConnectionLost();
 
@@ -315,12 +318,21 @@ namespace esphome {
         void controlDelegate(const esphome::climate::ClimateCall& call);
 
         void createPacket(uint8_t* packet);
-        void createInfoPacket(uint8_t* packet, uint8_t packetType);
+        void createInfoPacket(uint8_t* packet, uint8_t code);
         heatpumpSettings currentSettings{};
         wantedHeatpumpSettings wantedSettings{};
         heatpumpRunStates currentRunStates{};
         wantedHeatpumpRunStates wantedRunStates{};
         cycleManagement loopCycle{};
+
+        // Orchestrateur des requêtes INFO
+        std::vector<InfoRequest> info_requests_;
+        int current_request_index_ = -1;
+        void registerInfoRequests();
+        void sendInfoRequest(uint8_t code);
+        void sendNextAfter(uint8_t code);
+        void markResponseSeenFor(uint8_t code);
+        bool processInfoResponse(uint8_t code);
 
 #ifdef USE_ESP32
         std::mutex wantedSettingsMutex;

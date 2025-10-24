@@ -81,7 +81,7 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
                 this->currentSettings.dual_low_target = this->target_temperature_low;
                 this->currentSettings.dual_high_target = this->target_temperature_high;
             } else if (call.get_target_temperature_low().has_value()) {
-                ESP_LOGD("control", "received only target_temperature_low: %.1f", *call.get_target_temperature_low());
+                ESP_LOGI("control", "received only target_temperature_low: %.1f", *call.get_target_temperature_low());
                 // Anti-rebond: si on vient de changer HIGH tout juste, ignorer un LOW quasi simultané
                 if (this->last_dual_setpoint_side_ == 'H' && (CUSTOM_MILLIS - this->last_dual_setpoint_change_ms_) < UI_SETPOINT_ANTIREBOUND_MS) {
                     ESP_LOGD("control", "ignored low setpoint due to UI anti-rebound after high change");
@@ -108,7 +108,7 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
                     }
                 }
             } else if (call.get_target_temperature_high().has_value()) {
-                ESP_LOGD("control", "received only target_temperature_high: %.1f", *call.get_target_temperature_high());
+                ESP_LOGI("control", "received only target_temperature_high: %.1f", *call.get_target_temperature_high());
                 // Anti-rebond: si on vient de changer LOW tout juste, ignorer un HIGH quasi simultané
                 if (this->last_dual_setpoint_side_ == 'L' && (CUSTOM_MILLIS - this->last_dual_setpoint_change_ms_) < UI_SETPOINT_ANTIREBOUND_MS) {
                     ESP_LOGD("control", "ignored high setpoint due to UI anti-rebound after low change");

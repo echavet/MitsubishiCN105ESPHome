@@ -11,6 +11,14 @@
     "random": "cpp",
     "ranges": "cpp",
     "map": "cpp",
-    "regex": "cpp"
+    "regex": "cpp",
+    "array": "cpp",
+    "string": "cpp",
+    "string_view": "cpp",
+    "vector": "cpp",
+    "span": "cpp",
+    "__split_buffer": "cpp",
+    "deque": "cpp",
+    "list": "cpp"
   }
 }
