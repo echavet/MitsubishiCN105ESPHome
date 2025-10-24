@@ -165,6 +165,13 @@ void CN105Climate::getPowerFromResponsePacket() {
         if (!this->currentSettings.stage || strcmp(receivedSettings.stage, this->currentSettings.stage) != 0) {
             this->currentSettings.stage = receivedSettings.stage;
             this->stage_sensor_->publish_state(receivedSettings.stage);
+
+            // If using stage as operating fallback, update action immediately when stage changes
+            // and publish to Home Assistant
+            if (this->use_stage_for_operating_status_) {
+                this->updateAction();
+                this->publish_state();
+            }
         }
     }
     if (this->Sub_mode_sensor_ != nullptr && (!this->currentSettings.sub_mode || strcmp(receivedSettings.sub_mode, this->currentSettings.sub_mode) != 0)) {
