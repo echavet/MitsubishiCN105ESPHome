@@ -82,6 +82,9 @@ CONF_AIR_PURIFIER_SWITCH = "air_purifier_switch"
 CONF_NIGHT_MODE_SWITCH = "night_mode_switch"
 CONF_CIRCULATOR_SWITCH = "circulator_switch"
 
+# Support explicite du DUAL setpoint via YAML
+CONF_DUAL_SETPOINT = "dual_setpoint"
+
 DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
 DEFAULT_SWING_MODES = ["OFF", "VERTICAL", "HORIZONTAL", "BOTH"]
@@ -278,6 +281,7 @@ CONFIG_SCHEMA = (
                     cv.Optional(
                         CONF_SWING_MODE, default=DEFAULT_SWING_MODES
                     ): cv.ensure_list(climate.validate_climate_swing_mode),
+                    cv.Optional(CONF_DUAL_SETPOINT, default=False): cv.boolean,
                 }
             ),
         }
@@ -311,12 +315,9 @@ def to_code(config):
             if mode_str in climate.CLIMATE_MODES:
                 cg.add(traits.add_supported_mode(climate.CLIMATE_MODES[mode_str]))
 
-        # Définir le support du dual setpoint selon les modes supportés
-        # Si AUTO ou HEAT_COOL est présent, activer le dual setpoint
-        has_auto_or_heat_cool = (
-            "AUTO" in supported_modes or "HEAT_COOL" in supported_modes
-        )
-        cg.add(traits.set_supports_two_point_target_temperature(has_auto_or_heat_cool))
+        # Définir le support du dual setpoint via YAML (par défaut: False si absent)
+        yaml_dual = supports.get(CONF_DUAL_SETPOINT, False)
+        cg.add(traits.set_supports_two_point_target_temperature(yaml_dual))
         for fan_mode_str in supports.get(CONF_FAN_MODE, DEFAULT_FAN_MODES):
             if fan_mode_str in climate.CLIMATE_FAN_MODES:
                 cg.add(

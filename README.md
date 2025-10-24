@@ -33,6 +33,7 @@
 > **Note**: Replace `00` and `04` with your actual TX and RX pin numbers from your UART configuration.
 >
 > Alternatively, you can force the use of 5.4.0 esp-idf version :
+>
 > ```yaml
 > esp32:
 >   board: esp32-s3-devkitc-1
@@ -293,6 +294,14 @@ climate:
     airflow_control_select:
       name: Airflow Control
       disabled_by_default: true
+    supports:
+      # Explicitly control dual setpoint support in the UI/traits
+      # Defaults to false when omitted
+      dual_setpoint: true
+      # You can still specify supported modes as before
+      mode: [AUTO, COOL, HEAT, DRY, FAN_ONLY]
+      fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
+      swing_mode: ["OFF", VERTICAL]
 ```
 
 > [!TIP]
