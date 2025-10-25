@@ -46,17 +46,15 @@ static const uint8_t HEADER[HEADER_LEN] = { 0xfc, 0x41, 0x01, 0x30, 0x10, 0x01, 
 static const int INFOHEADER_LEN = 5;
 static const uint8_t INFOHEADER[INFOHEADER_LEN] = { 0xfc, 0x42, 0x01, 0x30, 0x10 };
 
+static const int RQST_PKT_SETTINGS = 0;
+static const int RQST_PKT_ROOM_TEMP = 1;
+static const int RQST_PKT_TIMERS = 3;
+static const int RQST_PKT_STATUS = 4;
+static const int RQST_PKT_STANDBY = 5;
+static const int RQST_PKT_UNKNOWN = 2;
+static const int RQST_PKT_HVAC_OPTIONS = 6;
 
-static const int INFOMODE_LEN = 7;
-static const uint8_t INFOMODE[INFOMODE_LEN] = {
-  0x02, // request a settings packet - RQST_PKT_SETTINGS
-  0x03, // request the current room temp - RQST_PKT_ROOM_TEMP
-  0x04, // unknown
-  0x05, // request the timers - RQST_PKT_TIMERS
-  0x06, // request status - RQST_PKT_STATUS
-  0x09, // request standby mode (maybe?) RQST_PKT_STANDBY
-  0x42  // request HVAC options - RQST_PKT_HVAC_OPTIONS
-};
+// Deprecated: INFOMODE and its rotation are no longer used. Requests now set code directly in packet[5].
 
 static const int RCVD_PKT_NONE = -1;
 static const int RCVD_PKT_FAIL = 0;
@@ -116,20 +114,7 @@ static const uint8_t FUNCTIONS_SET_PART2 = 0x21;
 static const uint8_t FUNCTIONS_GET_PART2 = 0x22;
 
 
-// Déclaration de la constante - pas de définition ici
-//extern const uint32_t ESPMHP_POLL_INTERVAL_DEFAULT;
-//extern const uint8_t ESPMHP_MIN_TEMPERATURE;
-//extern const uint8_t ESPMHP_MAX_TEMPERATURE;
-//extern const float ESPMHP_TEMPERATURE_STEP;
 
-
-static const int RQST_PKT_SETTINGS = 0;
-static const int RQST_PKT_ROOM_TEMP = 1;
-static const int RQST_PKT_TIMERS = 3;
-static const int RQST_PKT_STATUS = 4;
-static const int RQST_PKT_STANDBY = 5;
-static const int RQST_PKT_UNKNOWN = 2;
-static const int RQST_PKT_HVAC_OPTIONS = 6;
 
 const uint8_t ESPMHP_MIN_TEMPERATURE = 16; //16
 const uint8_t ESPMHP_MAX_TEMPERATURE = 26; //31
