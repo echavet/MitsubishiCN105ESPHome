@@ -95,8 +95,27 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
         ESP_LOGW(TAG, "could not write as asked, because UART is not connected");
         this->reconnectUART();
         ESP_LOGW(TAG, "delaying packet writing because we need to reconnect first...");
-        this->set_timeout("write", 4000, [this, packet, length]() { this->writePacket(packet, length); });
+        if (length > PACKET_LEN) {
+            ESP_LOGE(TAG, "Packet length %d exceeds PACKET_LEN %d, dropping.", length, PACKET_LEN);
+            return;
+        }
+        memcpy(this->pending_packet_, packet, static_cast<size_t>(length));
+        this->pending_packet_len_ = length;
+        this->pending_check_is_active_ = checkIsActive;
+        this->has_pending_packet_ = true;
+        this->set_timeout("write", 4000, [this]() { this->try_write_pending_packet(); });
     }
+}
+
+void CN105Climate::try_write_pending_packet() {
+    if (!this->has_pending_packet_) return;
+    if (!this->isUARTConnected_) {
+        this->reconnectUART();
+        this->set_timeout("write", 2000, [this]() { this->try_write_pending_packet(); });
+        return;
+    }
+    this->writePacket(this->pending_packet_, this->pending_packet_len_, this->pending_check_is_active_);
+    this->has_pending_packet_ = false;
 }
 
 const char* CN105Climate::getModeSetting() {
@@ -187,21 +206,21 @@ void CN105Climate::createPacket(uint8_t* packet) {
 
     if (this->wantedSettings.power != nullptr) {
         ESP_LOGD(TAG, "power -> %s", getPowerSetting());
-        packet[8] = POWER[lookupByteMapIndex(POWER_MAP, 2, getPowerSetting(), "power (write)")];
-        packet[6] += CONTROL_PACKET_1[0];
+        int idx = lookupByteMapIndex(POWER_MAP, 2, getPowerSetting(), "power (write)");
+        if (idx >= 0) { packet[8] = POWER[idx]; packet[6] += CONTROL_PACKET_1[0]; } else { ESP_LOGW(TAG, "Ignoring invalid power setting while building packet"); }
     }
 
     if (this->wantedSettings.mode != nullptr) {
         ESP_LOGD(TAG, "heatpump mode -> %s", getModeSetting());
-        packet[9] = MODE[lookupByteMapIndex(MODE_MAP, 5, getModeSetting(), "mode (write)")];
-        packet[6] += CONTROL_PACKET_1[1];
+        int idx = lookupByteMapIndex(MODE_MAP, 5, getModeSetting(), "mode (write)");
+        if (idx >= 0) { packet[9] = MODE[idx]; packet[6] += CONTROL_PACKET_1[1]; } else { ESP_LOGW(TAG, "Ignoring invalid mode setting while building packet"); }
     }
 
     if (wantedSettings.temperature != -1) {
         if (!tempMode) {
             ESP_LOGD(TAG, "temperature (tempmode is false) -> %f", getTemperatureSetting());
-            packet[10] = TEMP[lookupByteMapIndex(TEMP_MAP, 16, getTemperatureSetting(), "temperature (write)")];
-            packet[6] += CONTROL_PACKET_1[2];
+            int idx = lookupByteMapIndex(TEMP_MAP, 16, getTemperatureSetting(), "temperature (write)");
+            if (idx >= 0) { packet[10] = TEMP[idx]; packet[6] += CONTROL_PACKET_1[2]; } else { ESP_LOGW(TAG, "Ignoring invalid temperature setting while building packet"); }
         } else {
             ESP_LOGD(TAG, "temperature (tempmode is true) -> %f", getTemperatureSetting());
             float temp = (getTemperatureSetting() * 2) + 128;
@@ -212,20 +231,20 @@ void CN105Climate::createPacket(uint8_t* packet) {
 
     if (this->wantedSettings.fan != nullptr) {
         ESP_LOGD(TAG, "heatpump fan -> %s", getFanSpeedSetting());
-        packet[11] = FAN[lookupByteMapIndex(FAN_MAP, 6, getFanSpeedSetting(), "fan (write)")];
-        packet[6] += CONTROL_PACKET_1[3];
+        int idx = lookupByteMapIndex(FAN_MAP, 6, getFanSpeedSetting(), "fan (write)");
+        if (idx >= 0) { packet[11] = FAN[idx]; packet[6] += CONTROL_PACKET_1[3]; } else { ESP_LOGW(TAG, "Ignoring invalid fan setting while building packet"); }
     }
 
     if (this->wantedSettings.vane != nullptr) {
         ESP_LOGD(TAG, "heatpump vane -> %s", getVaneSetting());
-        packet[12] = VANE[lookupByteMapIndex(VANE_MAP, 7, getVaneSetting(), "vane (write)")];
-        packet[6] += CONTROL_PACKET_1[4];
+        int idx = lookupByteMapIndex(VANE_MAP, 7, getVaneSetting(), "vane (write)");
+        if (idx >= 0) { packet[12] = VANE[idx]; packet[6] += CONTROL_PACKET_1[4]; } else { ESP_LOGW(TAG, "Ignoring invalid vane setting while building packet"); }
     }
 
     if (this->wantedSettings.wideVane != nullptr) {
         ESP_LOGD(TAG, "heatpump widevane -> %s", getWideVaneSetting());
-        packet[18] = WIDEVANE[lookupByteMapIndex(WIDEVANE_MAP, 8, getWideVaneSetting(), "wideVane (write)")] | (this->wideVaneAdj ? 0x80 : 0x00);
-        packet[7] += CONTROL_PACKET_2[0];
+        int idx = lookupByteMapIndex(WIDEVANE_MAP, 8, getWideVaneSetting(), "wideVane (write)");
+        if (idx >= 0) { packet[18] = WIDEVANE[idx] | (this->wideVaneAdj ? 0x80 : 0x00); packet[7] += CONTROL_PACKET_2[0]; } else { ESP_LOGW(TAG, "Ignoring invalid wideVane setting while building packet"); }
     }
 
 

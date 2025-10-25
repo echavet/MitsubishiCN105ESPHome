@@ -34,16 +34,27 @@ void CN105Climate::parse(uint8_t inputData) {
     if (!this->foundStart) {                // no packet yet
         if (inputData == HEADER[0]) {
             this->foundStart = true;
+            this->bytesRead = 0;
             storedInputData[this->bytesRead++] = inputData;
         } else {
             // unknown bytes
         }
     } else {                                // we are getting a packet
+        if (this->bytesRead >= (MAX_DATA_BYTES - 1)) {
+            ESP_LOGW("Decoder", "buffer overflow preventive reset (bytesRead=%d)", this->bytesRead);
+            this->initBytePointer();
+            return;
+        }
         storedInputData[this->bytesRead] = inputData;
 
         checkHeader(inputData);
 
         if (this->dataLength != -1) {       // is header complete ?
+            if ((this->dataLength + 6) > MAX_DATA_BYTES) {
+                ESP_LOGW("Decoder", "declared data length %d too large, resetting parser", this->dataLength);
+                this->initBytePointer();
+                return;
+            }
 
             if ((this->bytesRead) == this->dataLength + 5) {
 
@@ -103,7 +114,7 @@ bool CN105Climate::processInput(void) {
     bool processed = false;
     while (this->get_hw_serial_()->available()) {
         processed = true;
-        u_int8_t inputData;
+        uint8_t inputData;
         if (this->get_hw_serial_()->read_byte(&inputData)) {
             parse(inputData);
         }

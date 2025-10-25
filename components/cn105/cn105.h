@@ -391,5 +391,12 @@ namespace esphome {
         // Anti-rebond UI: mémorise le dernier côté modifié et l'instant
         uint32_t last_dual_setpoint_change_ms_ = 0;
         char last_dual_setpoint_side_ = 'N'; // 'L' (low), 'H' (high), 'N' (none)
+
+        // Gestion sûre d'un paquet différé à écrire pour éviter la capture d'un buffer de pile
+        void try_write_pending_packet();
+        uint8_t pending_packet_[PACKET_LEN] = {};
+        int pending_packet_len_ = 0;
+        bool pending_check_is_active_ = true;
+        bool has_pending_packet_ = false;
     };
 }

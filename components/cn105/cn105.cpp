@@ -121,6 +121,7 @@ void CN105Climate::sendInfoRequest(uint8_t code) {
                     if (r.code == code_copy && r.awaiting) {
                         r.awaiting = false;
                         r.failures++;
+                        ESP_LOGW(LOG_CYCLE_TAG, "Soft timeout for %s (0x%02X), failures: %d", r.description, r.code, r.failures);
                         if (r.failures >= r.maxFailures) {
                             r.disabled = true;
                             ESP_LOGW(LOG_CYCLE_TAG, "%s (0x%02X) disabled (not supported)", r.description, r.code);
