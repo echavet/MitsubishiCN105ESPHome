@@ -16,3 +16,5 @@ myfirmware/.gitignore
 .vscode/*
 .vscode/settings.json
 hp-esp32-arduino.yaml
+hp-esp32-c6-esp-idf.yaml
+hp-esp32-s2-saola-arduino.yaml
