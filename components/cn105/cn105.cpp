@@ -347,11 +347,16 @@ void CN105Climate::force_low_level_uart_reinit() {
 #ifdef USE_ESP32
     // Réinit basse couche: reconfigurer le contrôleur utilisé par UARTComponent
     // On utilise le port passé par set_uart_port (fallback UART0 si inconnu)
-    const uart_port_t port = (this->uart_port_ == 1) ? UART_NUM_1 :
-#if SOC_UART_NUM > 2
-        (this->uart_port_ == 2) ? UART_NUM_2 :
+    uart_port_t port = UART_NUM_0;
+
+    if (this->uart_port_ == 1) {
+        port = UART_NUM_1;
+    }
+#if defined(SOC_UART_NUM) && (SOC_UART_NUM > 2)
+    else if (this->uart_port_ == 2) {
+        port = UART_NUM_2;
+    }
 #endif
-        UART_NUM_0;
 
     ESP_LOGI(TAG, "Forcing low-level UART reinit on port %d (tx=%d, rx=%d)", (int)port, this->tx_pin_, this->rx_pin_);
 
