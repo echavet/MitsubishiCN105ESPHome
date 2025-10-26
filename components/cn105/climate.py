@@ -157,6 +157,23 @@ def get_uart_pins_from_config(core_config, target_uart_id_str):
     return tx_pin_num, rx_pin_num
 
 
+def get_uart_port_index(core_config, target_uart_id_str):
+    # ESPHome ne fournit pas directement l'index de contrôleur; on l'infère
+    # via l'ordre de déclaration ou restons à 0 par défaut.
+    # On tente d'associer l'objet id() à sa position.
+    idx = 0
+    for i, uart_conf_item in enumerate(core_config.get("uart", [])):
+        if str(uart_conf_item[CONF_ID]) == target_uart_id_str:
+            idx = i  # souvent 0 => UART0, 1 => UART1, 2 => UART2
+            break
+    # Clamp 0..2
+    if idx < 0:
+        idx = 0
+    if idx > 2:
+        idx = 2
+    return idx
+
+
 # --- FIN de la fonction d'aide ---
 
 # Schémas pour les entités optionnelles (identiques à votre version)
@@ -303,6 +320,8 @@ def to_code(config):
     uart_id_str_for_lookup = str(uart_id_object)
     tx_pin, rx_pin = get_uart_pins_from_config(CORE.config, uart_id_str_for_lookup)
     cg.add(var.set_tx_rx_pins(tx_pin, rx_pin))
+    uart_port_index = get_uart_port_index(CORE.config, uart_id_str_for_lookup)
+    cg.add(var.set_uart_port(uart_port_index))
 
     if CONF_SUPPORTS in config:
         supports = config[CONF_SUPPORTS]

@@ -34,16 +34,27 @@ void CN105Climate::parse(uint8_t inputData) {
     if (!this->foundStart) {                // no packet yet
         if (inputData == HEADER[0]) {
             this->foundStart = true;
+            this->bytesRead = 0;
             storedInputData[this->bytesRead++] = inputData;
         } else {
             // unknown bytes
         }
     } else {                                // we are getting a packet
+        if (this->bytesRead >= (MAX_DATA_BYTES - 1)) {
+            ESP_LOGW("Decoder", "buffer overflow preventive reset (bytesRead=%d)", this->bytesRead);
+            this->initBytePointer();
+            return;
+        }
         storedInputData[this->bytesRead] = inputData;
 
         checkHeader(inputData);
 
         if (this->dataLength != -1) {       // is header complete ?
+            if ((this->dataLength + 6) > MAX_DATA_BYTES) {
+                ESP_LOGW("Decoder", "declared data length %d too large, resetting parser", this->dataLength);
+                this->initBytePointer();
+                return;
+            }
 
             if ((this->bytesRead) == this->dataLength + 5) {
 
@@ -103,7 +114,7 @@ bool CN105Climate::processInput(void) {
     bool processed = false;
     while (this->get_hw_serial_()->available()) {
         processed = true;
-        u_int8_t inputData;
+        uint8_t inputData;
         if (this->get_hw_serial_()->read_byte(&inputData)) {
             parse(inputData);
         }
@@ -393,30 +404,13 @@ void CN105Climate::terminateCycle() {
 }
 void CN105Climate::getDataFromResponsePacket() {
 
-    switch (this->data[0]) {
-    case 0x02:             /* setting information */
-        ESP_LOGD(LOG_CYCLE_TAG, "2b: Receiving settings response");
-        this->getSettingsFromResponsePacket();
-        // next step is to get the room temperature case 0x03
-        ESP_LOGD(LOG_CYCLE_TAG, "3a: Sending room °C request (0x03)");
-        this->buildAndSendRequestPacket(RQST_PKT_ROOM_TEMP);
-        break;
-
-    case 0x03:
-        /* room temperature reading */
-        ESP_LOGD(LOG_CYCLE_TAG, "3b: Receiving room °C response");
-        this->getRoomTemperatureFromResponsePacket();
-        // next step is to get the heatpump extra function status (air purifier, night mode, circulator) case 0x42 if these are enabled in the YAML
-        // or else
-        // next step is to get the heatpump status (operating and compressor frequency) case 0x06
-        if (this->air_purifier_switch_ != nullptr || this->night_mode_switch_ != nullptr || this->circulator_switch_ != nullptr) {
-            ESP_LOGD(LOG_CYCLE_TAG, "3c: Sending HVAC options request (0x42)");
-            this->buildAndSendRequestPacket(RQST_PKT_HVAC_OPTIONS);
-        } else {
-            ESP_LOGD(LOG_CYCLE_TAG, "4a: Sending status request (0x06)");
-            this->buildAndSendRequestPacket(RQST_PKT_STATUS);
-        }
-        break;
+    // D'abord, laissons l'orchestrateur traiter les codes connus
+    const uint8_t code = this->data[0];
+    if (this->processInfoResponse(code)) {
+        return;
+    }
+    // Sinon, switch pour les cas non gérés par l'orchestrateur
+    switch (code) {
 
     case 0x04:
         /* unknown */
@@ -431,34 +425,9 @@ void CN105Climate::getDataFromResponsePacket() {
         break;
 
     case 0x06:
-        /* status */
-        ESP_LOGD(LOG_CYCLE_TAG, "4b: Receiving status response");
-        this->getOperatingAndCompressorFreqFromResponsePacket();
-
-        if (this->powerRequestWithoutResponses < 3) {         // if more than 3 requests are without reponse, we desactivate the power request (0x09)
-            ESP_LOGD(LOG_CYCLE_TAG, "5a: Sending power request (0x09)");
-            this->buildAndSendRequestPacket(RQST_PKT_STANDBY);
-            this->powerRequestWithoutResponses++;
-        } else {
-            if (this->powerRequestWithoutResponses != 4) {
-                this->powerRequestWithoutResponses = 4;
-                ESP_LOGW(LOG_CYCLE_TAG, "power request (0x09) disabled (not supported)");
-            }
-            // in this case, the cycle ends up now
-            this->terminateCycle();
-        }
-        break;
-
+        break; // orchestrator
     case 0x09:
-        /* Power */
-        ESP_LOGD(LOG_CYCLE_TAG, "5b: Receiving Power/Standby response");
-        this->getPowerFromResponsePacket();
-        //FC 62 01 30 10 09 00 00 00 02 02 00 00 00 00 00 00 00 00 00 00 50
-        // reset the powerRequestWithoutResponses to 0 as we had a response
-        this->powerRequestWithoutResponses = 0;
-
-        this->terminateCycle();
-        break;
+        break; // orchestrator
 
     case 0x10:
         ESP_LOGD("Decoder", "[0x10 is Unknown : not implemented]");
@@ -484,12 +453,7 @@ void CN105Climate::getDataFromResponsePacket() {
              break;
 
     case 0x42:
-        /* HVAC Options */
-        ESP_LOGD(LOG_CYCLE_TAG, "3d: Receiving HVAC options");
-        this->getHVACOptionsFromResponsePacket();
-        ESP_LOGD(LOG_CYCLE_TAG, "4a: Sending status request (0x06)");
-        this->buildAndSendRequestPacket(RQST_PKT_STATUS);
-        break;
+        break; // orchestrator
 
     default:
         ESP_LOGW("Decoder", "packet type [%02X] <-- unknown and unexpected", data[0]);

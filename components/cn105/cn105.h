@@ -17,10 +17,12 @@
 #include "sub_mode_sensor.h"
 #include "hvac_option_switch.h"
 #include "localization.h"
+#include "info_request.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/button/button.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
 #include "cycle_management.h"
+#include <vector>
 
 #ifdef USE_ESP32
 #include <mutex>
@@ -133,12 +135,14 @@ namespace esphome {
 
         void set_baud_rate(int baud_rate);
         void set_tx_rx_pins(int tx_pin, int rx_pin);
+        void set_uart_port(int uart_port) { this->uart_port_ = uart_port; }
         //void set_wifi_connected_state(bool state);
         void setupUART();
         void disconnectUART();
         void reconnectUART();
         void buildAndSendRequestsInfoPackets();
         void buildAndSendRequestPacket(int packetType);
+        void buildAndSendInfoPacket(uint8_t code);
         bool isHeatpumpConnectionActive();
         void reconnectIfConnectionLost();
 
@@ -267,6 +271,8 @@ namespace esphome {
         void setHeatpumpConnected(bool state);
 
     private:
+        void force_low_level_uart_reinit();
+        int uart_port_ = -1;
         const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
         int lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "");
         int lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue, const char* debugInfo = "");
@@ -315,12 +321,21 @@ namespace esphome {
         void controlDelegate(const esphome::climate::ClimateCall& call);
 
         void createPacket(uint8_t* packet);
-        void createInfoPacket(uint8_t* packet, uint8_t packetType);
+        void createInfoPacket(uint8_t* packet, uint8_t code);
         heatpumpSettings currentSettings{};
         wantedHeatpumpSettings wantedSettings{};
         heatpumpRunStates currentRunStates{};
         wantedHeatpumpRunStates wantedRunStates{};
         cycleManagement loopCycle{};
+
+        // Orchestrateur des requêtes INFO
+        std::vector<InfoRequest> info_requests_;
+        int current_request_index_ = -1;
+        void registerInfoRequests();
+        void sendInfoRequest(uint8_t code);
+        void sendNextAfter(uint8_t code);
+        void markResponseSeenFor(uint8_t code);
+        bool processInfoResponse(uint8_t code);
 
 #ifdef USE_ESP32
         std::mutex wantedSettingsMutex;
@@ -379,5 +394,12 @@ namespace esphome {
         // Anti-rebond UI: mémorise le dernier côté modifié et l'instant
         uint32_t last_dual_setpoint_change_ms_ = 0;
         char last_dual_setpoint_side_ = 'N'; // 'L' (low), 'H' (high), 'N' (none)
+
+        // Gestion sûre d'un paquet différé à écrire pour éviter la capture d'un buffer de pile
+        void try_write_pending_packet();
+        uint8_t pending_packet_[PACKET_LEN] = {};
+        int pending_packet_len_ = 0;
+        bool pending_check_is_active_ = true;
+        bool has_pending_packet_ = false;
     };
 }

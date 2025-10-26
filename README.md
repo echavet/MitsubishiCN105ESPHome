@@ -16,23 +16,10 @@
 >
 > _Bump ESP32 IDF version to 5.4.2 and Arduino version to 3.2.1 (#9770)"_
 >
-> **IMPORTANT**: Due to ESP-IDF 5.4.1 GPIO regression, you need to add a manual workaround in your YAML configuration. The GPIO reset must be performed before UART initialization, which requires using the `on_boot` mechanism.
+> [!IMPORTANT]  
+> Temporary fix included: This component now implements a fallback low-level UART reinitialization that triggers only if the initial (normal) connection fails at boot. It reconfigures the UART controller linked to your `uart:` block (clock source, reapplies baudrate, RX pull-up, flush, etc.). No YAML `on_boot` workaround is required. This aims to mitigate ESP-IDF 5.4.x regressions observed on some ESP32 at low baud (2400, 8E1).
 >
-> Add this workaround to your YAML configuration:
->
-> ```yaml
-> esphome:
->   on_boot:
->     - priority: 1001
->       then:
->         - lambda: |-
->             gpio_reset_pin((gpio_num_t)00);  # Replace with your TX pin
->             gpio_reset_pin((gpio_num_t)04);  # Replace with your RX pin
-> ```
->
-> **Note**: Replace `00` and `04` with your actual TX and RX pin numbers from your UART configuration.
->
-> Alternatively, you can force the use of 5.4.0 esp-idf version :
+> If this fallback still doesn’t work on your hardware, you can temporarily force ESP‑IDF 5.4.0 in your YAML:
 >
 > ```yaml
 > esp32:
