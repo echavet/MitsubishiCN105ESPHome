@@ -352,7 +352,7 @@ void CN105Climate::force_low_level_uart_reinit() {
     if (this->uart_port_ == 1) {
         port = UART_NUM_1;
     }
-#if defined(SOC_UART_NUM) && (SOC_UART_NUM > 2)
+#if SOC_UART_NUM > 2
     else if (this->uart_port_ == 2) {
         port = UART_NUM_2;
     }
