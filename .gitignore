@@ -15,3 +15,4 @@ snapshot.sh
 myfirmware/.gitignore
 .vscode/*
 .vscode/settings.json
+hp-esp32-arduino.yaml
