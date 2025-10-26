@@ -1,7 +1,6 @@
 
 #include "cn105.h"
 #ifdef USE_ESP32
-#include "soc/soc_caps.h"
 #include <driver/uart.h>
 #include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
@@ -348,8 +347,8 @@ void CN105Climate::force_low_level_uart_reinit() {
     // Réinit basse couche: reconfigurer le contrôleur utilisé par UARTComponent
     // On utilise le port passé par set_uart_port (fallback UART0 si inconnu)
     const uart_port_t port = (this->uart_port_ == 1) ? UART_NUM_1 :
-#if SOC_UART_NUM > 2
-        (this->uart_port_ == 2) ? UART_NUM_2 :
+#ifdef UART_NUM_2
+    (this->uart_port_ == 2) ? UART_NUM_2 :
 #endif
         UART_NUM_0;
 
