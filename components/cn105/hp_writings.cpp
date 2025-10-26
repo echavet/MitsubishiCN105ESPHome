@@ -30,8 +30,8 @@ void CN105Climate::sendFirstConnectionPacket() {
         this->set_timeout("checkFirstConnection", 10000, [this]() {
             if (!this->isHeatpumpConnected_) {
                 ESP_LOGE(TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
-                ESP_LOGI(TAG, "Trying to connect again...");
-                this->sendFirstConnectionPacket();
+                ESP_LOGI(TAG, "Reinitializing UART and trying to connect again...");
+                this->reconnectUART();
             }});
 
     } else {

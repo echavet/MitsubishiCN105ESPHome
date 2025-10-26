@@ -135,6 +135,7 @@ namespace esphome {
 
         void set_baud_rate(int baud_rate);
         void set_tx_rx_pins(int tx_pin, int rx_pin);
+        void set_uart_port(int uart_port) { this->uart_port_ = uart_port; }
         //void set_wifi_connected_state(bool state);
         void setupUART();
         void disconnectUART();
@@ -270,6 +271,8 @@ namespace esphome {
         void setHeatpumpConnected(bool state);
 
     private:
+        void force_low_level_uart_reinit();
+        int uart_port_ = -1;
         const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
         int lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "");
         int lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue, const char* debugInfo = "");

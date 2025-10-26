@@ -31,6 +31,7 @@ void CN105Climate::setup() {
     //ESP_LOGI(TAG, "debounce_delay is set to %lu", this->debounce_delay_);
     log_info_uint32(TAG, "debounce_delay is set to ", this->debounce_delay_);
 
+    // Laisser le chemin standard tenter l'init; on n'intervient bas-niveau qu'en cas d'échec
     this->setupUART();
     this->sendFirstConnectionPacket();
 }

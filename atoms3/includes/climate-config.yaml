@@ -8,11 +8,15 @@ external_components:
  - source:
      type: local
      path: ../components 
+
 uart:
   id: HP_UART
   baud_rate: 2400
-  tx_pin: GPIO01 #G1
-  rx_pin: GPIO02 #G2
+  tx_pin: GPIO1
+  rx_pin: GPIO2
+  #debug:
+    
+
 climate:
   - platform: cn105
     name: ${clim_name}
