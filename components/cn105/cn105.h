@@ -227,6 +227,7 @@ namespace esphome {
         uint32_t update_interval_;
 
         climate::ClimateTraits traits_;
+
         //Accessor method for the HardwareSerial pointer
         uart::UARTComponent* get_hw_serial_() {
             return this->parent_;
@@ -319,6 +320,17 @@ namespace esphome {
 
 
         void controlDelegate(const esphome::climate::ClimateCall& call);
+        // Refactor helpers for controlDelegate
+        bool processModeChange(const esphome::climate::ClimateCall& call);
+        bool processTemperatureChange(const esphome::climate::ClimateCall& call);
+        bool processFanChange(const esphome::climate::ClimateCall& call);
+        bool processSwingChange(const esphome::climate::ClimateCall& call);
+        void finalizeControlIfUpdated(bool updated);
+        // Temperature handling helpers (dual setpoint variants)
+        void handleDualSetpointBoth(float low, float high);
+        void handleDualSetpointLowOnly(float low);
+        void handleDualSetpointHighOnly(float high);
+        void handleSingleTargetInAutoOrDry(float requested);
 
         void createPacket(uint8_t* packet);
         void createInfoPacket(uint8_t* packet, uint8_t code);

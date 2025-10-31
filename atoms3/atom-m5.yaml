@@ -50,7 +50,7 @@ logger:
     STATUS : INFO
     CN105Climate: WARN
     CN105: INFO
-    climate: INFO
+    climate: DEBUG
     sensor: WARN
     chkSum : INFO
     WRITE : WARN
