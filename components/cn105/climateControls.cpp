@@ -63,8 +63,14 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
     }
 
     // Vérifier si une température est fournie selon les traits
+    // En modes AUTO/DRY, accepter aussi target_temperature même en dual setpoint
     bool tempHasValue = this->traits_.get_supports_two_point_target_temperature() ?
-        (call.get_target_temperature_low().has_value() || call.get_target_temperature_high().has_value()) :
+        (
+            call.get_target_temperature_low().has_value() ||
+            call.get_target_temperature_high().has_value() ||
+            ((this->mode == climate::CLIMATE_MODE_AUTO || this->mode == climate::CLIMATE_MODE_DRY) &&
+                call.get_target_temperature().has_value())
+            ) :
         call.get_target_temperature().has_value();
 
     if (tempHasValue) {
@@ -133,6 +139,36 @@ void CN105Climate::controlDelegate(const esphome::climate::ClimateCall& call) {
                         this->currentSettings.dual_low_target = this->target_temperature_low;
                         this->currentSettings.dual_high_target = this->target_temperature_high;
                     }
+                }
+            } else if (call.get_target_temperature().has_value() &&
+                (this->mode == climate::CLIMATE_MODE_AUTO || this->mode == climate::CLIMATE_MODE_DRY)) {
+                // En AUTO/DRY, certains frontends/automations envoient une cible simple
+                float requested = *call.get_target_temperature();
+                if (this->mode == climate::CLIMATE_MODE_AUTO) {
+                    // Interpréter la cible comme médiane et reconstruire les bornes +/-2.0°C
+                    const float half_span = 2.0f;
+                    this->target_temperature_low = requested - half_span;
+                    this->target_temperature_high = requested + half_span;
+                    this->last_dual_setpoint_side_ = 'N';
+                    this->last_dual_setpoint_change_ms_ = CUSTOM_MILLIS;
+                    this->currentSettings.dual_low_target = this->target_temperature_low;
+                    this->currentSettings.dual_high_target = this->target_temperature_high;
+                    this->target_temperature = requested; // renseigner aussi la consigne simple pour l'UI
+                    ESP_LOGD("control", "AUTO received single target: median=%.1f => [%.1f - %.1f]",
+                        requested, this->target_temperature_low, this->target_temperature_high);
+                } else { // DRY
+                    // Utiliser la borne haute pour DRY et compléter low si nécessaire
+                    this->target_temperature_high = requested;
+                    if (std::isnan(this->target_temperature_low)) {
+                        this->target_temperature_low = requested;
+                    }
+                    this->last_dual_setpoint_side_ = 'H';
+                    this->last_dual_setpoint_change_ms_ = CUSTOM_MILLIS;
+                    this->currentSettings.dual_low_target = this->target_temperature_low;
+                    this->currentSettings.dual_high_target = this->target_temperature_high;
+                    this->target_temperature = requested;
+                    ESP_LOGD("control", "DRY received single target: high=%.1f (low now %.1f)",
+                        this->target_temperature_high, this->target_temperature_low);
                 }
             }
             ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);

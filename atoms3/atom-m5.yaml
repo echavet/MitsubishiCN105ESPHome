@@ -62,7 +62,7 @@ logger:
     CONTROL_WANTED_SETTINGS: INFO    
     control: INFO    
     UPDT_ITVL: DEBUG
-    CYCLE: DEBUG    
+    CYCLE: WARN    
     esp32_ble_tracker: INFO
     esp32_ble_client: INFO
     esp-idf: INFO
@@ -71,7 +71,7 @@ logger:
     HEAT_COOL: DEBUG  # Traces détaillées consigne glissante et mode AUTO/HEAT_COOL
     DUAL_SP: DEBUG    # Traces dual setpoint AUTO mode
     TEMP_SENSOR: INFO
-    UARTFix: DEBUG
+    UARTFix: WARN
 
 # mqtt, api, ota, wifi, captive, web, time
 <<: !include includes/ha-integration-config.yaml
