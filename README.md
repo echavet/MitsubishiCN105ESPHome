@@ -103,6 +103,8 @@ Units tested by project contributors include:
 - `MSZ-FHxxNA`
 - `MSZ-EF42VE`
 - `MSXY-FN10VE` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/368)
+- `MSZ-AP20VGK`
+- `MSZ-FT50VG2`
 
 ## Usage
 
