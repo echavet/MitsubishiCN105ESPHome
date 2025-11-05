@@ -773,6 +773,8 @@ Compatible units (as reported by users):
 | MSZ-FSxxNA     | MXZ-4C36NA2      | Works                              |
 |                | MUZ-FD25NA       | Not working                        |
 | MSZ-LN35       | MUZ-LN35         | Not working                        |
+| MSZ-AP20VGK    | MXZ-4F83VF       | Works                              |
+| MSZ-FT50VG2    | MUZ-FT50VG       | Works                              |
 
 ### Auto and Stage Sensors
 
