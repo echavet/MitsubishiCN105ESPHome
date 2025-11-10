@@ -103,6 +103,8 @@ Units tested by project contributors include:
 - `MSZ-FHxxNA`
 - `MSZ-EF42VE`
 - `MSXY-FN10VE` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/368)
+- `MSZ-AP20VGK`
+- `MSZ-FT50VG2`
 
 ## Usage
 
@@ -773,6 +775,8 @@ Compatible units (as reported by users):
 | MSZ-FSxxNA     | MXZ-4C36NA2      | Works                              |
 |                | MUZ-FD25NA       | Not working                        |
 | MSZ-LN35       | MUZ-LN35         | Not working                        |
+| MSZ-AP20VGK    | MXZ-4F83VF       | Works                              |
+| MSZ-FT50VG2    | MUZ-FT50VG       | Works                              |
 
 ### Auto and Stage Sensors
 
