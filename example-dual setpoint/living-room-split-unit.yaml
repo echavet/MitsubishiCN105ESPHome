@@ -22,7 +22,12 @@ esphome:
       - logger.log:
           level: INFO
           format: "CN105 initialization delay completed"
-          
+
+# =============================================================================
+# HARDWARE CONFIGURATION
+# =============================================================================
+# Change the below to match your hardware
+
 esp32:
   board: m5stack-stamps3 #esp32-s3-devkitc-1
   variant: esp32s3
@@ -35,15 +40,16 @@ esp32:
 # =============================================================================
 # These includes provide common functionality shared across multiple devices.
 # Each include adds specific features to the device configuration.
+# Change then to match your prefered configuration
 
 # Core system includes
-<<: !include common/ota.yaml                        # Over-the-air updates
-<<: !include common/web_server.yaml                  # Web interface
-<<: !include common/time.yaml                        # Time synchronization
-<<: !include common/climate-common-non-climate.yaml  # CN105 hardware configuration
+<<: !include common/ota.yaml                        # Over-the-air updates https://esphome.io/components/ota/esphome/
+<<: !include common/web_server.yaml                  # Web interface https://esphome.io/components/web_server/
+<<: !include common/time.yaml                        # Time synchronization https://esphome.io/components/time/
+<<: !include common/climate-common-non-climate.yaml  # CN105 hardware configuration and other sensors, you can add more sensors here if you want, or remove some if you don't need them.
 
 # Network configuration
-<<: !include common/wifi.yaml                        # WiFi connection settings
+<<: !include common/wifi.yaml                        # WiFi connection settings https://esphome.io/components/wifi/
 # Alternative manual WiFi configuration (commented out):
 #wifi:
 #  use_address: 192.168.50.102                      # Static IP address
@@ -56,8 +62,8 @@ esp32:
 # Include common sensor configurations for WiFi and version information
 
 text_sensor:
-  - !include common/sensors/wifi_text_sensors.yaml    # WiFi status sensors
-  - !include common/sensors/version_text_sensors.yaml # Version information sensors
+  - !include common/sensors/wifi_text_sensors.yaml    # WiFi status sensors https://esphome.io/components/text_sensor/wifi_info/
+  - !include common/sensors/version_text_sensors.yaml # Version information sensors https://esphome.io/components/text_sensor/version/
 
 # =============================================================================
 # CLIMATE CONTROL CONFIGURATION
@@ -66,5 +72,5 @@ text_sensor:
 # These files provide the actual climate device and meta-thermostat functionality.
 
 climate:
-  - !include common/climate-common-everything-but-office.yaml  # CN105 climate device
-  - !include common/climate-common-meta-thermostat.yaml         # Dual setpoint thermostat
+  - !include common/climate-common-everything-but-office.yaml  # CN105 climate device https://github.com/echavet/MitsubishiCN105ESPHome/blob/main/README.md not included here because you need to write your own / copy it from the readme.
+  - !include common/climate-common-meta-thermostat.yaml         # Dual setpoint thermostat see the file in the same directory for more information.
