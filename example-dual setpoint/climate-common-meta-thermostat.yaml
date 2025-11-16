@@ -1,33 +1,73 @@
+# =============================================================================
+# META THERMOSTAT CONFIGURATION - DUAL SETPOINT CLIMATE CONTROL
+# =============================================================================
+# This file defines a meta-thermostat that provides dual setpoint control
+# for Mitsubishi CN105 heat pump units. The thermostat acts as an intelligent
+# controller that manages both heating and cooling setpoints simultaneously,
+# providing comfort zones rather than single temperature targets.
+#
+# Key Features:
+# - Dual setpoint control (low/high temperature targets)
+# - Humidity-based DRY mode activation
+# - Multiple comfort presets for different scenarios
+# - Hysteresis control to prevent short cycling
+# - Direct control of underlying CN105 climate device
+# =============================================================================
+
+# This tells ESPHome we're creating a thermostat component
 platform: thermostat
-name: Thermostat
-id: meta_climate
-icon: mdi:heat-pump
+name: Thermostat                    # Name shown in Home Assistant
+id: meta_climate                    # Internal ID used to reference this thermostat
+icon: mdi:heat-pump                 # Icon shown in Home Assistant UI
+
+# Visual settings for the thermostat interface in Home Assistant
 visual:
-  min_temperature: 17
-  max_temperature: 27
+  min_temperature: 17               # Minimum temperature users can set (17°C = 62.6°F)
+  max_temperature: 27                # Maximum temperature users can set (27°C = 80.6°F)
   temperature_step:
-    target_temperature: 0.05
-    current_temperature: 0.05
-sensor: room_temperature
-humidity_sensor: room_humidity
-# Hysteresis settings for better control
-heat_deadband: 1.0
-heat_overrun: 1.0
-cool_deadband: 1.0
-cool_overrun: 1.0
-# Timing controls to prevent short cycling
-min_heating_off_time: 180s
-min_heating_run_time: 420s
-min_cooling_off_time: 300s
-min_cooling_run_time: 600s
-min_fanning_off_time: 60s
-min_fanning_run_time: 600s
-min_idle_time: 180s
-min_fan_mode_switching_time: 120s
-startup_delay: true
-#on_boot_restore_from: memory
-on_boot_restore_from: default_preset
-default_preset: Home
+    target_temperature: 0.05         # How precise temperature adjustments are (0.05°C steps)
+    current_temperature: 0.05        # Display precision for current temperature reading
+
+# Input sensors - these tell the thermostat what the current conditions are
+sensor: room_temperature             # Primary temperature sensor (from Home Assistant)
+humidity_sensor: room_humidity       # Humidity sensor for DRY mode control
+
+# =============================================================================
+# HYSTERESIS AND TIMING CONTROL
+# =============================================================================
+# These settings prevent short cycling and provide stable temperature control
+# by adding delays and deadbands between heating/cooling operations.
+#
+# What is hysteresis? It's a buffer zone that prevents the system from rapidly
+# switching on and off. For example, if you set heat to 70°F, it won't turn off
+# immediately when it reaches 70°F - it will wait until it's slightly above,
+# preventing constant cycling.
+
+# Hysteresis settings for better control (prevents rapid switching)
+heat_deadband: 1.0      # Temperature buffer before heating stops (1°C = 1.8°F)
+heat_overrun: 1.0       # Additional heating beyond target (safety margin)
+cool_deadband: 1.0      # Temperature buffer before cooling stops
+cool_overrun: 1.0       # Additional cooling beyond target (safety margin)
+
+# Timing controls to prevent short cycling (minimum run/off times)
+# These ensure the system doesn't turn on/off too frequently, which:
+# - Reduces wear on the equipment
+# - Saves energy
+# - Provides more stable temperature control
+min_heating_off_time: 180s      # Must wait 3 minutes between heating cycles
+min_heating_run_time: 420s      # Must run heating for at least 7 minutes
+min_cooling_off_time: 300s      # Must wait 5 minutes between cooling cycles
+min_cooling_run_time: 600s      # Must run cooling for at least 10 minutes
+min_fanning_off_time: 60s       # Must wait 1 minute between fan cycles
+min_fanning_run_time: 600s      # Must run fan for at least 10 minutes
+min_idle_time: 180s             # Must wait 3 minutes between mode changes
+min_fan_mode_switching_time: 120s  # Must wait 2 minutes between fan speed changes
+
+# Startup behavior
+startup_delay: true              # Delay startup to allow system stabilization
+#on_boot_restore_from: memory   # Alternative: restore from memory (commented out)
+on_boot_restore_from: default_preset  # Restore to default preset on boot
+default_preset: Home            # Default preset to use on startup
 # =============================================================================
 # COMFORT PRESETS - PRE-CONFIGURED TEMPERATURE SCENARIOS
 # =============================================================================
@@ -35,10 +75,24 @@ default_preset: Home
 # Each preset defines both low and high temperature setpoints, creating
 # a comfort zone rather than a single target temperature.
 #
-# Temperature ranges are in Celsius:
-# - Low setpoint: Minimum comfortable temperature
-# - High setpoint: Maximum comfortable temperature
-# - Mode: Primary operation mode (HEAT, COOL, HEAT_COOL, FAN_ONLY)
+# HOW DUAL SETPOINTS WORK:
+# Instead of setting one temperature (like 72°F), you set a RANGE (like 70-75°F).
+# The system will:
+#   - HEAT if temperature drops below the low setpoint (70°F)
+#   - COOL if temperature rises above the high setpoint (75°F)
+#   - Do NOTHING (fan only) if temperature is between the two setpoints
+#
+# This is more comfortable because you're not constantly heating/cooling to hit
+# an exact temperature - you have a "comfort zone" where the system just circulates air.
+#
+# Temperature ranges are in Celsius (converted to Fahrenheit in comments):
+# - Low setpoint: Minimum comfortable temperature (system heats if below this)
+# - High setpoint: Maximum comfortable temperature (system cools if above this)
+# - Mode: Primary operation mode:
+#     * HEAT: Only heating allowed
+#     * COOL: Only cooling allowed
+#     * HEAT_COOL: Both heating and cooling allowed (uses dual setpoint logic)
+#     * FAN_ONLY: No heating or cooling, just air circulation
 # - Fan mode: Air circulation speed (AUTO, LOW, MEDIUM, HIGH, QUIET)
 # - Swing mode: Air direction control (OFF, VERTICAL, HORIZONTAL, BOTH)
 # =============================================================================
@@ -127,14 +181,28 @@ preset:
     fan_mode: "AUTO"
     swing_mode: "BOTH"
 # Minimum temperature difference between low and high setpoints
+# This ensures there's always at least 1°C (1.8°F) difference between your
+# low and high setpoints. This prevents the system from having a range that's
+# too narrow (which would cause constant switching).
+# Example: If low is 70°F, high must be at least 71.8°F
 set_point_minimum_differential: 1.0
 
 # =============================================================================
 # PRESET CHANGE LOGGING
 # =============================================================================
-# Logs when presets are changed for debugging and monitoring
-# THIS CODE SEEMS TO CAUSE ISSUES: some ESP's hault here, so I've commented it out
-# TODO: find a way to make it work without causing issues
+# This section would log when presets are changed for debugging and monitoring.
+# 
+# ⚠️ WARNING: THIS CODE IS COMMENTED OUT BECAUSE IT CAUSES ISSUES!
+# Some ESP32 devices have been known to halt/freeze when this logging code runs.
+# The author and several users have experienced this problem, so it's been
+# disabled. The system works perfectly fine without this logging - it's just
+# a nice-to-have feature for debugging.
+#
+# If you want to try enabling it, uncomment the section below, but be aware
+# that it might cause your device to freeze. If that happens, just comment
+# it back out.
+#
+# TODO: Find a way to make this work without causing device halts
 #preset_change:
 #  then:
 #    - logger.log:
@@ -152,115 +220,194 @@ set_point_minimum_differential: 1.0
 #          - 'id(meta_climate).target_temperature_high'
 
 # =============================================================================
-# DUAL SETPOINT CONTROL LOGIC
+# DUAL SETPOINT CONTROL LOGIC - THE BRAINS OF THE SYSTEM
 # =============================================================================
-# This is the core intelligence of the meta-thermostat. It continuously
-# monitors temperature and humidity, then automatically controls the CN105
-# unit to maintain comfort within the dual setpoint range.
+# This is the core intelligence of the meta-thermostat. This code runs continuously
+# (every time the thermostat state changes) and automatically controls the CN105
+# heat pump unit to maintain comfort within your dual setpoint range.
 #
-# Control Logic:
-# 1. Humidity Control: If humidity > 65%, activate DRY mode regardless of temperature
-# 2. Temperature Control: Only applies in HEAT_COOL mode
-#    - If temp < (low_setpoint - deadband): HEAT
-#    - If temp > (high_setpoint + deadband): COOL  
-#    - If temp within range: IDLE (fan only)
+# HOW IT WORKS:
+# This code checks the current temperature and humidity, then decides what to do:
 #
-# The thermostat directly controls the CN105 unit without changing its own mode,
-# allowing for intelligent dual-setpoint management.
+# STEP 1: Check Humidity First (Priority #1)
+#   - If humidity > 65%: Switch to DRY mode (dehumidify) regardless of temperature
+#   - This prevents mold and maintains air quality
+#   - Once humidity is controlled, move to Step 2
+#
+# STEP 2: Check Temperature (Only in HEAT_COOL mode)
+#   - If temperature < (low_setpoint - 1°C deadband): Turn on HEAT
+#     Example: Low setpoint is 70°F, deadband is 1.8°F
+#     System heats when temp drops below 68.2°F
+#
+#   - If temperature > (high_setpoint + 1°C deadband): Turn on COOL
+#     Example: High setpoint is 75°F, deadband is 1.8°F
+#     System cools when temp rises above 76.8°F
+#
+#   - If temperature is between the setpoints: Turn on FAN ONLY (IDLE)
+#     Example: Temp is 72°F, range is 70-75°F
+#     System just circulates air, no heating or cooling
+#
+# IMPORTANT: The thermostat directly controls the CN105 unit WITHOUT changing
+# the thermostat's own mode. This means the thermostat can stay in HEAT_COOL
+# mode while it intelligently switches the actual heat pump between HEAT, COOL,
+# and FAN_ONLY modes as needed.
 # =============================================================================
 on_state:
   then:
     - lambda: |-
         // =================================================================
-        // HUMIDITY CONTROL - PRIORITY OVER TEMPERATURE
+        // STEP 1: HUMIDITY CONTROL - PRIORITY OVER TEMPERATURE
         // =================================================================
-        // Check humidity first - if above 65%, activate DRY mode regardless of temperature
-        // This prevents mold and maintains air quality
+        // Humidity control comes FIRST because high humidity can cause mold
+        // and health issues. We check this before temperature.
+        //
+        // What this code does:
+        // 1. Get the current humidity reading from the sensor
+        // 2. Check if humidity is above 65% (the threshold for DRY mode)
+        // 3. If yes, switch the CN105 unit to DRY mode to dehumidify
+        // 4. Skip temperature checking (return early) - humidity is more important
+        
+        // Get current humidity from the sensor
         auto current_humidity = id(room_humidity).state;
+        
+        // Check if humidity is valid (not NaN) and above 65%
         if (!isnan(current_humidity) && current_humidity >= 65.0) {
+          // Get reference to the CN105 climate unit
           auto climate_unit = id(splitunit);
           auto current_action = climate_unit->action;
           
-          // Only switch to DRY mode if not already drying
+          // Only switch to DRY mode if not already drying (avoid unnecessary changes)
           if (current_action != climate::CLIMATE_ACTION_DRYING) {
+            // Log what we're doing (for debugging)
             ESP_LOGI("HUMIDITY_CONTROL", "High humidity detected: %.1f%%, switching CN105 to DRY mode", current_humidity);
+            
             // Control CN105 unit directly for drying without changing thermostat mode
+            // This is important: we control the heat pump, not the thermostat
             auto call = id(splitunit).make_call();
             call.set_mode(climate::CLIMATE_MODE_DRY);
+            
             // Set target temperature to middle of comfort range + 2°C for effective drying
+            // Example: If range is 70-75°F, target is 72.5°F + 3.6°F = 76.1°F
+            // This temperature helps the unit dehumidify more effectively
             call.set_target_temperature(((id(meta_climate).target_temperature_low + id(meta_climate).target_temperature_high) / 2) + 2.0);
-            call.perform();
+            call.perform();  // Actually send the command to the CN105 unit
           }
-          return; // Exit early, don't process temperature logic
+          return; // Exit early - don't process temperature logic (humidity is priority)
         }
         
         // =================================================================
-        // TEMPERATURE CONTROL - DUAL SETPOINT LOGIC
+        // STEP 2: TEMPERATURE CONTROL - DUAL SETPOINT LOGIC
         // =================================================================
-        // Only apply dual setpoint logic if we're in HEAT_COOL mode
-        // Other modes (HEAT, COOL, FAN_ONLY) are handled by their respective actions
+        // This is where the magic happens! We only apply dual setpoint logic
+        // if the thermostat is in HEAT_COOL mode. Other modes (HEAT, COOL, FAN_ONLY)
+        // are handled by their respective action handlers below.
+        //
+        // Why only HEAT_COOL mode? Because dual setpoints require the ability
+        // to both heat AND cool. If you're in HEAT mode, you can only heat.
+        // If you're in COOL mode, you can only cool.
+        
+        // Check if we're in HEAT_COOL mode - if not, skip this logic
         if (id(meta_climate).mode != climate::CLIMATE_MODE_HEAT_COOL) {
-          return;
+          return;  // Exit - let the mode-specific handlers deal with it
         }
         
         // Get current temperature and setpoints
-        auto current_temp = id(room_temperature).state;
-        auto target_low = id(meta_climate).target_temperature_low;
-        auto target_high = id(meta_climate).target_temperature_high;
+        // These are the values we'll use to make decisions
+        auto current_temp = id(room_temperature).state;           // What's the room temp right now?
+        auto target_low = id(meta_climate).target_temperature_low;  // What's the low setpoint?
+        auto target_high = id(meta_climate).target_temperature_high; // What's the high setpoint?
         
-        // Only run if we have valid temperatures (safety check)
+        // Safety check: Only run if we have valid temperatures
+        // If any temperature is invalid (NaN = Not a Number), exit to prevent errors
         if (isnan(current_temp) || isnan(target_low) || isnan(target_high)) {
-          return;
+          return;  // Can't make decisions without valid data
         }
         
         // Hysteresis values to prevent rapid switching
-        float heat_deadband = 1.0;    // Temperature buffer for heating
-        float cool_deadband = 1.0;    // Temperature buffer for cooling
+        // These create a "buffer zone" so the system doesn't constantly turn on/off
+        // Example: If low setpoint is 70°F and deadband is 1.8°F:
+        //   - System heats when temp drops below 68.2°F
+        //   - System stops heating when temp reaches 71.8°F (70 + 1.8)
+        float heat_deadband = 1.0;    // Temperature buffer for heating (1°C = 1.8°F)
+        float cool_deadband = 1.0;    // Temperature buffer for cooling (1°C = 1.8°F)
         
         // =================================================================
-        // DUAL SETPOINT DECISION LOGIC
+        // DUAL SETPOINT DECISION LOGIC - THE ACTUAL DECISIONS
         // =================================================================
-        // Determine what action to take based on dual setpoints with hysteresis
+        // Now we figure out what to do based on the current temperature
+        // compared to our setpoints (with deadbands applied)
+        //
+        // Three possible actions:
+        // 1. should_heat: Temperature is too low (below low setpoint - deadband)
+        // 2. should_cool: Temperature is too high (above high setpoint + deadband)
+        // 3. should_idle: Temperature is in the comfort zone (between setpoints)
+        
+        // Should we heat? (temp is below the low setpoint minus deadband)
+        // Example: Low=70°F, deadband=1.8°F, current=68°F → should_heat = true
         bool should_heat = (current_temp < (target_low - heat_deadband));
+        
+        // Should we cool? (temp is above the high setpoint plus deadband)
+        // Example: High=75°F, deadband=1.8°F, current=77°F → should_cool = true
         bool should_cool = (current_temp > (target_high + cool_deadband));
+        
+        // Should we idle? (temp is in the comfort zone between setpoints)
+        // Example: Low=70°F, High=75°F, deadband=1.8°F, current=72°F → should_idle = true
         bool should_idle = (current_temp >= (target_low + heat_deadband) && 
                             current_temp <= (target_high - cool_deadband));
         
         // Get current climate state to avoid unnecessary changes
+        // We check what the CN105 unit is currently doing, so we don't send
+        // commands if it's already doing what we want
         auto climate_unit = id(splitunit);
         auto current_action = climate_unit->action;
         
         // =================================================================
-        // APPLY CONTROL ACTIONS
+        // APPLY CONTROL ACTIONS - ACTUALLY DO SOMETHING!
         // =================================================================
-        // Control CN105 unit directly without changing thermostat mode
-        // This allows the thermostat to maintain its dual-setpoint logic
-        // while the CN105 unit handles the actual heating/cooling
+        // Now that we've decided what to do, we actually send commands to the
+        // CN105 heat pump unit. We control the heat pump directly WITHOUT changing
+        // the thermostat's own mode. This is the key to dual setpoint control!
+        //
+        // Why check current_action? We only send commands if the unit isn't
+        // already doing what we want. This prevents unnecessary communication
+        // and reduces wear on the equipment.
         
+        // ACTION 1: HEAT - Temperature is too low
         if (should_heat && current_action != climate::CLIMATE_ACTION_HEATING) {
+          // Log what we're doing (for debugging)
           ESP_LOGI("DUAL_SETPOINT", "Activating HEAT - temp: %.1f, target_low: %.1f", current_temp, target_low);
-          // Control CN105 unit directly for heating
+          
+          // Create a command to send to the CN105 unit
           auto call = id(splitunit).make_call();
-          call.set_mode(climate::CLIMATE_MODE_HEAT);
-          call.set_target_temperature(target_low);
-          call.perform();
+          call.set_mode(climate::CLIMATE_MODE_HEAT);  // Set heat pump to HEAT mode
+          call.set_target_temperature(target_low);   // Target the low setpoint (e.g., 70°F)
+          call.perform();  // Actually send the command to the heat pump
 
+        // ACTION 2: COOL - Temperature is too high
         } else if (should_cool && current_action != climate::CLIMATE_ACTION_COOLING) {
+          // Log what we're doing (for debugging)
           ESP_LOGI("DUAL_SETPOINT", "Activating COOL - temp: %.1f, target_high: %.1f", current_temp, target_high);
-          // Control CN105 unit directly for cooling
+          
+          // Create a command to send to the CN105 unit
           auto call = id(splitunit).make_call();
-          call.set_mode(climate::CLIMATE_MODE_COOL);
-          call.set_target_temperature(target_high);
-          call.perform();
+          call.set_mode(climate::CLIMATE_MODE_COOL);  // Set heat pump to COOL mode
+          call.set_target_temperature(target_high);   // Target the high setpoint (e.g., 75°F)
+          call.perform();  // Actually send the command to the heat pump
 
+        // ACTION 3: IDLE - Temperature is in the comfort zone
         } else if (should_idle && current_action != climate::CLIMATE_ACTION_IDLE) {
+          // Log what we're doing (for debugging)
           ESP_LOGI("DUAL_SETPOINT", "Going to IDLE - temp: %.1f, range: %.1f-%.1f", current_temp, target_low, target_high);
-          // Control CN105 unit directly for idle/fan only
+          
+          // Create a command to send to the CN105 unit
           auto call = id(splitunit).make_call();
-          call.set_mode(climate::CLIMATE_MODE_FAN_ONLY);
-          call.perform();
+          call.set_mode(climate::CLIMATE_MODE_FAN_ONLY);  // Set heat pump to FAN_ONLY mode
+          // No target temperature needed for fan-only mode
+          call.perform();  // Actually send the command to the heat pump
 
         }
+        // If none of the conditions are met, the system is already doing what it should
+        // No action needed - just let it continue running
 
 
 # =============================================================================
@@ -282,6 +429,18 @@ target_temperature_change_action:
 # These sections define how the meta-thermostat responds to different
 # climate modes and actions. Each mode/action directly controls the
 # underlying CN105 climate device.
+#
+# WHAT'S THE DIFFERENCE BETWEEN MODES AND ACTIONS?
+# - MODES: What the thermostat is SET TO (e.g., HEAT, COOL, HEAT_COOL, FAN_ONLY)
+#   These are triggered when the user changes the thermostat mode in Home Assistant
+# - ACTIONS: What the heat pump is ACTUALLY DOING (e.g., heating, cooling, idle)
+#   These are triggered automatically by the dual setpoint logic above
+#
+# IMPORTANT: The dual setpoint logic in on_state (above) handles most of the
+# automatic control. These mode/action handlers are for:
+# 1. Manual mode changes (user selects a specific mode)
+# 2. Fallback behavior when not in HEAT_COOL mode
+# 3. Direct control when the automatic logic isn't running
 
 # Heat Mode: The climate device may heat but may not cool.
 # Heat Action: The climate device is actively distributing heated air into the dwelling.
@@ -343,6 +502,11 @@ off_mode:
         id: splitunit
         mode: "OFF"
 
+# HEAT_COOL mode: This is where dual setpoint control happens!
+# When the thermostat is set to HEAT_COOL mode, the on_state lambda (above)
+# takes over and automatically controls the CN105 unit based on temperature.
+# This handler just logs that we've entered HEAT_COOL mode - the actual
+# control is done by the dual setpoint logic in the on_state section.
 heat_cool_mode:
   then:
     - logger.log:
@@ -354,7 +518,7 @@ heat_cool_mode:
         args: 
           - 'id(meta_climate).target_temperature_low'
           - 'id(meta_climate).target_temperature_high'
-    # The actual control logic is handled by the on_state lambda
+    # The actual control logic is handled by the on_state lambda (above)
     # which continuously monitors temperature and controls the CN105 unit
     # This mode action just logs the mode change for debugging
 
