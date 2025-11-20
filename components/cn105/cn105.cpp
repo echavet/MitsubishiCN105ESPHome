@@ -13,8 +13,8 @@ using namespace esphome;
 CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     UARTDevice(uart) {
 
-    this->traits_.add_feature_flags(climate::CLIMATE_FEATURE_ACTION);
-    this->traits_.add_feature_flags(climate::CLIMATE_FEATURE_CURRENT_TEMPERATURE);
+    this->traits_.add_feature_flags(climate::CLIMATE_SUPPORTS_ACTION);
+    this->traits_.add_feature_flags(climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE);
     // supports_two_point_target_temperature sera défini dans setup() selon les modes supportés
     this->traits_.set_visual_min_temperature(ESPMHP_MIN_TEMPERATURE);
     this->traits_.set_visual_max_temperature(ESPMHP_MAX_TEMPERATURE);
