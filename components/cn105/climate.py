@@ -336,7 +336,8 @@ def to_code(config):
 
         # Définir le support du dual setpoint via YAML (par défaut: False si absent)
         yaml_dual = supports.get(CONF_DUAL_SETPOINT, False)
-        cg.add(traits.set_supports_two_point_target_temperature(yaml_dual))
+        if yaml_dual:
+            cg.add(traits.add_feature_flags(climate.CLIMATE_FEATURE_TARGET_TEMPERATURE_RANGE))
         for fan_mode_str in supports.get(CONF_FAN_MODE, DEFAULT_FAN_MODES):
             if fan_mode_str in climate.CLIMATE_FAN_MODES:
                 cg.add(
