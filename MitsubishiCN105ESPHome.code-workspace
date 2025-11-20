@@ -1,0 +1,31 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"cinttypes": "cpp",
+			"bitset": "cpp",
+			"set": "cpp",
+			"any": "cpp",
+			"memory": "cpp",
+			"future": "cpp",
+			"optional": "cpp",
+			"*.ipp": "cpp",
+			"random": "cpp",
+			"ranges": "cpp",
+			"map": "cpp",
+			"regex": "cpp",
+			"array": "cpp",
+			"string": "cpp",
+			"string_view": "cpp",
+			"vector": "cpp",
+			"span": "cpp",
+			"__split_buffer": "cpp",
+			"deque": "cpp",
+			"list": "cpp"
+		}
+	}
+}
