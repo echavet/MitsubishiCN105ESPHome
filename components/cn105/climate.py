@@ -328,19 +328,13 @@ def to_code(config):
         traits = var.config_traits()
         
         # Build mode mask (optimized for ESPHome 2025.11.0+)
+        # Use add_supported_mode for codegen - it will be converted to mask internally
         supported_modes = supports.get(CONF_MODE, DEFAULT_CLIMATE_MODES)
-        mode_mask = None
         for mode_str in supported_modes:
             if mode_str == "OFF":
                 continue
             if mode_str in climate.CLIMATE_MODES:
-                mode_enum = climate.CLIMATE_MODES[mode_str]
-                if mode_mask is None:
-                    mode_mask = mode_enum
-                else:
-                    mode_mask = mode_mask | mode_enum
-        if mode_mask is not None:
-            cg.add(traits.set_supported_modes(mode_mask))
+                cg.add(traits.add_supported_mode(climate.CLIMATE_MODES[mode_str]))
 
         # Définir le support du dual setpoint via YAML (par défaut: False si absent)
         yaml_dual = supports.get(CONF_DUAL_SETPOINT, False)
@@ -348,28 +342,24 @@ def to_code(config):
             cg.add(traits.add_feature_flags(climate.CLIMATE_FEATURE_TARGET_TEMPERATURE_RANGE))
         
         # Build fan mode mask (optimized for ESPHome 2025.11.0+)
-        fan_mode_mask = None
+        # Use add_supported_fan_mode for codegen - it will be converted to mask internally
         for fan_mode_str in supports.get(CONF_FAN_MODE, DEFAULT_FAN_MODES):
             if fan_mode_str in climate.CLIMATE_FAN_MODES:
-                fan_mode_enum = climate.CLIMATE_FAN_MODES[fan_mode_str]
-                if fan_mode_mask is None:
-                    fan_mode_mask = fan_mode_enum
-                else:
-                    fan_mode_mask = fan_mode_mask | fan_mode_enum
-        if fan_mode_mask is not None:
-            cg.add(traits.set_supported_fan_modes(fan_mode_mask))
+                cg.add(
+                    traits.add_supported_fan_mode(
+                        climate.CLIMATE_FAN_MODES[fan_mode_str]
+                    )
+                )
         
         # Build swing mode mask (optimized for ESPHome 2025.11.0+)
-        swing_mode_mask = None
+        # Use add_supported_swing_mode for codegen - it will be converted to mask internally
         for swing_mode_str in supports.get(CONF_SWING_MODE, DEFAULT_SWING_MODES):
             if swing_mode_str in climate.CLIMATE_SWING_MODES:
-                swing_mode_enum = climate.CLIMATE_SWING_MODES[swing_mode_str]
-                if swing_mode_mask is None:
-                    swing_mode_mask = swing_mode_enum
-                else:
-                    swing_mode_mask = swing_mode_mask | swing_mode_enum
-        if swing_mode_mask is not None:
-            cg.add(traits.set_supported_swing_modes(swing_mode_mask))
+                cg.add(
+                    traits.add_supported_swing_mode(
+                        climate.CLIMATE_SWING_MODES[swing_mode_str]
+                    )
+                )
 
     cg.add(var.set_remote_temp_timeout(config[CONF_REMOTE_TEMP_TIMEOUT]))
     cg.add(var.set_debounce_delay(config[CONF_DEBOUNCE_DELAY]))
