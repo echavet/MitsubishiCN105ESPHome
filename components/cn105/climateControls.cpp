@@ -622,11 +622,23 @@ void CN105Climate::setAirflowControlSetting(const char* setting) {
 }
 
 void CN105Climate::set_remote_temperature(float setting) {
-    this->shouldSendExternalTemperature_ = true;
+    if (std::isnan(setting)) {
+        ESP_LOGW(LOG_REMOTE_TEMP, "Remote temperature is NaN, ignoring.");
+        return;
+    }
+
     if (use_fahrenheit_support_mode_) {
         setting = this->fahrenheitSupport_.normalizeCelsiusForConversionFromFahrenheit(setting);
     }
-    this->remoteTemperature_ = setting;
-    ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
+
+    if (setting == 0 || this->remoteTemperature_ != setting) {
+        this->remoteTemperature_ = setting;
+        this->shouldSendExternalTemperature_ = true;
+        ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
+    } else {
+        // Same temperature, just reset the timeout watchdog
+        this->pingExternalTemperature();
+        ESP_LOGD(LOG_REMOTE_TEMP, "Remote temperature unchanged, resetting timeout.");
+    }
 }
 
