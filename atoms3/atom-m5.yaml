@@ -6,11 +6,11 @@ substitutions:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  min_version: 2025.10.3
+  min_version: 2025.11.0
   #name_add_mac_suffix: true
   project:
     name: esphome.clim_and_nt_proxy
-    version: "25.10.1.0"
+    version: "25.11.0"
   
   # on_boot:
   #   - priority: 1001
@@ -50,7 +50,7 @@ logger:
     STATUS : INFO
     CN105Climate: WARN
     CN105: INFO
-    climate: INFO
+    climate: DEBUG
     sensor: WARN
     chkSum : INFO
     WRITE : WARN
@@ -62,7 +62,7 @@ logger:
     CONTROL_WANTED_SETTINGS: INFO    
     control: INFO    
     UPDT_ITVL: DEBUG
-    CYCLE: DEBUG    
+    CYCLE: WARN    
     esp32_ble_tracker: INFO
     esp32_ble_client: INFO
     esp-idf: INFO
@@ -71,7 +71,7 @@ logger:
     HEAT_COOL: DEBUG  # Traces détaillées consigne glissante et mode AUTO/HEAT_COOL
     DUAL_SP: DEBUG    # Traces dual setpoint AUTO mode
     TEMP_SENSOR: INFO
-    UARTFix: DEBUG
+    UARTFix: WARN
 
 # mqtt, api, ota, wifi, captive, web, time
 <<: !include includes/ha-integration-config.yaml

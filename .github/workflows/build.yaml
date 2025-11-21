@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        version: [2025.10.3]
+        version: [2025.11.0]
         variant: [esp32-test, hp-debug]
     container:
       image: ghcr.io/esphome/esphome:${{ matrix.version }}

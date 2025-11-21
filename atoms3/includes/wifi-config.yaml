@@ -1,5 +1,5 @@
 #use_address: 10.1.101.172
-#use_address: 192.168.8.109
+use_address: 192.168.8.109
 networks:
 - ssid: !secret wifi_ssid
   password: !secret wifi_password  

@@ -55,6 +55,7 @@ climate:
       mode: [COOL, HEAT, FAN_ONLY, DRY]
       fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
       swing_mode: ["OFF", VERTICAL]
+      dual_setpoint: false
     visual:
       min_temperature: 17
       max_temperature: 28
