@@ -17,8 +17,9 @@ void CN105Climate::set_vertical_vane_select(
     this->vertical_vane_select_ = vertical_vane_select;
 
     // builds option list from SwiCago vaneMap
-    std::vector<std::string> vaneOptions(std::begin(VANE_MAP), std::end(VANE_MAP));
-    this->vertical_vane_select_->traits.set_options(vaneOptions);
+    this->vertical_vane_select_->traits.set_options({
+        VANE_MAP[0], VANE_MAP[1], VANE_MAP[2], VANE_MAP[3], VANE_MAP[4], VANE_MAP[5], VANE_MAP[6]
+        });
 
     this->vertical_vane_select_->setCallbackFunction([this](const char* setting) {
 
@@ -37,8 +38,10 @@ void CN105Climate::set_horizontal_vane_select(
     this->horizontal_vane_select_ = horizontal_vane_select;
 
     // builds option list from SwiCago wideVaneMap
-    std::vector<std::string> wideVaneOptions(std::begin(WIDEVANE_MAP), std::end(WIDEVANE_MAP));
-    this->horizontal_vane_select_->traits.set_options(wideVaneOptions);
+    this->horizontal_vane_select_->traits.set_options({
+        WIDEVANE_MAP[0], WIDEVANE_MAP[1], WIDEVANE_MAP[2], WIDEVANE_MAP[3],
+        WIDEVANE_MAP[4], WIDEVANE_MAP[5], WIDEVANE_MAP[6], WIDEVANE_MAP[7]
+        });
 
     this->horizontal_vane_select_->setCallbackFunction([this](const char* setting) {
         ESP_LOGD("EVT", "wideVane.control() -> Demande un chgt de réglage de la wideVane: %s", setting);
@@ -55,8 +58,9 @@ void CN105Climate::set_airflow_control_select(
     VaneOrientationSelect* airflow_control_select) {
     this->airflow_control_select_ = airflow_control_select;
 
-    std::vector<std::string> airflowControlOptions(std::begin(AIRFLOW_CONTROL_MAP), std::end(AIRFLOW_CONTROL_MAP));
-    this->airflow_control_select_->traits.set_options(airflowControlOptions);
+    this->airflow_control_select_->traits.set_options({
+        AIRFLOW_CONTROL_MAP[0], AIRFLOW_CONTROL_MAP[1], AIRFLOW_CONTROL_MAP[2]
+        });
 
     this->airflow_control_select_->setCallbackFunction([this](const char* setting) {
         if (strcmp(this->currentSettings.wideVane, lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 8, 0x80 & 0x0F)) == 0) {

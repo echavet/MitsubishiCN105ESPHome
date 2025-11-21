@@ -18,3 +18,9 @@ myfirmware/.gitignore
 hp-esp32-arduino.yaml
 hp-esp32-c6-esp-idf.yaml
 hp-esp32-s2-saola-arduino.yaml
+components/climate_test/__init__.py
+components/climate_test/climate_test.cpp
+components/climate_test/climate_test.h
+components/climate_test/climate.py
+example-climate-test/climate-test.yaml
+example-climate-test/.gitignore

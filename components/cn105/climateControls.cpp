@@ -67,9 +67,9 @@ bool CN105Climate::processModeChange(const esphome::climate::ClimateCall& call) 
 }
 
 void CN105Climate::handleDualSetpointBoth(float low, float high) {
+    ESP_LOGD("control", "handleDualSetpointBoth - low: %.1f, high: %.1f", low, high);
     this->target_temperature_low = low;
     this->target_temperature_high = high;
-    ESP_LOGD("control", "received both target_temperature_low and target_temperature_high: %.1f - %.1f", this->target_temperature_low, this->target_temperature_high);
     this->last_dual_setpoint_side_ = 'N';
     this->last_dual_setpoint_change_ms_ = CUSTOM_MILLIS;
     this->currentSettings.dual_low_target = this->target_temperature_low;
@@ -77,13 +77,13 @@ void CN105Climate::handleDualSetpointBoth(float low, float high) {
 }
 
 void CN105Climate::handleDualSetpointLowOnly(float low) {
-    ESP_LOGI("control", "received only target_temperature_low: %.1f", low);
+    ESP_LOGD("control", "handleDualSetpointLowOnly - LOW: %.1f", low);
     if (this->last_dual_setpoint_side_ == 'H' && (CUSTOM_MILLIS - this->last_dual_setpoint_change_ms_) < UI_SETPOINT_ANTIREBOUND_MS) {
-        ESP_LOGD("control", "ignored low setpoint due to UI anti-rebound after high change");
+        ESP_LOGD("control", "IGNORED low setpoint due to UI anti-rebound after high change");
         return;
     }
     if (!std::isnan(this->target_temperature_low) && fabsf(low - this->target_temperature_low) < 0.05f) {
-        ESP_LOGD("control", "ignored low setpoint: no effective change vs current low target");
+        ESP_LOGD("control", "IGNORED low setpoint: no effective change vs current low target");
         return;
     }
     this->target_temperature_low = low;
@@ -99,7 +99,7 @@ void CN105Climate::handleDualSetpointLowOnly(float low) {
 }
 
 void CN105Climate::handleDualSetpointHighOnly(float high) {
-    ESP_LOGI("control", "received only target_temperature_high: %.1f", high);
+    ESP_LOGI("control", "HIGH: handleDualSetpointHighOnly - HIGH : %.1f", high);
     if (this->last_dual_setpoint_side_ == 'L' && (CUSTOM_MILLIS - this->last_dual_setpoint_change_ms_) < UI_SETPOINT_ANTIREBOUND_MS) {
         ESP_LOGD("control", "ignored high setpoint due to UI anti-rebound after low change");
         return;
@@ -121,6 +121,7 @@ void CN105Climate::handleDualSetpointHighOnly(float high) {
 }
 
 void CN105Climate::handleSingleTargetInAutoOrDry(float requested) {
+    ESP_LOGD("control", "handleSingleTargetInAutoOrDry - SINGLE: %.1f", requested);
     if (this->mode == climate::CLIMATE_MODE_AUTO) {
         const float half_span = 2.0f;
         this->target_temperature_low = requested - half_span;
@@ -131,7 +132,8 @@ void CN105Climate::handleSingleTargetInAutoOrDry(float requested) {
         this->currentSettings.dual_high_target = this->target_temperature_high;
         this->target_temperature = requested;
         ESP_LOGD("control", "AUTO received single target: median=%.1f => [%.1f - %.1f]", requested, this->target_temperature_low, this->target_temperature_high);
-    } else {
+    }
+    if (this->mode == climate::CLIMATE_MODE_DRY) {
         this->target_temperature_high = requested;
         if (std::isnan(this->target_temperature_low)) {
             this->target_temperature_low = requested;
@@ -148,6 +150,9 @@ void CN105Climate::handleSingleTargetInAutoOrDry(float requested) {
 bool CN105Climate::processTemperatureChange(const esphome::climate::ClimateCall& call) {
     // Vérifier si une température est fournie selon les traits
     // En modes AUTO/DRY, accepter aussi target_temperature même en dual setpoint
+    bool tempHasValue = (call.get_target_temperature_low().has_value() ||
+        call.get_target_temperature_high().has_value() || call.get_target_temperature().has_value());
+    /*
     bool tempHasValue = this->traits_.get_supports_two_point_target_temperature() ?
         (
             call.get_target_temperature_low().has_value() ||
@@ -156,12 +161,16 @@ bool CN105Climate::processTemperatureChange(const esphome::climate::ClimateCall&
                 call.get_target_temperature().has_value())
             ) :
         call.get_target_temperature().has_value();
+    */
 
     if (!tempHasValue) {
         return false;
+    } else {
+        ESP_LOGD("control", "A temperature setpoint value has been provided...");
     }
 
-    if (this->traits_.get_supports_two_point_target_temperature()) {
+    if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+        ESP_LOGD("control", "Processing with dual setpoint support...");
         if (call.get_target_temperature_low().has_value() && call.get_target_temperature_high().has_value()) {
             this->handleDualSetpointBoth(*call.get_target_temperature_low(), *call.get_target_temperature_high());
         } else if (call.get_target_temperature_low().has_value()) {
@@ -172,8 +181,8 @@ bool CN105Climate::processTemperatureChange(const esphome::climate::ClimateCall&
             (this->mode == climate::CLIMATE_MODE_AUTO || this->mode == climate::CLIMATE_MODE_DRY)) {
             this->handleSingleTargetInAutoOrDry(*call.get_target_temperature());
         }
-        ESP_LOGI("control", "Setting heatpump low temp : %.1f - high temp : %.1f", this->target_temperature_low, this->target_temperature_high);
     } else {
+        ESP_LOGD("control", "Processing without dual setpoint support...");
         if (call.get_target_temperature().has_value()) {
             this->target_temperature = *call.get_target_temperature();
             ESP_LOGI("control", "Setting heatpump setpoint : %.1f", this->target_temperature);
@@ -329,16 +338,14 @@ void CN105Climate::controlTemperature() {
     float setting;
 
 
-
-
     // Utiliser la logique appropriée selon les traits
-    if (this->traits_.get_supports_two_point_target_temperature()) {
+    if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
         //this->sanitizeDualSetpoints();
         // Dual setpoint : choisir la bonne consigne selon le mode
         switch (this->mode) {
         case climate::CLIMATE_MODE_AUTO:
 
-            if (this->traits_.get_supports_two_point_target_temperature()) {
+            if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
                 if ((!std::isnan(currentSettings.temperature)) && (currentSettings.temperature > 0)) {
                     this->target_temperature_low = currentSettings.temperature - 2.0f;
                     this->target_temperature_high = currentSettings.temperature + 2.0f;
@@ -482,7 +489,7 @@ void CN105Climate::setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateA
 //inside the below we could implement an internal only HEAT_COOL doing the math with an offset or something
 void CN105Climate::updateAction() {
     ESP_LOGV(TAG, "updating action back to espHome...");
-    if (this->traits().get_supports_two_point_target_temperature()) {
+    if (this->traits().has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
         this->sanitizeDualSetpoints();
     }
     switch (this->mode) {

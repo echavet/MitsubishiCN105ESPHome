@@ -52,10 +52,10 @@ climate:
       name: ${name} HP Uptime Connection
       update_interval: 30s
     supports:
-      mode: [COOL, HEAT, FAN_ONLY, DRY, AUTO]
+      mode: [COOL, HEAT, FAN_ONLY, DRY]
       fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
       swing_mode: ["OFF", VERTICAL]
-      dual_setpoint: true
+      dual_setpoint: false
     visual:
       min_temperature: 17
       max_temperature: 28
