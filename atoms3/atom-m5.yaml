@@ -6,11 +6,11 @@ substitutions:
 esphome:
   name: ${name}
   friendly_name: ${friendly_name}
-  min_version: 2025.10.3
+  min_version: 2025.11.0
   #name_add_mac_suffix: true
   project:
     name: esphome.clim_and_nt_proxy
-    version: "25.10.1.0"
+    version: "25.11.0"
   
   # on_boot:
   #   - priority: 1001

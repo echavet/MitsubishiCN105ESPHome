@@ -340,7 +340,7 @@ void CN105Climate::controlTemperature() {
 
     // Utiliser la logique appropriée selon les traits
     if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
-        //this->sanitizeDualSetpoints();
+        this->sanitizeDualSetpoints();
         // Dual setpoint : choisir la bonne consigne selon le mode
         switch (this->mode) {
         case climate::CLIMATE_MODE_AUTO:
@@ -352,39 +352,37 @@ void CN105Climate::controlTemperature() {
                     ESP_LOGI("control", "Initializing AUTO mode temps from current PAC temp: %.1f -> [%.1f - %.1f]",
                         currentSettings.temperature, this->target_temperature_low, this->target_temperature_high);
                     //this->publish_state();
-                } else {
-                    this->sanitizeDualSetpoints();
                 }
+                setting = currentSettings.temperature;
+                ESP_LOGD("control", "AUTO mode : getting median temperature from current PAC temp: %.1f", setting);
+            } else {
+                setting = this->target_temperature;
             }
 
-
-            // Mode AUTO : utiliser la moyenne des deux bornes            
-            setting = (this->target_temperature_low + this->target_temperature_high) / 2.0f;
-            ESP_LOGD("control", "AUTO mode : getting median temperature low:%1.f, high:%1.f, result:%.1f", this->target_temperature_low, this->target_temperature_high, setting);
             break;
 
         case climate::CLIMATE_MODE_HEAT:
             // Mode HEAT : using low target temperature
-            this->sanitizeDualSetpoints();
             setting = this->target_temperature_low;
             ESP_LOGD("control", "HEAT mode : getting temperature low:%1.f", this->target_temperature_low);
             break;
         case climate::CLIMATE_MODE_COOL:
             // Mode COOL : using high target temperature
-            this->sanitizeDualSetpoints();
             setting = this->target_temperature_high;
             ESP_LOGD("control", "COOL mode : getting temperature high:%1.f", this->target_temperature_high);
             break;
         case climate::CLIMATE_MODE_DRY:
             // Mode DRY : using high target temperature
-            this->sanitizeDualSetpoints();
             setting = this->target_temperature_high;
             ESP_LOGD("control", "COOL mode : getting temperature high:%1.f", this->target_temperature_high);
             break;
         default:
             // Other modes : use median temperature
-            this->sanitizeDualSetpoints();
-            setting = (this->target_temperature_low + this->target_temperature_high) / 2.0f;
+            if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+                setting = (this->target_temperature_low + this->target_temperature_high) / 2.0f;
+            } else {
+                setting = this->target_temperature;
+            }
             ESP_LOGD("control", "DEFAULT mode : getting temperature median:%1.f", setting);
             break;
         }
