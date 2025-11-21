@@ -295,7 +295,7 @@ void CN105Climate::publishWantedRunStatesStateToHA() {
         if (this->wantedRunStates.airflow_control == nullptr) {
             this->wantedRunStates.airflow_control = this->currentRunStates.airflow_control;
         }
-        if (this->hasChanged(this->airflow_control_select_->state.c_str(), this->wantedRunStates.airflow_control, "select airflow control")) {
+        if (this->hasChanged(this->airflow_control_select_->current_option(), this->wantedRunStates.airflow_control, "select airflow control")) {
             ESP_LOGI(TAG, "airflow control setting changed");
             this->airflow_control_select_->publish_state(wantedRunStates.airflow_control);
         }
