@@ -58,6 +58,7 @@ AUTO_LOAD = [
 DEPENDENCIES = ["uart", "uptime"]  # Garder uart ici aussi
 
 CONF_SUPPORTS = "supports"
+CONF_SUPPORTS_HORIZONTAL_VANE_MODE = "horizontal_vane_mode"
 CONF_HORIZONTAL_SWING_SELECT = "horizontal_vane_select"
 CONF_VERTICAL_SWING_SELECT = "vertical_vane_select"
 CONF_COMPRESSOR_FREQUENCY_SENSOR = "compressor_frequency_sensor"
@@ -299,6 +300,7 @@ CONFIG_SCHEMA = (
                         CONF_SWING_MODE, default=DEFAULT_SWING_MODES
                     ): cv.ensure_list(climate.validate_climate_swing_mode),
                     cv.Optional(CONF_DUAL_SETPOINT, default=False): cv.boolean,
+                    cv.Optional(CONF_SUPPORTS_HORIZONTAL_VANE_MODE): cv.ensure_list(cv.string),
                 }
             ),
         }
@@ -323,9 +325,13 @@ def to_code(config):
     uart_port_index = get_uart_port_index(CORE.config, uart_id_str_for_lookup)
     cg.add(var.set_uart_port(uart_port_index))
 
+    # Empty list means use all options from WIDEVANE_MAP (C++ is source of truth)
+    horizontal_vane_options = []
+
     if CONF_SUPPORTS in config:
         supports = config[CONF_SUPPORTS]
         traits = var.config_traits()
+
         # Configurer les modes supportés
         supported_modes = supports.get(CONF_MODE, DEFAULT_CLIMATE_MODES)
         for mode_str in supported_modes:
@@ -333,6 +339,9 @@ def to_code(config):
                 continue
             if mode_str in climate.CLIMATE_MODES:
                 cg.add(traits.add_supported_mode(climate.CLIMATE_MODES[mode_str]))
+
+        # Configure the horizontal vane options
+        horizontal_vane_options = supports.get(CONF_SUPPORTS_HORIZONTAL_VANE_MODE, [])
 
         # Définir le support du dual setpoint via YAML (par défaut: False si absent)
         yaml_dual = supports.get(CONF_DUAL_SETPOINT, False)
@@ -369,7 +378,13 @@ def to_code(config):
         conf_item = config[CONF_HORIZONTAL_SWING_SELECT]
         # new_select s'occupe de l'enregistrement. options=[] est important.
         swing_select_var = yield select.new_select(conf_item, options=[])
-        cg.add(var.set_horizontal_vane_select(swing_select_var))
+        if horizontal_vane_options:
+            options_vector = cg.RawExpression(
+                "std::vector<std::string>{" + ", ".join([f'"{opt}"' for opt in horizontal_vane_options]) + "}"
+            )
+        else:
+            options_vector = cg.RawExpression("std::vector<std::string>{}")
+        cg.add(var.set_horizontal_vane_select(swing_select_var, options_vector))
 
     if CONF_VERTICAL_SWING_SELECT in config:
         conf_item = config[CONF_VERTICAL_SWING_SELECT]
