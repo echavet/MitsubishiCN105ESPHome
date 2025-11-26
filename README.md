@@ -208,7 +208,7 @@ The `remote_temperature_timeout` setting allows the unit to revert back to the i
 
 `fahrenheit_compatibility` improves compatibility with HomeAssistant installations using Fahrenheit units. Mitsubishi uses a custom lookup table to convert F to C which doesn't correspond to the actual math in all cases. This can result in external thermostats and HomeAssistant "disagreeing" on what the current setpoint is. Setting this value to `true` forces the component to use the same lookup tables, resulting in more consistent display of setpoints. Recommended for Fahrenheit users. (See https://github.com/echavet/MitsubishiCN105ESPHome/pull/298.)
 
-`use_as_operating_fallback` in the `stage_sensor` is an uncommon option. If your unit doesn't accurately update the activity indicator (idle/heating/cooling/etc.), then this sensor can use the `stage_sensor` as an alternate source of information on the status of the unit. Not recommended for most users. (See https://github.com/echavet/MitsubishiCN105ESPHome/issues/277)
+`use_as_operating_fallback` in the `stage_sensor` enables a fallback mechanism for the activity indicator (idle/heating/cooling/etc.). By default, the activity status is based on the compressor running state. When this option is enabled, the system uses an OR logic: it shows active status if the compressor is running OR if the stage sensor indicates activity (not IDLE). This is particularly useful for 2-stage heating systems where the second stage (e.g., gas heating) may be active while the compressor is off. (See https://github.com/echavet/MitsubishiCN105ESPHome/issues/277 and https://github.com/echavet/MitsubishiCN105ESPHome/issues/469)
 
 ```yaml
 climate:
@@ -248,7 +248,7 @@ climate:
       disabled_by_default: true
     stage_sensor:
       name: Stage
-      # use_as_operating_fallback: false     # set to true if your unit doesn't provide activity indicator
+      # use_as_operating_fallback: false     # set to true for 2-stage systems or if activity indicator is unreliable
       entity_category: diagnostic
       disabled_by_default: true
     sub_mode_sensor:
