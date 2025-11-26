@@ -42,7 +42,7 @@ namespace esphome {
         CN105Climate(uart::UARTComponent* hw_serial);
 
         void set_vertical_vane_select(VaneOrientationSelect* vertical_vane_select);
-        void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select);
+        void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select, const std::vector<std::string>& options = {});
         void set_airflow_control_select(VaneOrientationSelect* airflow_control_select);
         void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);
         void set_input_power_sensor(esphome::sensor::Sensor* input_power_sensor);
@@ -95,6 +95,7 @@ namespace esphome {
             nullptr;  // Select to store manual position of vertical swing
         VaneOrientationSelect* horizontal_vane_select_ =
             nullptr;  // Select to store manual position of horizontal swing
+        std::vector<std::string> horizontal_vane_options_strings_;  // Store strings for horizontal vane options
         VaneOrientationSelect* airflow_control_select_ =
             nullptr;
         sensor::Sensor* compressor_frequency_sensor_ =
