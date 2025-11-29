@@ -443,8 +443,8 @@ void CN105Climate::setActionIfOperatingTo(climate::ClimateAction action_if_opera
 
     // Determine if stage indicates activity (for fallback logic)
     bool stage_is_active = this->use_stage_for_operating_status_ &&
-                           this->currentSettings.stage != nullptr &&
-                           strcmp(this->currentSettings.stage, STAGE_MAP[0 /*IDLE*/]) != 0;
+        this->currentSettings.stage != nullptr &&
+        strcmp(this->currentSettings.stage, STAGE_MAP[0 /*IDLE*/]) != 0;
 
     ESP_LOGD(LOG_OPERATING_STATUS_TAG, "Setting action (operating: %s, stage_fallback_enabled: %s, stage: %s, stage_is_active: %s)",
         this->currentStatus.operating ? "true" : "false",
@@ -633,14 +633,11 @@ void CN105Climate::set_remote_temperature(float setting) {
         setting = this->fahrenheitSupport_.normalizeCelsiusForConversionFromFahrenheit(setting);
     }
 
-    if (setting == 0 || this->remoteTemperature_ != setting) {
-        this->remoteTemperature_ = setting;
-        this->shouldSendExternalTemperature_ = true;
-        ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
-    } else {
-        // Same temperature, just reset the timeout watchdog
-        this->pingExternalTemperature();
-        ESP_LOGD(LOG_REMOTE_TEMP, "Remote temperature unchanged, resetting timeout.");
-    }
+    // Toujours renvoyer la température distante lorsqu’un nouvel échantillon arrive,
+    // même si la valeur n’a pas changé, afin d’éviter que l’unité Mitsubishi
+    // ne repasse sur la sonde interne faute de mise à jour régulière (#474).
+    this->remoteTemperature_ = setting;
+    this->shouldSendExternalTemperature_ = true;
+    ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
 }
 
