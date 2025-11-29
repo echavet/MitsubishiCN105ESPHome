@@ -441,30 +441,32 @@ void CN105Climate::controlMode() {
 
 void CN105Climate::setActionIfOperatingTo(climate::ClimateAction action_if_operating) {
 
+    // Determine if stage indicates activity (for fallback logic)
+    bool stage_is_active = this->use_stage_for_operating_status_ &&
+        this->currentSettings.stage != nullptr &&
+        strcmp(this->currentSettings.stage, STAGE_MAP[0 /*IDLE*/]) != 0;
 
-    ESP_LOGD(LOG_OPERATING_STATUS_TAG, "Setting action to %d (effective_operating: %s, use_stage_fallback: %s, current_stage: %s)",
-        static_cast<int>(this->action),
+    ESP_LOGD(LOG_OPERATING_STATUS_TAG, "Setting action (operating: %s, stage_fallback_enabled: %s, stage: %s, stage_is_active: %s)",
         this->currentStatus.operating ? "true" : "false",
         this->use_stage_for_operating_status_ ? "yes" : "no",
-        getIfNotNull(this->currentSettings.stage, "N/A"));
+        getIfNotNull(this->currentSettings.stage, "N/A"),
+        stage_is_active ? "yes" : "no");
 
-
-    if (this->use_stage_for_operating_status_) {
-        ESP_LOGD(LOG_OPERATING_STATUS_TAG, "using stage for operating status because use_stage_for_operating_status_ is true");
-        if (this->currentSettings.stage != nullptr &&
-            strcmp(this->currentSettings.stage, STAGE_MAP[0 /*IDLE*/]) != 0) {
-            this->action = action_if_operating;
-            ESP_LOGD(LOG_OPERATING_STATUS_TAG, "stage is active");
-        } else {
-            ESP_LOGD(LOG_OPERATING_STATUS_TAG, "stage is iddle or null");
-            this->action = climate::CLIMATE_ACTION_IDLE;
-        }
+    // True fallback logic: operating OR (fallback enabled AND stage is active)
+    // This handles cases like 2-stage heating where compressor may be off but gas heating is active
+    if (this->currentStatus.operating) {
+        // Primary: compressor is running
+        this->action = action_if_operating;
+        ESP_LOGD(LOG_OPERATING_STATUS_TAG, "Action set by operating status (compressor running)");
+    } else if (stage_is_active) {
+        // Fallback: compressor not running but stage indicates activity (e.g., gas heating)
+        this->action = action_if_operating;
+        ESP_LOGD(LOG_OPERATING_STATUS_TAG, "Action set by stage fallback (stage: %s)", this->currentSettings.stage);
     } else {
-        ESP_LOGD(LOG_OPERATING_STATUS_TAG, "using currentStatus.operating for operating status because use_stage_for_operating_status_ is false");
-        this->action = this->currentStatus.operating ? action_if_operating : climate::CLIMATE_ACTION_IDLE;
+        // Neither operating nor stage indicates activity
+        this->action = climate::CLIMATE_ACTION_IDLE;
+        ESP_LOGD(LOG_OPERATING_STATUS_TAG, "Action set to IDLE (no activity detected)");
     }
-
-
 }
 
 /**
@@ -631,14 +633,11 @@ void CN105Climate::set_remote_temperature(float setting) {
         setting = this->fahrenheitSupport_.normalizeCelsiusForConversionFromFahrenheit(setting);
     }
 
-    if (setting == 0 || this->remoteTemperature_ != setting) {
-        this->remoteTemperature_ = setting;
-        this->shouldSendExternalTemperature_ = true;
-        ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
-    } else {
-        // Same temperature, just reset the timeout watchdog
-        this->pingExternalTemperature();
-        ESP_LOGD(LOG_REMOTE_TEMP, "Remote temperature unchanged, resetting timeout.");
-    }
+    // Toujours renvoyer la température distante lorsqu’un nouvel échantillon arrive,
+    // même si la valeur n’a pas changé, afin d’éviter que l’unité Mitsubishi
+    // ne repasse sur la sonde interne faute de mise à jour régulière (#474).
+    this->remoteTemperature_ = setting;
+    this->shouldSendExternalTemperature_ = true;
+    ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
 }
 
