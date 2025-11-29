@@ -250,15 +250,17 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 void CN105Climate::controlSwing() {
     // Check if horizontal vane (wideVane) is supported by this unit at the beginning.
     bool wideVaneSupported = this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL);
+    bool vane_is_swing = (this->currentSettings.vane != nullptr) && (strcmp(this->currentSettings.vane, "SWING") == 0);
+    bool wide_is_swing = (this->currentSettings.wideVane != nullptr) && (strcmp(this->currentSettings.wideVane, "SWING") == 0);
 
     switch (this->swing_mode) {
     case climate::CLIMATE_SWING_OFF:
         // When swing is turned OFF, conditionally set vanes to a default static position.
         // This only sets default position if swing was previously enabled
-        if (strcmp(currentSettings.vane, "SWING") == 0) {
+        if (vane_is_swing) {
             this->setVaneSetting("AUTO");
         }
-        if (wideVaneSupported && strcmp(currentSettings.wideVane, "SWING") == 0) {
+        if (wideVaneSupported && wide_is_swing) {
             this->setWideVaneSetting("|");
         }
         break;
@@ -269,7 +271,7 @@ void CN105Climate::controlSwing() {
         // If horizontal swing was also on AND is supported, turn it off to a default static position.
         // This correctly handles switching from BOTH to VERTICAL, while preserving any user's
         // static horizontal setting if it wasn't swinging.
-        if (wideVaneSupported && strcmp(currentSettings.wideVane, "SWING") == 0) {
+        if (wideVaneSupported && wide_is_swing) {
             this->setWideVaneSetting("|");
         }
         break;
@@ -278,7 +280,7 @@ void CN105Climate::controlSwing() {
         // If vertical swing was on, turn it off to a default static position.
         // This correctly handles switching from BOTH to HORIZONTAL, while preserving any user's
         // static vertical setting if it wasn't swinging.
-        if (strcmp(currentSettings.vane, "SWING") == 0) {
+        if (vane_is_swing) {
             this->setVaneSetting("AUTO");
         }
         // Turn on horizontal swing, but only if the unit supports it.
