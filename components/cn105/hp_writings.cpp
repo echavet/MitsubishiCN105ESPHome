@@ -1,4 +1,5 @@
 #include "cn105.h"
+#include <algorithm>
 
 using namespace esphome;
 
@@ -441,19 +442,64 @@ void CN105Climate::createInfoPacket(uint8_t* packet, uint8_t code) {
     packet[21] = chkSum;
 }
 
+/**
+ * @brief Apply a mode-aware deadband to a remote temperature value.
+ *
+ * For HEAT the deadband is above the setpoint (+threshold/tolerance); for COOL/other it is below
+ * the setpoint (-threshold/tolerance). If the remote temperature falls inside that band, the
+ * value returned is clamped to the edge of the band (deadbandStart), otherwise the original
+ * value is returned. If threshold/tolerance are non-positive, the input temperature is returned.
+ */
+float CN105Climate::getDeadbandAdjustedTemperature(float remoteTemperature) {
+    // If deadband parameters are not set, do nothing.
+    if (this->overshoot_threshold_ <= 0.0f || this->overshoot_tolerance_ <= 0.0f) {
+        return remoteTemperature;
+    }
+
+    const char* mode = this->getModeSetting();
+    const bool isHeat = (mode != nullptr) && (strcmp(mode, "HEAT") == 0);
+
+    float deadbandStart = std::round(2.0f * this->getTemperatureSetting()) / 2.0f; // round to nearest 0.5
+    float deadbandEnd = deadbandStart;
+
+    // For HEAT we add the offsets; for anything else (COOL/other) we subtract.
+    if (isHeat) {
+        deadbandStart += this->overshoot_threshold_;
+        deadbandEnd = deadbandStart + this->overshoot_tolerance_;
+    } else {
+        deadbandStart -= this->overshoot_threshold_;
+        deadbandEnd = deadbandStart - this->overshoot_tolerance_;
+    }
+
+    auto [lo, hi] = std::minmax(deadbandStart, deadbandEnd);
+
+    if ((remoteTemperature > lo) && (remoteTemperature <= hi)) {
+        ESP_LOGD(LOG_REMOTE_TEMP, "Temperature %f is within deadband range (%f - %f) in mode %s, sending deadband edge value %f instead",
+            remoteTemperature, lo, hi, mode ? mode : "UNKNOWN", deadbandStart);
+        return deadbandStart;
+    } else {
+        ESP_LOGD(LOG_REMOTE_TEMP, "Temperature %f is outside deadband range (%f - %f) in mode %s, sending original value",
+            remoteTemperature, lo, hi, mode ? mode : "UNKNOWN");
+    }
+
+    return remoteTemperature;
+}
+
 
 void CN105Climate::sendRemoteTemperature() {
 
     this->shouldSendExternalTemperature_ = false;
+
+    float sendTemperature = this->getDeadbandAdjustedTemperature(this->remoteTemperature_);
 
     uint8_t packet[PACKET_LEN] = {};
 
     prepareSetPacket(packet, PACKET_LEN);
 
     packet[5] = 0x07;
-    if (this->remoteTemperature_ > 0) {
+    if (sendTemperature > 0) {
         packet[6] = 0x01;
-        float temp = round(this->remoteTemperature_ * 2);
+        float temp = round(sendTemperature * 2);
         packet[7] = static_cast<uint8_t>(temp - 16);
         packet[8] = static_cast<uint8_t>(temp + 128);
     } else {
@@ -462,7 +508,7 @@ void CN105Climate::sendRemoteTemperature() {
     // add the checksum
     uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
-    ESP_LOGD(LOG_REMOTE_TEMP, "Sending remote temperature packet... -> %f", this->remoteTemperature_);
+    ESP_LOGD(LOG_REMOTE_TEMP, "Sending remote temperature packet... -> %f", sendTemperature);
     writePacket(packet, PACKET_LEN);
 
     // this resets the timeout

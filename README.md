@@ -754,6 +754,35 @@ api:
         - lambda: "id(hp).set_remote_temperature(0);"
 ```
 
+## Short cycle mitigation
+
+Short cycling happens when a heat pump repeatedly shuts off and turns back on because the room temperature briefly exceeds the set point. Instead of settling into a steady, low-output “cruise” mode, the system keeps restarting. This creates temperature swings, increases energy use, and puts extra wear on the compressor. Multisplit systems are especially prone to this because their minimum output is relatively high, so small rooms can be overheated very quickly.
+
+Every heating or cooling cycle begins with a compressor warm-up period that typically lasts 5 to 20 minutes. During this phase, the system runs at a higher output while it re-establishes suction and discharge pressures and circulates oil. Only after warm-up can the compressor ramp down toward its minimum modulation. If the room overshoots the set point before the system reaches that stable, low-output state, the unit will shut off and restart, causing short cycling. In some cases, the heat pump can maintain equilibrium once it is modulating, but not during the warm-up phase.
+
+Short cycling can be reduced with three strategies:
+
+1. Use an external temperature sensor and place it far from the indoor head. The opposite end of the room warms more slowly, preventing premature overshoot.
+
+2. Lower the fan speed to its minimum. Higher airflow cools the coil, which makes the compressor drive harder and increases output, pushing you toward overshoot.
+
+3. Increase the deadband (overshoot tolerance) beyond the factory 0.5 °C. The room may warm slightly above the set point at the start of a cycle, but once the system reaches cruise mode, output drops and the temperature stabilizes near the target. 
+
+** Note that setting the overshoot threshold and tolerance values requires an external temperature sensor **
+
+Configuration example
+```yaml
+climate:
+  - platform: cn105
+    # This should generally remain 0.5 degrees C. It is the point above the setpoint where the system would normally turn off.
+    overshoot_threshold: 0.5
+
+    # Additional tolerance to prevent short cycling. Increase only as much as needed.
+    overshoot_tolerance: 1
+```
+
+With a 22 °C set point, the unit would normally shut off at 22.5 °C. Adding an overshoot_tolerance of 1 raises the cutoff to 23.5 °C. For example, if the actual room temperature reaches 23.0 °C, the system will continue to report 22.5 °C internally, staying in heating mode. Only if the true room temperature reaches 24.0 °C, which is outside the expanded deadband, does the displayed temperature jump to the real value and allow the unit to turn off.
+
 ## Diagnostic Sensors
 
 ### Outside Air Temperature

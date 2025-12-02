@@ -56,6 +56,8 @@ namespace esphome {
         void set_air_purifier_switch(HVACOptionSwitch* air_purifier_switch);
         void set_night_mode_switch(HVACOptionSwitch* night_mode_switch);
         void set_circulator_switch(HVACOptionSwitch* circulator_switch);
+        void set_overshoot_threshold(float value);
+        void set_overshoot_tolerance(float value);
 
         void set_functions_sensor(esphome::text_sensor::TextSensor* Functions_sensor);
         void set_functions_get_button(FunctionsButton* Button);
@@ -154,6 +156,7 @@ namespace esphome {
         void set_remote_temperature(float);
         void sendRemoteTemperature();
         void sendWantedRunStates();
+        float getDeadbandAdjustedTemperature(float remoteTemperature);
 
         void set_remote_temp_timeout(uint32_t timeout);
 
@@ -361,6 +364,8 @@ namespace esphome {
 
         uint32_t remote_temp_timeout_;
         uint32_t debounce_delay_;
+        float overshoot_threshold_{ 0.0f };
+        float overshoot_tolerance_{ 0.0f };
 
         int baud_ = 0;
         int tx_pin_ = -1;

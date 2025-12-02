@@ -85,6 +85,8 @@ CONF_CIRCULATOR_SWITCH = "circulator_switch"
 
 # Support explicite du DUAL setpoint via YAML
 CONF_DUAL_SETPOINT = "dual_setpoint"
+CONF_OVERSHOOT_THRESHOLD = "overshoot_threshold"
+CONF_OVERSHOOT_TOLERANCE = "overshoot_tolerance"
 
 DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
@@ -273,6 +275,8 @@ CONFIG_SCHEMA = (
             cv.Optional(
                 CONF_STAGE_SENSOR
             ): STAGE_SENSOR_CONFIG_SCHEMA,  # Modifié pour le nouveau schéma
+            cv.Optional(CONF_OVERSHOOT_THRESHOLD): cv.float_,
+            cv.Optional(CONF_OVERSHOOT_TOLERANCE): cv.float_,
             cv.Optional(CONF_SUB_MODE_SENSOR): SUB_MODE_SENSOR_SCHEMA,
             cv.Optional(CONF_AUTO_SUB_MODE_SENSOR): AUTO_SUB_MODE_SENSOR_SCHEMA,
             cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.All(
@@ -485,6 +489,12 @@ def to_code(config):
                 config.get(CONF_FAHRENHEIT_SUPPORT_MODE)
             )
         )
+
+    if CONF_OVERSHOOT_THRESHOLD in config:
+        cg.add(var.set_overshoot_threshold(config[CONF_OVERSHOOT_THRESHOLD]))
+
+    if CONF_OVERSHOOT_TOLERANCE in config:
+        cg.add(var.set_overshoot_tolerance(config[CONF_OVERSHOOT_TOLERANCE]))
 
     # --- TRAITEMENT POUR STAGE_SENSOR AVEC LA NOUVELLE OPTION ---
     if CONF_STAGE_SENSOR in config:

@@ -230,3 +230,13 @@ void CN105Climate::set_use_fahrenheit_support_mode(bool value) {
     this->fahrenheitSupport_.setUseFahrenheitSupportMode(value);
     ESP_LOGI(TAG, "Fahrenheit compatibility mode enabled: %s", value ? "true" : "false");
 }
+
+void CN105Climate::set_overshoot_threshold(float value) {
+    this->overshoot_threshold_ = value;
+    ESP_LOGI(TAG, "Overshoot threshold set to %.3f", value);
+}
+
+void CN105Climate::set_overshoot_tolerance(float value) {
+    this->overshoot_tolerance_ = value;
+    ESP_LOGI(TAG, "Overshoot tolerance set to %.3f", value);
+}

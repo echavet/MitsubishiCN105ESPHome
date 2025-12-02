@@ -53,6 +53,8 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->air_purifier_switch_ = nullptr;
     this->night_mode_switch_ = nullptr;
     this->circulator_switch_ = nullptr;
+    this->overshoot_threshold_ = 0.0f;
+    this->overshoot_tolerance_ = 0.0f;
 
     this->powerRequestWithoutResponses = 0;     // power request is not supported by all heatpump #112
 
