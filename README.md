@@ -428,9 +428,9 @@ password: !secret wifi_password
 
 # Enable fallback hotspot (captive portal) in case wifi connection fails
 
-ap:
-ssid: "Heatpump Fallback Hotspot"
-password: !secret fallback_password
+  ap:
+    ssid: "Heatpump Fallback Hotspot"
+    password: !secret fallback_password
 
 captive_portal:
 
