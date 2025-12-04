@@ -10,8 +10,8 @@ namespace esphome {
                 use_fahrenheit_support_mode_ = value;
             }
 
-            float normalizeCelsiusForConversionToFahrenheit(const float c) {
-                if (!use_fahrenheit_support_mode_) {
+            float normalizeHeatpumpTemperatureToUiTemperature(const float c) {
+                if (!use_fahrenheit_support_mode_ || c == NAN) {
                     return c; // If not in Fahrenheit support mode, return the Celsius value as is.
                 }
 
@@ -35,10 +35,11 @@ namespace esphome {
                 return (fahrenheitResult - 32.0f) / 1.8f;
             }
 
-            float normalizeCelsiusForConversionFromFahrenheit(const float c) {
-                if (!use_fahrenheit_support_mode_) {
+            float normalizeUiTemperatureToHeatpumpTemperature(const float c) {
+                if (!use_fahrenheit_support_mode_ || c == NAN) {
                     return c; // If not in Fahrenheit support mode, return the Celsius value as is.
                 }
+
 
                 float fahrenheitInput = (c * 1.8f) + 32.0f;
 
@@ -62,7 +63,7 @@ namespace esphome {
 
         private:
             bool use_fahrenheit_support_mode_ = false;
-            
+
             // Given a temperature in Celsius that was converted from Fahrenheit, converts
             // it to the Celsius value (at half-degree precision) that matches what
             // Mitsubishi thermostats would have converted the Fahrenheit value to. For

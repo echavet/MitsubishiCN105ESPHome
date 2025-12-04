@@ -226,7 +226,6 @@ void CN105Climate::set_hp_uptime_connection_sensor(uptime::HpUpTimeConnectionSen
 }
 
 void CN105Climate::set_use_fahrenheit_support_mode(bool value) {
-    this->use_fahrenheit_support_mode_ = value;
     this->fahrenheitSupport_.setUseFahrenheitSupportMode(value);
     ESP_LOGI(TAG, "Fahrenheit compatibility mode enabled: %s", value ? "true" : "false");
 }

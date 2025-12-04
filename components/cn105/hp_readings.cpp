@@ -217,9 +217,6 @@ void CN105Climate::getSettingsFromResponsePacket() {
     } else {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
     }
-    if (use_fahrenheit_support_mode_) {
-        receivedSettings.temperature = this->fahrenheitSupport_.normalizeCelsiusForConversionToFahrenheit(receivedSettings.temperature);
-    }
 
     ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
 
@@ -285,9 +282,6 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
     if (data[5] > 1) {
         receivedStatus.outsideAirTemperature = (data[5] - 128) / 2.0f;
-        if (use_fahrenheit_support_mode_) {
-            receivedStatus.outsideAirTemperature = this->fahrenheitSupport_.normalizeCelsiusForConversionToFahrenheit(receivedStatus.outsideAirTemperature);
-        }
     } else {
         receivedStatus.outsideAirTemperature = NAN;
     }
@@ -300,9 +294,6 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
     } else {
         receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
         ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[3] map --> [Room °C : %f]", receivedStatus.roomTemperature);
-    }
-    if (use_fahrenheit_support_mode_) {
-        receivedStatus.roomTemperature = this->fahrenheitSupport_.normalizeCelsiusForConversionToFahrenheit(receivedStatus.roomTemperature);
     }
 
     receivedStatus.runtimeHours = float((data[11] << 16) | (data[12] << 8) | data[13]) / 60;
@@ -508,7 +499,7 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->currentStatus.runtimeHours = status.runtimeHours;
         this->currentStatus.roomTemperature = status.roomTemperature;
         this->currentStatus.outsideAirTemperature = status.outsideAirTemperature;
-        this->current_temperature = currentStatus.roomTemperature;
+        this->setCurrentTemperature(this->currentStatus.roomTemperature);
 
         this->updateAction();       // update action info on HA climate component
         this->publish_state();
@@ -530,7 +521,7 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         }
 
         if (this->outside_air_temperature_sensor_ != nullptr) {
-            this->outside_air_temperature_sensor_->publish_state(currentStatus.outsideAirTemperature);
+            this->outside_air_temperature_sensor_->publish_state(this->fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(currentStatus.outsideAirTemperature));
         }
     } // else no change
 }

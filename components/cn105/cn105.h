@@ -71,7 +71,6 @@ namespace esphome {
         binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
         text_sensor::TextSensor* stage_sensor_{ nullptr }; // to save ref if needed
         bool use_stage_for_operating_status_{ false };
-        bool use_fahrenheit_support_mode_ = false;
         FahrenheitSupport fahrenheitSupport_;
         text_sensor::TextSensor* Functions_sensor_ = nullptr;
         FunctionsButton* Functions_get_button_ = nullptr;
@@ -154,6 +153,7 @@ namespace esphome {
         void set_remote_temperature(float);
         void sendRemoteTemperature();
         void sendWantedRunStates();
+        float getDeadbandAdjustedTemperature(float remoteTemperature);
 
         void set_remote_temp_timeout(uint32_t timeout);
 
@@ -175,6 +175,14 @@ namespace esphome {
         void controlTemperature();
         float calculateTemperatureSetting(float setting);
         float getTargetTemperatureInCurrentMode();
+        float getTargetTemperature();
+        float getTargetTemperatureLow();
+        float getTargetTemperatureHigh();
+        float getCurrentTemperature();
+        void setTargetTemperature(float temperature);
+        void setTargetTemperatureLow(float temperature);
+        void setTargetTemperatureHigh(float temperature);
+        void setCurrentTemperature(float temperature);
 
         void controlFan();
         void controlSwing();
