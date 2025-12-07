@@ -1,6 +1,6 @@
 # Mitsubishi CN105 ESPHome
 
-> [!WARNING]  
+> [!WARNING]
 > Due to a change in ESPHome 2025.2.0, some users are reporting build problems related to the loading of the `uptime_seconds_sensor` class. If you get a compile error for this reason, manually add an uptime sensor to your YAML configuration as below, clean your build files, and recompile. Once the root cause is identified this note will be removed.
 >
 > ```yaml
@@ -9,14 +9,14 @@
 >     name: Uptime
 > ```
 
-> [!WARNING]  
+> [!WARNING]
 > Due to a change in ESPHome 2025.8.0, some users are facing UART connection issues after a cold boot. Forcing the firmware esphome version to a previous release (2025.7.5 and below) solves the issue (no cold boot required). Alternative is to force ESP32 IDF version to 5.4.0. Note that OTA updates to 2025.8.0+ may work but can break after a subsequent cold boot.
 >
 > _"commit 116c91e9c5fc6d0d32191bd4e6d6e406e2bff6bf Author: Jonathan Swoboda <154711427+swoboda1337@users.noreply.github.com> Date: Tue Jul 22 19:15:31 2025 -0400_
 >
 > _Bump ESP32 IDF version to 5.4.2 and Arduino version to 3.2.1 (#9770)"_
 >
-> [!IMPORTANT]  
+> [!IMPORTANT]
 > Temporary fix included: This component now implements a fallback low-level UART reinitialization that triggers only if the initial (normal) connection fails at boot. It reconfigures the UART controller linked to your `uart:` block (clock source, reapplies baudrate, RX pull-up, flush, etc.). No YAML `on_boot` workaround is required. This aims to mitigate ESP-IDF 5.4.x regressions observed on some ESP32 at low baud (2400, 8E1).
 >
 > If this fallback still doesn’t work on your hardware, you can temporarily force ESP‑IDF 5.4.0 in your YAML:
@@ -103,6 +103,8 @@ Units tested by project contributors include:
 - `MSZ-FHxxNA`
 - `MSZ-EF42VE`
 - `MSXY-FN10VE` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/368)
+- `MSZ-AP20VGK`
+- `MSZ-FT50VG2`
 
 ## Usage
 
@@ -289,6 +291,10 @@ climate:
       mode: [AUTO, COOL, HEAT, DRY, FAN_ONLY]
       fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
       swing_mode: ["OFF", VERTICAL]
+      # Specify which options to display in horizontal_vane_select dropdown
+      # Defaults to all options: ["←←", "←", "|", "→", "→→", "←→", "SWING", "AIRFLOW CONTROL"]
+      # Example to hide "←→" and "AIRFLOW CONTROL" if not supported by your unit:
+      horizontal_vane_mode: ["←←", "←", "|", "→", "→→", SWING]
 ```
 
 > [!TIP]
@@ -351,7 +357,7 @@ This minimal configuration includes the basic components necessary for the firmw
 <details>
 
 <summary>Minimal Configuration</summary>
-  
+
 ```yaml
 esphome:
   name: heatpump-1
@@ -422,13 +428,14 @@ password: !secret wifi_password
 
 # Enable fallback hotspot (captive portal) in case wifi connection fails
 
-ap:
-ssid: "Heatpump Fallback Hotspot"
-password: !secret fallback_password
+  ap:
+    ssid: "Heatpump Fallback Hotspot"
+    password: !secret fallback_password
 
 captive_portal:
 
-````
+```
+
 </details>
 
 ## Example Configuration - Complete
@@ -662,7 +669,7 @@ climate:
       name: Runtime Hours
       entity_category: diagnostic
       disabled_by_default: true
-````
+```
 
 </details>
 
@@ -773,6 +780,8 @@ Compatible units (as reported by users):
 | MSZ-FSxxNA     | MXZ-4C36NA2      | Works                              |
 |                | MUZ-FD25NA       | Not working                        |
 | MSZ-LN35       | MUZ-LN35         | Not working                        |
+| MSZ-AP20VGK    | MXZ-4F83VF       | Works                              |
+| MSZ-FT50VG2    | MUZ-FT50VG       | Works                              |
 
 ### Auto and Stage Sensors
 

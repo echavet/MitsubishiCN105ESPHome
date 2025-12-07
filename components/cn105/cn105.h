@@ -42,7 +42,7 @@ namespace esphome {
         CN105Climate(uart::UARTComponent* hw_serial);
 
         void set_vertical_vane_select(VaneOrientationSelect* vertical_vane_select);
-        void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select);
+        void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select, const std::vector<std::string>& options = {});
         void set_airflow_control_select(VaneOrientationSelect* airflow_control_select);
         void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);
         void set_input_power_sensor(esphome::sensor::Sensor* input_power_sensor);
@@ -71,7 +71,6 @@ namespace esphome {
         binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
         text_sensor::TextSensor* stage_sensor_{ nullptr }; // to save ref if needed
         bool use_stage_for_operating_status_{ false };
-        bool use_fahrenheit_support_mode_ = false;
         FahrenheitSupport fahrenheitSupport_;
         text_sensor::TextSensor* Functions_sensor_ = nullptr;
         FunctionsButton* Functions_get_button_ = nullptr;
@@ -95,6 +94,7 @@ namespace esphome {
             nullptr;  // Select to store manual position of vertical swing
         VaneOrientationSelect* horizontal_vane_select_ =
             nullptr;  // Select to store manual position of horizontal swing
+        std::vector<std::string> horizontal_vane_options_strings_;  // Store strings for horizontal vane options
         VaneOrientationSelect* airflow_control_select_ =
             nullptr;
         sensor::Sensor* compressor_frequency_sensor_ =
@@ -153,6 +153,7 @@ namespace esphome {
         void set_remote_temperature(float);
         void sendRemoteTemperature();
         void sendWantedRunStates();
+        float getDeadbandAdjustedTemperature(float remoteTemperature);
 
         void set_remote_temp_timeout(uint32_t timeout);
 
@@ -174,6 +175,14 @@ namespace esphome {
         void controlTemperature();
         float calculateTemperatureSetting(float setting);
         float getTargetTemperatureInCurrentMode();
+        float getTargetTemperature();
+        float getTargetTemperatureLow();
+        float getTargetTemperatureHigh();
+        float getCurrentTemperature();
+        void setTargetTemperature(float temperature);
+        void setTargetTemperatureLow(float temperature);
+        void setTargetTemperatureHigh(float temperature);
+        void setCurrentTemperature(float temperature);
 
         void controlFan();
         void controlSwing();
