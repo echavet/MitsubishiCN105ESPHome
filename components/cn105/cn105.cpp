@@ -70,6 +70,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
 void CN105Climate::registerInfoRequests() {
     info_requests_.clear();
+
     // 0x02 Settings
     InfoRequest r_settings("settings", "Settings", 0x02, 3, 0);
     r_settings.onResponse = [this](CN105Climate& self) { (void)self; this->getSettingsFromResponsePacket(); };
@@ -80,26 +81,26 @@ void CN105Climate::registerInfoRequests() {
     r_room.onResponse = [this](CN105Climate& self) { (void)self; this->getRoomTemperatureFromResponsePacket(); };
     info_requests_.push_back(r_room);
 
-    // 0x42 HVAC options (conditional)
-    InfoRequest r_hvac_opts("hvac_options", "HVAC options", 0x42, 3, 500);
-    r_hvac_opts.canSend = [this](const CN105Climate& self) {
-        (void)self; // unused
-        return (this->air_purifier_switch_ != nullptr || this->night_mode_switch_ != nullptr || this->circulator_switch_ != nullptr);
-        };
-    r_hvac_opts.onResponse = [this](CN105Climate& self) { (void)self; this->getHVACOptionsFromResponsePacket(); };
-    info_requests_.push_back(r_hvac_opts);
-
     // 0x06 Status
     InfoRequest r_status("status", "Status", 0x06, 3, 0);
     r_status.onResponse = [this](CN105Climate& self) { (void)self; this->getOperatingAndCompressorFreqFromResponsePacket(); };
     info_requests_.push_back(r_status);
 
-    // 0x09 Standby/Power (existing non-support behavior)
+    // 0x09 Standby/Power
     InfoRequest r_power("standby", "Power/Standby", 0x09, 3, 500);
     r_power.onResponse = [this](CN105Climate& self) { (void)self; this->getPowerFromResponsePacket(); };
     info_requests_.push_back(r_power);
 
-    // Optional placeholders 0x04/0x05 disabled by default
+    // 0x42 HVAC options
+    InfoRequest r_hvac_opts("hvac_options", "HVAC options", 0x42, 3, 500);
+    r_hvac_opts.canSend = [this](const CN105Climate& self) {
+        (void)self;
+        return (this->air_purifier_switch_ != nullptr || this->night_mode_switch_ != nullptr || this->circulator_switch_ != nullptr);
+        };
+    r_hvac_opts.onResponse = [this](CN105Climate& self) { (void)self; this->getHVACOptionsFromResponsePacket(); };
+    info_requests_.push_back(r_hvac_opts);
+
+    // Placeholders
     InfoRequest r_unknown("unknown", "Unknown", 0x04, 1, 0);
     r_unknown.disabled = true;
     info_requests_.push_back(r_unknown);
@@ -108,17 +109,23 @@ void CN105Climate::registerInfoRequests() {
     r_timers.disabled = true;
     info_requests_.push_back(r_timers);
 
-    // 0x20 Settings (Functions) - Optimized with configurable interval
+    // Appel vers la nouvelle méthode dédiée
+    this->registerHardwareSettingsRequests();
+
+    current_request_index_ = -1;
+}
+
+void CN105Climate::registerHardwareSettingsRequests() {
     if (!this->hardware_settings_.empty()) {
+        ESP_LOGI(LOG_FUNCTIONS_TAG, "Registering function settings requests (0x20/0x22) with interval %u ms", this->hardware_settings_interval_ms_);
         uint32_t interval = this->hardware_settings_interval_ms_;
 
-        // --- HELPER LAMBDA ---
+        // Helper Lambda : Vérifie l'incompatibilité et désactive tout si nécessaire
         auto check_and_disable = [](CN105Climate& self, uint8_t code) -> bool {
             if (self.data[0] != code) return false;
 
-            ESP_LOGD(LOG_FUNCTIONS_TAG, "Checking if response 0x%02X contains data", code);
-
             bool all_zeros = true;
+            // Masque 0x03 pour vérifier uniquement la valeur (bits de poids faible)
             for (int i = 1; i < self.dataLength; i++) {
                 if ((self.data[i] & 0x03) != 0) {
                     all_zeros = false;
@@ -127,46 +134,55 @@ void CN105Climate::registerInfoRequests() {
             }
 
             if (all_zeros) {
-                ESP_LOGW(LOG_FUNCTIONS_TAG, "Response 0x%02X contains only zeros. Feature not supported. Disabling.", code);
+                ESP_LOGW(LOG_FUNCTIONS_TAG, "Response 0x%02X contains only zeros (value bits). Feature not supported by unit. Disabling.", code);
+
+                // 1. Désactiver la requête
                 for (auto& req : self.info_requests_) {
                     if (req.code == code) {
                         req.disabled = true;
                         break;
                     }
                 }
+
+                // 2. Marquer les composants graphiques comme "Failed" (Unavailable)
+                ESP_LOGD(LOG_FUNCTIONS_TAG, "Marking Hardware Setting Selects as failed.");
+                for (auto* setting : self.hardware_settings_) {
+                    setting->set_enabled(false);
+                }
+
                 return false;
-            } else {
-                ESP_LOGD(LOG_FUNCTIONS_TAG, "Response 0x%02X contains data. Feature supported. ", code);
-                self.hpFunctionsDebug(self.data, self.dataLength);
             }
             return true;
             };
 
-        // --- PART 1 ---
-        InfoRequest r_funcs1("funcs1", "Functions 1", 0x20, 3, 0, interval, LOG_FUNCTIONS_TAG);
+        // --- Part 1 (0x20) ---
+        InfoRequest r_funcs1("functions1", "Functions Part 1", 0x20, 3, 0, interval, LOG_FUNCTIONS_TAG);
         r_funcs1.onResponse = [this, check_and_disable](CN105Climate& self) {
             if (check_and_disable(self, 0x20)) {
                 self.hpPacketDebug(self.data, self.dataLength, "RX 0x20");
+                self.hpFunctionsDebug(self.data, self.dataLength);
                 self.functions.setData1(&self.data[1]);
+                ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 1 (via InfoRequest)");
             }
             };
         info_requests_.push_back(r_funcs1);
 
-        // --- PART 2 ---
-        InfoRequest r_funcs2("funcs2", "Functions 2", 0x22, 3, 0, interval, LOG_FUNCTIONS_TAG);
+        // --- Part 2 (0x22) ---
+        InfoRequest r_funcs2("functions2", "Functions Part 2", 0x22, 3, 0, interval, LOG_FUNCTIONS_TAG);
         r_funcs2.onResponse = [this, check_and_disable](CN105Climate& self) {
             if (check_and_disable(self, 0x22)) {
                 self.hpPacketDebug(self.data, self.dataLength, "RX 0x22");
+                self.hpFunctionsDebug(self.data, self.dataLength);
                 self.functions.setData2(&self.data[1]);
+                ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 2 (via InfoRequest)");
                 self.functionsArrived();
             }
             };
         info_requests_.push_back(r_funcs2);
-    } else {
-        ESP_LOGD(LOG_FUNCTIONS_TAG, "No hardware settings configured, skipping 0x20/0x22 requests");
-    }
 
-    current_request_index_ = -1;
+    } else {
+        ESP_LOGD(LOG_FUNCTIONS_TAG, "No hardware settings configured in YAML, skipping 0x20/0x22 requests");
+    }
 }
 
 void CN105Climate::sendInfoRequest(uint8_t code) {

@@ -21,6 +21,10 @@ namespace esphome {
 
         void update_state_from_value(int value);
 
+        void set_enabled(bool enabled);
+
+        bool is_available();
+
     protected:
         void control(const std::string& value) override;
 
@@ -28,6 +32,7 @@ namespace esphome {
         std::map<int, std::string> mapping_;
         std::map<std::string, int> reverse_mapping_;
         CallbackFunction callback_;
+        bool enabled_{ true };
     };
 
 }  // namespace esphome

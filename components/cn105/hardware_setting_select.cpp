@@ -33,6 +33,12 @@ namespace esphome {
     }
 
     void HardwareSettingSelect::control(const std::string& value) {
+
+        if (!this->enabled_ || this->is_failed()) {
+            ESP_LOGW(LOG_HARDWARE_SELECT_TAG, "Setting %d is disabled/failed, control ignored.", this->code_);
+            return;
+        }
+
         ESP_LOGD(LOG_HARDWARE_SELECT_TAG, "Code %d control request: %s", this->code_, value.c_str());
         if (this->reverse_mapping_.count(value)) {
             int int_value = this->reverse_mapping_[value];
@@ -47,5 +53,12 @@ namespace esphome {
         }
     }
 
+    bool HardwareSettingSelect::is_available() {
+        return this->enabled_;
+    }
+
+    void HardwareSettingSelect::set_enabled(bool enabled) {
+        this->enabled_ = enabled;
+    }
 }  // namespace esphome
 

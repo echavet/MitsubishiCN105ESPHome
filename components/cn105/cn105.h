@@ -362,6 +362,7 @@ namespace esphome {
         std::vector<InfoRequest> info_requests_;
         int current_request_index_ = -1;
         void registerInfoRequests();
+        void registerHardwareSettingsRequests();
         void sendInfoRequest(uint8_t code);
         void sendNextAfter(uint8_t code);
         void markResponseSeenFor(uint8_t code);
