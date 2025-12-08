@@ -86,7 +86,7 @@ namespace esphome {
         HVACOptionSwitch* air_purifier_switch_ = nullptr;
         HVACOptionSwitch* night_mode_switch_ = nullptr;
         HVACOptionSwitch* circulator_switch_ = nullptr;
-        std::vector<HardwareSettingSelect*> hardware_settings_ = nullptr;
+        std::vector<HardwareSettingSelect*> hardware_settings_;
 
         // The value of the code and value for the functions set.
         int functions_code_;
