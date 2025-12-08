@@ -26,6 +26,7 @@ static const char* LOG_SET_RUN_STATE = "SET_RUN_STATE";
 static const char* LOG_OPERATING_STATUS_TAG = "OPERATING_STATUS"; // Logging tag
 static const char* LOG_TEMP_SENSOR_TAG = "TEMP_SENSOR"; // Logging tag
 static const char* LOG_DUAL_SP_TAG = "DUAL_SP"; // Logging tag
+static const char* LOG_FUNCTIONS_TAG = "FUNCTIONS"; // Logging tag for hardware settings
 static const char* SHEDULER_REMOTE_TEMP_TIMEOUT = "->remote_temp_timeout";
 
 // defering delay for update_interval when we've just sent a wentedSettings

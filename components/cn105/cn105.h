@@ -60,6 +60,7 @@ namespace esphome {
         void set_circulator_switch(HVACOptionSwitch* circulator_switch);
 
         void add_hardware_setting(HardwareSettingSelect* setting);
+        void set_hardware_settings_interval(uint32_t interval_ms) { this->hardware_settings_interval_ms_ = interval_ms; }
 
         void set_functions_sensor(esphome::text_sensor::TextSensor* Functions_sensor);
         void set_functions_get_button(FunctionsButton* Button);
@@ -87,6 +88,7 @@ namespace esphome {
         HVACOptionSwitch* night_mode_switch_ = nullptr;
         HVACOptionSwitch* circulator_switch_ = nullptr;
         std::vector<HardwareSettingSelect*> hardware_settings_;
+        uint32_t hardware_settings_interval_ms_{ 86400000 };  // Default 24h
 
         // The value of the code and value for the functions set.
         int functions_code_;

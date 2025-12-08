@@ -65,8 +65,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->wantedSettingsMutex = false;
 #endif
 
-    // Register info requests once at construction time
-    this->registerInfoRequests();
+    // Register info requests moved to setup() to ensure hardware_settings_ are populated
 }
 
 void CN105Climate::registerInfoRequests() {
@@ -109,28 +108,37 @@ void CN105Climate::registerInfoRequests() {
     r_timers.disabled = true;
     info_requests_.push_back(r_timers);
 
-    // 0x20 Settings (Functions) - Optimized
+    // 0x20 Settings (Functions) - Optimized with configurable interval
     if (!this->hardware_settings_.empty()) {
+        ESP_LOGI(LOG_FUNCTIONS_TAG, "Registering function settings requests (0x20/0x22) with interval %u ms", this->hardware_settings_interval_ms_);
+        uint32_t interval = this->hardware_settings_interval_ms_;
+
         // Part 1
-        InfoRequest r_funcs1("functions1", "Functions Part 1", 0x20, 3, 0, 60000); // 60s interval
+        InfoRequest r_funcs1("functions1", "Functions Part 1", 0x20, 3, 0, interval, LOG_FUNCTIONS_TAG);
         r_funcs1.onResponse = [this](CN105Climate& self) {
             if (self.data[0] == 0x20) {
+                ESP_LOGD(LOG_FUNCTIONS_TAG, "Received functions packet 1 (length: %d)", self.dataLength);
+                self.hpPacketDebug(self.data, self.dataLength, "RX 0x20"); // Dump packet
                 self.functions.setData1(&self.data[1]);
-                ESP_LOGD(LOG_CYCLE_TAG, "Got functions packet 1 (via InfoRequest)");
+                ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 1 (via InfoRequest)");
             }
-        };
+            };
         info_requests_.push_back(r_funcs1);
 
         // Part 2
-        InfoRequest r_funcs2("functions2", "Functions Part 2", 0x22, 3, 0, 60000); // Same interval to sync with Part 1
+        InfoRequest r_funcs2("functions2", "Functions Part 2", 0x22, 3, 0, interval, LOG_FUNCTIONS_TAG);
         r_funcs2.onResponse = [this](CN105Climate& self) {
             if (self.data[0] == 0x22) { // Response to 0x22 is 0x22
+                ESP_LOGD(LOG_FUNCTIONS_TAG, "Received functions packet 2 (length: %d)", self.dataLength);
+                self.hpPacketDebug(self.data, self.dataLength, "RX 0x22"); // Dump packet
                 self.functions.setData2(&self.data[1]);
-                ESP_LOGD(LOG_CYCLE_TAG, "Got functions packet 2 (via InfoRequest)");
+                ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 2 (via InfoRequest)");
                 self.functionsArrived();
             }
-        };
+            };
         info_requests_.push_back(r_funcs2);
+    } else {
+        ESP_LOGD(LOG_FUNCTIONS_TAG, "No hardware settings configured, skipping 0x20/0x22 requests");
     }
 
     current_request_index_ = -1;
@@ -142,7 +150,10 @@ void CN105Climate::sendInfoRequest(uint8_t code) {
         if (req.code != code) continue;
         if (req.disabled) { return; }
         if (req.canSend && !req.canSend(*this)) { return; }
-        ESP_LOGD(LOG_CYCLE_TAG, "Sending %s (0x%02X)", req.description, req.code);
+
+        const char* tag = req.log_tag ? req.log_tag : LOG_CYCLE_TAG;
+        ESP_LOGD(tag, "Sending %s (0x%02X)", req.description, req.code);
+
         req.awaiting = true;
         req.last_request_time = CUSTOM_MILLIS;
         this->buildAndSendInfoPacket(req.code);
@@ -194,9 +205,21 @@ void CN105Climate::sendNextAfter(uint8_t code) {
     int idx = (start < 0) ? 0 : start + 1;
     for (; idx < static_cast<int>(info_requests_.size()); ++idx) {
         auto& req = info_requests_[idx];
-        if (req.disabled) continue;
-        if (req.canSend && !req.canSend(*this)) continue;
-        if (req.interval_ms > 0 && (CUSTOM_MILLIS - req.last_request_time < req.interval_ms)) continue;
+        if (req.disabled) {
+            if (req.log_tag) ESP_LOGD(req.log_tag, "Skipping %s (0x%02X): disabled", req.description, req.code);
+            continue;
+        }
+        if (req.canSend && !req.canSend(*this)) {
+            if (req.log_tag) ESP_LOGD(req.log_tag, "Skipping %s (0x%02X): canSend returned false", req.description, req.code);
+            continue;
+        }
+        if (req.interval_ms > 0 && (CUSTOM_MILLIS - req.last_request_time < req.interval_ms)) {
+            if (req.log_tag) {
+                ESP_LOGD(req.log_tag, "Skipping %s (0x%02X) - interval not elapsed (elapsed: %lu, interval: %u)",
+                    req.description, req.code, (unsigned long)(CUSTOM_MILLIS - req.last_request_time), req.interval_ms);
+            }
+            continue;
+        }
 
         this->sendInfoRequest(req.code);
         return;

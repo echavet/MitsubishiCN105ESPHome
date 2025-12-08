@@ -13,12 +13,9 @@ namespace esphome {
 
         HardwareSettingSelect(int code, const std::map<int, std::string>& options)
             : code_(code), mapping_(options) {
-            std::vector<std::string> opts;
             for (auto const& [val, label] : options) {
-                opts.push_back(label);
                 reverse_mapping_[label] = val;
             }
-            this->traits.set_options(opts);
         }
 
         void setCallbackFunction(CallbackFunction&& callback) {
