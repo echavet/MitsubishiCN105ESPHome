@@ -4,6 +4,8 @@
 #include "esphome/core/component.h"
 #include <map>
 #include <vector>
+#include <functional>
+#include <string>
 
 namespace esphome {
 
@@ -11,37 +13,16 @@ namespace esphome {
     public:
         using CallbackFunction = std::function<void(const std::string& value, int int_value)>;
 
-        HardwareSettingSelect(int code, const std::map<int, std::string>& options)
-            : code_(code), mapping_(options) {
-            for (auto const& [val, label] : options) {
-                reverse_mapping_[label] = val;
-            }
-        }
+        HardwareSettingSelect(int code, const std::map<int, std::string>& options);
 
-        void setCallbackFunction(CallbackFunction&& callback) {
-            this->callback_ = std::move(callback);
-        }
+        void setCallbackFunction(CallbackFunction&& callback);
 
-        int get_code() const { return code_; }
+        int get_code() const;
 
-        void update_state_from_value(int value) {
-            if (this->mapping_.count(value)) {
-                std::string new_state = this->mapping_[value];
-                if (this->state != new_state) {
-                    this->publish_state(new_state);
-                }
-            }
-        }
+        void update_state_from_value(int value);
 
     protected:
-        void control(const std::string& value) override {
-            if (this->reverse_mapping_.count(value)) {
-                int int_value = this->reverse_mapping_[value];
-                if (callback_) {
-                    callback_(value, int_value);
-                }
-            }
-        }
+        void control(const std::string& value) override;
 
         int code_;
         std::map<int, std::string> mapping_;
@@ -50,4 +31,3 @@ namespace esphome {
     };
 
 }  // namespace esphome
-

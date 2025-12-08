@@ -1,5 +1,6 @@
 #pragma once
 #include "Globals.h"
+#include "esphome/components/uart/uart.h"
 #include "heatpumpFunctions.h"
 #include "van_orientation_select.h"
 #include "uptime_connection_sensor.h"
@@ -35,7 +36,7 @@ namespace esphome {
     void log_info_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix = "");
     void log_debug_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix = "");
 
-    class CN105Climate : public climate::Climate, public Component, public uart::UARTDevice {
+    class CN105Climate : public climate::Climate, public Component, public esphome::uart::UARTDevice {
 
         //friend class VaneOrientationSelect;
 

@@ -233,7 +233,7 @@ void CN105Climate::set_use_fahrenheit_support_mode(bool value) {
 void CN105Climate::add_hardware_setting(HardwareSettingSelect* setting) {
     this->hardware_settings_.push_back(setting);
     setting->setCallbackFunction([this, setting](const std::string& value, int int_value) {
-        ESP_LOGI(TAG, "Hardware setting change: Code %d -> %d (%s)", setting->get_code(), int_value, value.c_str());
+        ESP_LOGI(LOG_FUNCTIONS_TAG, "Hardware setting change: Code %d -> %d (%s)", setting->get_code(), int_value, value.c_str());
 
         // Optimistic update done in component
 

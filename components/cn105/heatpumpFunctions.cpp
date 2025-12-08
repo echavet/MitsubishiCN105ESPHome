@@ -1,5 +1,6 @@
 #include "cn105.h"
 #include "heatpumpFunctions.h"
+#include "Globals.h"
 
 using namespace esphome;
 //#region heatpump_functions fonctions clim
@@ -68,6 +69,8 @@ void CN105Climate::functionsArrived() {
         int val = functions.getValue(setting->get_code());
         if (val > 0) {
             setting->update_state_from_value(val);
+        } else {
+            ESP_LOGD(LOG_HARDWARE_SELECT_TAG, "Code %d received unknown value: %d", setting->get_code(), val);
         }
     }
 }
