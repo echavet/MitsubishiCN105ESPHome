@@ -11,7 +11,19 @@ using namespace esphome;
 
 
 CN105Climate::CN105Climate(uart::UARTComponent* uart) :
-    UARTDevice(uart) {
+    UARTDevice(uart),
+    scheduler_(
+        // send_callback: envoie un paquet via buildAndSendInfoPacket
+        [this](uint8_t code) { this->buildAndSendInfoPacket(code); },
+        // timeout_callback: utilise set_timeout de Component
+        [this](const std::string& name, uint32_t timeout_ms, std::function<void()> callback) {
+            this->set_timeout(name.c_str(), timeout_ms, std::move(callback));
+        },
+        // terminate_callback: termine le cycle
+        [this]() { this->terminateCycle(); },
+        // context_callback: retourne this pour les callbacks canSend et onResponse
+        [this]() -> CN105Climate* { return this; }
+    ) {
 
     // Active les flags de fonctionnalités via l'API moderne (évite les setters dépréciés)
     this->traits_.add_feature_flags(
@@ -69,27 +81,27 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 }
 
 void CN105Climate::registerInfoRequests() {
-    info_requests_.clear();
+    scheduler_.clear_requests();
 
     // 0x02 Settings
     InfoRequest r_settings("settings", "Settings", 0x02, 3, 0);
     r_settings.onResponse = [this](CN105Climate& self) { (void)self; this->getSettingsFromResponsePacket(); };
-    info_requests_.push_back(r_settings);
+    scheduler_.register_request(r_settings);
 
     // 0x03 Room temperature
     InfoRequest r_room("room_temp", "Room temperature", 0x03, 3, 0);
     r_room.onResponse = [this](CN105Climate& self) { (void)self; this->getRoomTemperatureFromResponsePacket(); };
-    info_requests_.push_back(r_room);
+    scheduler_.register_request(r_room);
 
     // 0x06 Status
     InfoRequest r_status("status", "Status", 0x06, 3, 0);
     r_status.onResponse = [this](CN105Climate& self) { (void)self; this->getOperatingAndCompressorFreqFromResponsePacket(); };
-    info_requests_.push_back(r_status);
+    scheduler_.register_request(r_status);
 
     // 0x09 Standby/Power
     InfoRequest r_power("standby", "Power/Standby", 0x09, 3, 500);
     r_power.onResponse = [this](CN105Climate& self) { (void)self; this->getPowerFromResponsePacket(); };
-    info_requests_.push_back(r_power);
+    scheduler_.register_request(r_power);
 
     // 0x42 HVAC options
     InfoRequest r_hvac_opts("hvac_options", "HVAC options", 0x42, 3, 500);
@@ -98,21 +110,19 @@ void CN105Climate::registerInfoRequests() {
         return (this->air_purifier_switch_ != nullptr || this->night_mode_switch_ != nullptr || this->circulator_switch_ != nullptr);
         };
     r_hvac_opts.onResponse = [this](CN105Climate& self) { (void)self; this->getHVACOptionsFromResponsePacket(); };
-    info_requests_.push_back(r_hvac_opts);
+    scheduler_.register_request(r_hvac_opts);
 
     // Placeholders
     InfoRequest r_unknown("unknown", "Unknown", 0x04, 1, 0);
     r_unknown.disabled = true;
-    info_requests_.push_back(r_unknown);
+    scheduler_.register_request(r_unknown);
 
     InfoRequest r_timers("timers", "Timers", 0x05, 1, 0);
     r_timers.disabled = true;
-    info_requests_.push_back(r_timers);
+    scheduler_.register_request(r_timers);
 
     // Appel vers la nouvelle méthode dédiée
     this->registerHardwareSettingsRequests();
-
-    current_request_index_ = -1;
 }
 
 void CN105Climate::registerHardwareSettingsRequests() {
@@ -136,13 +146,8 @@ void CN105Climate::registerHardwareSettingsRequests() {
             if (all_zeros) {
                 ESP_LOGW(LOG_FUNCTIONS_TAG, "Response 0x%02X contains only zeros (value bits). Feature not supported by unit. Disabling.", code);
 
-                // 1. Désactiver la requête
-                for (auto& req : self.info_requests_) {
-                    if (req.code == code) {
-                        req.disabled = true;
-                        break;
-                    }
-                }
+                // 1. Désactiver la requête via le scheduler
+                self.scheduler_.disable_request(code);
 
                 // 2. Marquer les composants graphiques comme "Failed" (Unavailable)
                 ESP_LOGD(LOG_FUNCTIONS_TAG, "Marking Hardware Setting Selects as failed.");
@@ -165,7 +170,7 @@ void CN105Climate::registerHardwareSettingsRequests() {
                 ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 1 (via InfoRequest)");
             }
             };
-        info_requests_.push_back(r_funcs1);
+        scheduler_.register_request(r_funcs1);
 
         // --- Part 2 (0x22) ---
         InfoRequest r_funcs2("functions2", "Functions Part 2", 0x22, 3, 0, interval, LOG_FUNCTIONS_TAG);
@@ -178,112 +183,15 @@ void CN105Climate::registerHardwareSettingsRequests() {
                 self.functionsArrived();
             }
             };
-        info_requests_.push_back(r_funcs2);
+        scheduler_.register_request(r_funcs2);
 
     } else {
         ESP_LOGD(LOG_FUNCTIONS_TAG, "No hardware settings configured in YAML, skipping 0x20/0x22 requests");
     }
 }
 
-void CN105Climate::sendInfoRequest(uint8_t code) {
-    for (size_t i = 0; i < info_requests_.size(); ++i) {
-        auto& req = info_requests_[i];
-        if (req.code != code) continue;
-        if (req.disabled) { return; }
-        if (req.canSend && !req.canSend(*this)) { return; }
-
-        const char* tag = req.log_tag ? req.log_tag : LOG_CYCLE_TAG;
-        ESP_LOGD(tag, "Sending %s (0x%02X)", req.description, req.code);
-
-        req.awaiting = true;
-        req.last_request_time = CUSTOM_MILLIS;
-        this->buildAndSendInfoPacket(req.code);
-        if (req.soft_timeout_ms > 0) {
-            uint8_t code_copy = req.code;
-            const std::string tname = req.timeout_name.empty() ? (std::string("info_timeout_") + std::to_string(code_copy)) : req.timeout_name;
-            this->set_timeout(tname.c_str(), req.soft_timeout_ms, [this, code_copy]() {
-                // If still awaiting this code's response, consider it a soft failure and move on
-                for (auto& r : this->info_requests_) {
-                    if (r.code == code_copy && r.awaiting) {
-                        r.awaiting = false;
-                        r.failures++;
-                        ESP_LOGW(LOG_CYCLE_TAG, "Soft timeout for %s (0x%02X), failures: %d", r.description, r.code, r.failures);
-                        if (r.failures >= r.maxFailures) {
-                            r.disabled = true;
-                            ESP_LOGW(LOG_CYCLE_TAG, "%s (0x%02X) disabled (not supported)", r.description, r.code);
-                        }
-                        this->sendNextAfter(code_copy);
-                        break;
-                    }
-                }
-                });
-        }
-        current_request_index_ = static_cast<int>(i);
-        return;
-    }
-}
-
-void CN105Climate::markResponseSeenFor(uint8_t code) {
-    for (auto& req : info_requests_) {
-        if (req.code == code) {
-            req.awaiting = false;
-            req.failures = 0;
-            ESP_LOGD(LOG_CYCLE_TAG, "Receiving %s (0x%02X)", req.description, req.code);
-            if (req.onResponse) {
-                req.onResponse(*this);
-            }
-            return;
-        }
-    }
-}
-
-void CN105Climate::sendNextAfter(uint8_t code) {
-    // Find current index (by code) then try next activable entries in order
-    int start = -1;
-    for (size_t i = 0; i < info_requests_.size(); ++i) {
-        if (info_requests_[i].code == code) { start = static_cast<int>(i); break; }
-    }
-    int idx = (start < 0) ? 0 : start + 1;
-    for (; idx < static_cast<int>(info_requests_.size()); ++idx) {
-        auto& req = info_requests_[idx];
-        if (req.disabled) {
-            if (req.log_tag) ESP_LOGD(req.log_tag, "Skipping %s (0x%02X): disabled", req.description, req.code);
-            continue;
-        }
-        if (req.canSend && !req.canSend(*this)) {
-            if (req.log_tag) ESP_LOGD(req.log_tag, "Skipping %s (0x%02X): canSend returned false", req.description, req.code);
-            continue;
-        }
-        if (req.interval_ms > 0 && (CUSTOM_MILLIS - req.last_request_time < req.interval_ms)) {
-            if (req.log_tag) {
-                ESP_LOGD(req.log_tag, "Skipping %s (0x%02X) - interval not elapsed (elapsed: %lu, interval: %u)",
-                    req.description, req.code, (unsigned long)(CUSTOM_MILLIS - req.last_request_time), req.interval_ms);
-            }
-            continue;
-        }
-
-        this->sendInfoRequest(req.code);
-        return;
-    }
-    // No more requests → end cycle
-    this->terminateCycle();
-}
-
-bool CN105Climate::processInfoResponse(uint8_t code) {
-    // Cherche si le code est géré par l'orchestrateur
-    bool handled = false;
-    for (auto& req : info_requests_) {
-        if (req.code == code) {
-            handled = true;
-            break;
-        }
-    }
-    if (!handled) return false;
-
-    this->markResponseSeenFor(code);
-    this->sendNextAfter(code);
-    return true;
-}
+// Les méthodes sendInfoRequest, markResponseSeenFor, sendNextAfter et processInfoResponse
+// ont été déplacées dans RequestScheduler pour respecter le principe de responsabilité unique (SRP).
 
 
 
