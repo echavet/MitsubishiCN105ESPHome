@@ -72,6 +72,7 @@
     "type_traits": "cpp",
     "utility": "cpp",
     "system_error": "cpp",
-    "valarray": "cpp"
+    "valarray": "cpp",
+    "ratio": "cpp"
   }
 }

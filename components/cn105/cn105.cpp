@@ -110,29 +110,54 @@ void CN105Climate::registerInfoRequests() {
 
     // 0x20 Settings (Functions) - Optimized with configurable interval
     if (!this->hardware_settings_.empty()) {
-        ESP_LOGI(LOG_FUNCTIONS_TAG, "Registering function settings requests (0x20/0x22) with interval %u ms", this->hardware_settings_interval_ms_);
         uint32_t interval = this->hardware_settings_interval_ms_;
 
-        // Part 1
-        InfoRequest r_funcs1("functions1", "Functions Part 1", 0x20, 3, 0, interval, LOG_FUNCTIONS_TAG);
-        r_funcs1.onResponse = [this](CN105Climate& self) {
-            if (self.data[0] == 0x20) {
-                ESP_LOGD(LOG_FUNCTIONS_TAG, "Received functions packet 1 (length: %d)", self.dataLength);
-                self.hpPacketDebug(self.data, self.dataLength, "RX 0x20"); // Dump packet
+        // --- HELPER LAMBDA ---
+        auto check_and_disable = [](CN105Climate& self, uint8_t code) -> bool {
+            if (self.data[0] != code) return false;
+
+            ESP_LOGD(LOG_FUNCTIONS_TAG, "Checking if response 0x%02X contains data", code);
+
+            bool all_zeros = true;
+            for (int i = 1; i < self.dataLength; i++) {
+                if ((self.data[i] & 0x03) != 0) {
+                    all_zeros = false;
+                    break;
+                }
+            }
+
+            if (all_zeros) {
+                ESP_LOGW(LOG_FUNCTIONS_TAG, "Response 0x%02X contains only zeros. Feature not supported. Disabling.", code);
+                for (auto& req : self.info_requests_) {
+                    if (req.code == code) {
+                        req.disabled = true;
+                        break;
+                    }
+                }
+                return false;
+            } else {
+                ESP_LOGD(LOG_FUNCTIONS_TAG, "Response 0x%02X contains data. Feature supported. ", code);
+                self.hpFunctionsDebug(self.data, self.dataLength);
+            }
+            return true;
+            };
+
+        // --- PART 1 ---
+        InfoRequest r_funcs1("funcs1", "Functions 1", 0x20, 3, 0, interval, LOG_FUNCTIONS_TAG);
+        r_funcs1.onResponse = [this, check_and_disable](CN105Climate& self) {
+            if (check_and_disable(self, 0x20)) {
+                self.hpPacketDebug(self.data, self.dataLength, "RX 0x20");
                 self.functions.setData1(&self.data[1]);
-                ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 1 (via InfoRequest)");
             }
             };
         info_requests_.push_back(r_funcs1);
 
-        // Part 2
-        InfoRequest r_funcs2("functions2", "Functions Part 2", 0x22, 3, 0, interval, LOG_FUNCTIONS_TAG);
-        r_funcs2.onResponse = [this](CN105Climate& self) {
-            if (self.data[0] == 0x22) { // Response to 0x22 is 0x22
-                ESP_LOGD(LOG_FUNCTIONS_TAG, "Received functions packet 2 (length: %d)", self.dataLength);
-                self.hpPacketDebug(self.data, self.dataLength, "RX 0x22"); // Dump packet
+        // --- PART 2 ---
+        InfoRequest r_funcs2("funcs2", "Functions 2", 0x22, 3, 0, interval, LOG_FUNCTIONS_TAG);
+        r_funcs2.onResponse = [this, check_and_disable](CN105Climate& self) {
+            if (check_and_disable(self, 0x22)) {
+                self.hpPacketDebug(self.data, self.dataLength, "RX 0x22");
                 self.functions.setData2(&self.data[1]);
-                ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 2 (via InfoRequest)");
                 self.functionsArrived();
             }
             };

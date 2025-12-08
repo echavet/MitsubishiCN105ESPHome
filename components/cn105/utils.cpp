@@ -353,6 +353,31 @@ void CN105Climate::hpPacketDebug(uint8_t* packet, unsigned int length, const cha
     ESP_LOGD(packetDirection, "%s", output.c_str());
 }
 
+void CN105Climate::hpFunctionsDebug(uint8_t* packet, unsigned int length) {
+    if (length < 2) return; // Pas de données à décoder
+
+    std::string output;
+    output.reserve(length * 8); // Pré-allocation pour éviter les réallocations
+
+    char buffer[16];
+
+    // On commence à i=1 pour sauter l'octet de commande (0x20 ou 0x22)
+    for (unsigned int i = 1; i < length; i++) {
+        uint8_t byte = packet[i];
+
+        // Logique de décodage Mitsubishi (copiée de heatpumpFunctions)
+        int code = ((byte >> 2) & 0xff) + 100;
+        int value = byte & 3;
+
+        // Formatage "Code:Valeur" (ex: " 102:3")
+        snprintf(buffer, sizeof(buffer), " %d:%d", code, value);
+        output += buffer;
+    }
+
+    // Affichage avec le tag LOG_FUNCTIONS_TAG (défini dans cn105_types.h)
+    // Affiche par exemple : [FUNCTIONS] Decoded 20: 101:1 102:3 103:2 ...
+    ESP_LOGD(LOG_FUNCTIONS_TAG, "Decoded %02X:%s", packet[0], output.c_str());
+}
 
 int CN105Climate::lookupByteMapIndex(const int valuesMap[], int len, int lookupValue, const char* debugInfo) {
     for (int i = 0; i < len; i++) {

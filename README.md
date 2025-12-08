@@ -858,6 +858,143 @@ sensor:
     update_interval: 60s
 ```
 
+## Hardware Settings (Function Settings)
+
+This advanced feature allows you to read and modify the internal "Function Settings" (ISU) of your Mitsubishi unit directly from Home Assistant. These settings control hardware behaviors like auto-restart, temperature sensing location, or static pressure.
+
+> [!NOTE]
+> This feature depends on your unit's compatibility. If your unit returns only zeros, it likely does not support reading/writing function settings via CN105. The component will automatically detect this and disable the polling to save resources.
+> Note that the firmware autor's units do not support theses functions settings. So implementation might not be reliable.
+
+### Configuration
+
+Add the `hardware_settings` block to your configuration. You can choose which codes to expose and customize the labels.
+
+```yaml
+climate:
+  - platform: cn105
+    # ... your existing config ...
+
+    # Configure the update interval for reading settings (default: 24h)
+    # These settings rarely change, so a long interval is recommended.
+    hardware_settings:
+      update_interval: 20s
+      list:
+        # Code 101: Auto Restart
+        - code: 101
+          name: "Auto Restart after Power Failure"
+          icon: "mdi:restart"
+          options:
+            1: "ON (Default)"
+            2: "OFF"
+
+        # Code 102: Temperature Sensing Source
+        # Important for remote temperature control!
+        - code: 102
+          name: "Temperature Source"
+          icon: "mdi:thermometer-check"
+          options:
+            1: "Indoor Unit (Default)"
+            2: "Remote Controller"
+            3: "External (CN105/WiFi)"
+
+        # Code 103: Ventilation / Lossnay interaction
+        - code: 103
+          name: "Ventilation Link"
+          options:
+            1: "None (Default)"
+            2: "With Lossnay"
+            3: "Forced"
+
+        # Code 105: Auto Energy Saving
+        - code: 105
+          name: "Auto Energy Saving"
+          options:
+            1: "ON (Default)"
+            2: "OFF"
+
+        # Code 107: Filter Sign Interval
+        - code: 107
+          name: "Filter Sign Interval"
+          icon: "mdi:air-filter"
+          options:
+            1: "100 Hours (Default)"
+            2: "2500 Hours"
+            3: "No Indication"
+
+        # Code 108: Ceiling Height / Static Pressure
+        - code: 108
+          name: "Ceiling Height Mode"
+          icon: "mdi:arrow-expand-vertical"
+          options:
+            1: "Standard (Default)"
+            2: "High Ceiling"
+            3: "Low Ceiling"
+
+        # Code 109: Number of Air Outlets (Cassette models only)
+        - code: 109
+          name: "Air Outlets"
+          options:
+            1: "4 Directions (Default)"
+            2: "3 Directions"
+            3: "2 Directions"
+
+        # Code 110: Auto Mode Switching Logic
+        - code: 110
+          name: "Auto Mode Logic"
+          icon: "mdi:sync"
+          options:
+            1: "Energy Saving (Default)"
+            2: "Comfort / Performance"
+
+        # Code 111: Vane Setting (for specific models)
+        - code: 111
+          name: "Vane Geometry"
+          options:
+            1: "Standard (Default)"
+            2: "Type 1"
+            3: "Type 2"
+
+        # Code 117: Defrost Control
+        - code: 117
+          name: "Defrost Logic"
+          icon: "mdi:snowflake-melt"
+          options:
+            1: "Standard (Default)"
+            2: "High Humidity / Frequent"
+
+        # Code 124: Heating Temperature Offset
+        - code: 124
+          name: "Heating Offset (+2°C)"
+          options:
+            1: "ON (Default)"
+            2: "OFF"
+
+        # Code 125: Fan behavior during Thermo-OFF (Heating)
+        - code: 125
+          name: "Fan during Thermo-OFF (Heat)"
+          icon: "mdi:fan-off"
+          options:
+            1: "Extra Low (Default)"
+            2: "Stop"
+            3: "Set Speed"
+
+        # Code 127: Fan behavior during Thermo-OFF (Cooling)
+        - code: 127
+          name: "Fan during Thermo-OFF (Cool)"
+          icon: "mdi:fan-off"
+          options:
+            1: "Set Speed (Default)"
+            2: "Stop"
+
+        # Code 128: System Error Display
+        - code: 128
+          name: "Error Display on Remote"
+          options:
+            1: "ON (Default)"
+            2: "OFF"
+
+
 ## Other Implementations
 
 - [esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump) - The original esphome project from which this one is forked.
@@ -874,3 +1011,4 @@ Refer to these for further understanding:
 - [ESPHome's Climate Component Source](https://github.com/esphome/esphome/tree/master/esphome/components/climate)
 
 ---
+```

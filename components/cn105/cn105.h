@@ -323,6 +323,7 @@ namespace esphome {
         void setActionIfOperatingTo(climate::ClimateAction action);
         void setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateAction action);
         void hpPacketDebug(uint8_t* packet, unsigned int length, const char* packetDirection);
+        void hpFunctionsDebug(uint8_t* packet, unsigned int length);
 
         void debugSettings(const char* settingName, heatpumpSettings& settings);
         void debugSettings(const char* settingName, wantedHeatpumpSettings& settings);
