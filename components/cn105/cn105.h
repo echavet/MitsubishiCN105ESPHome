@@ -16,6 +16,7 @@
 #include "functions_button.h"
 #include "sub_mode_sensor.h"
 #include "hvac_option_switch.h"
+#include "hardware_setting_select.h"
 #include "localization.h"
 #include "info_request.h"
 #include <esphome/components/sensor/sensor.h>
@@ -23,6 +24,7 @@
 #include <esphome/components/binary_sensor/binary_sensor.h>
 #include "cycle_management.h"
 #include <vector>
+#include <map>
 
 #ifdef USE_ESP32
 #include <mutex>
@@ -57,6 +59,8 @@ namespace esphome {
         void set_night_mode_switch(HVACOptionSwitch* night_mode_switch);
         void set_circulator_switch(HVACOptionSwitch* circulator_switch);
 
+        void add_hardware_setting(HardwareSettingSelect* setting);
+
         void set_functions_sensor(esphome::text_sensor::TextSensor* Functions_sensor);
         void set_functions_get_button(FunctionsButton* Button);
         void set_functions_set_button(FunctionsButton* Button);
@@ -82,6 +86,7 @@ namespace esphome {
         HVACOptionSwitch* air_purifier_switch_ = nullptr;
         HVACOptionSwitch* night_mode_switch_ = nullptr;
         HVACOptionSwitch* circulator_switch_ = nullptr;
+        std::vector<HardwareSettingSelect*> hardware_settings_ = nullptr;
 
         // The value of the code and value for the functions set.
         int functions_code_;

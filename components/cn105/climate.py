@@ -82,6 +82,9 @@ CONF_AIRFLOW_CONTROL_SELECT = "airflow_control_select"
 CONF_AIR_PURIFIER_SWITCH = "air_purifier_switch"
 CONF_NIGHT_MODE_SWITCH = "night_mode_switch"
 CONF_CIRCULATOR_SWITCH = "circulator_switch"
+CONF_HARDWARE_SETTINGS = "hardware_settings"
+CONF_CODE = "code"
+CONF_OPTIONS = "options"
 
 # Support explicite du DUAL setpoint via YAML
 CONF_DUAL_SETPOINT = "dual_setpoint"
@@ -131,6 +134,7 @@ FlowControlSensor = cg.global_ns.class_(
     "FlowControlSensor", text_sensor.TextSensor, cg.Component
 )
 HVACOptionSwitch = cg.global_ns.class_("HVACOptionSwitch", switch.Switch, cg.Component)
+HardwareSettingSelect = cg.global_ns.class_("HardwareSettingSelect", select.Select, cg.Component)
 
 
 # --- Fonction d'aide pour récupérer les pins TX/RX (identique à votre version corrigée) ---
@@ -238,6 +242,13 @@ HVAC_OPTION_SWITCH_SCHEMA = switch.switch_schema(HVACOptionSwitch).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(HVACOptionSwitch)}
 )
 
+HARDWARE_SETTING_SCHEMA = select.select_schema(HardwareSettingSelect).extend({
+    cv.Required(CONF_CODE): cv.int_range(min=101, max=128),
+    cv.Required(CONF_OPTIONS): cv.Schema({
+        cv.int_range(min=1, max=3): cv.string
+    }),
+})
+
 CONFIG_SCHEMA = (
     climate.climate_schema(CN105Climate)
     .extend(
@@ -288,6 +299,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_AIR_PURIFIER_SWITCH): HVAC_OPTION_SWITCH_SCHEMA,
             cv.Optional(CONF_NIGHT_MODE_SWITCH): HVAC_OPTION_SWITCH_SCHEMA,
             cv.Optional(CONF_CIRCULATOR_SWITCH): HVAC_OPTION_SWITCH_SCHEMA,
+            cv.Optional(CONF_HARDWARE_SETTINGS): cv.ensure_list(HARDWARE_SETTING_SCHEMA),
             cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
                 {
                     cv.Optional(
@@ -513,6 +525,22 @@ def to_code(config):
         hp_connection_sensor_ = yield sensor.new_sensor(conf)
         yield cg.register_component(hp_connection_sensor_, conf)
         cg.add(var.set_hp_uptime_connection_sensor(hp_connection_sensor_))
+
+    if CONF_HARDWARE_SETTINGS in config:
+        for setting_conf in config[CONF_HARDWARE_SETTINGS]:
+            code = setting_conf[CONF_CODE]
+            options_map = setting_conf[CONF_OPTIONS]
+            
+            # Helper to create map
+            map_var = cg.Variable(f"options_{code}", "std::map<int, std::string>")
+            cg.add(cg.RawStatement(f"std::map<int, std::string> {map_var};"))
+            for val, label in options_map.items():
+                cg.add(cg.RawStatement(f'{map_var}[{val}] = "{label}";'))
+                
+            setting_var = cg.new_Pvariable(setting_conf[CONF_ID], code, map_var)
+            yield select.register_select(setting_var, setting_conf, options=[]) 
+            
+            cg.add(var.add_hardware_setting(setting_var))
 
     yield cg.register_component(var, config)
     yield climate.register_climate(var, config)

@@ -109,6 +109,30 @@ void CN105Climate::registerInfoRequests() {
     r_timers.disabled = true;
     info_requests_.push_back(r_timers);
 
+    // 0x20 Settings (Functions) - Optimized
+    if (!this->hardware_settings_.empty()) {
+        // Part 1
+        InfoRequest r_funcs1("functions1", "Functions Part 1", 0x20, 3, 0, 60000); // 60s interval
+        r_funcs1.onResponse = [this](CN105Climate& self) {
+            if (self.data[0] == 0x20) {
+                self.functions.setData1(&self.data[1]);
+                ESP_LOGD(LOG_CYCLE_TAG, "Got functions packet 1 (via InfoRequest)");
+            }
+        };
+        info_requests_.push_back(r_funcs1);
+
+        // Part 2
+        InfoRequest r_funcs2("functions2", "Functions Part 2", 0x22, 3, 0, 60000); // Same interval to sync with Part 1
+        r_funcs2.onResponse = [this](CN105Climate& self) {
+            if (self.data[0] == 0x22) { // Response to 0x22 is 0x22
+                self.functions.setData2(&self.data[1]);
+                ESP_LOGD(LOG_CYCLE_TAG, "Got functions packet 2 (via InfoRequest)");
+                self.functionsArrived();
+            }
+        };
+        info_requests_.push_back(r_funcs2);
+    }
+
     current_request_index_ = -1;
 }
 
@@ -120,6 +144,7 @@ void CN105Climate::sendInfoRequest(uint8_t code) {
         if (req.canSend && !req.canSend(*this)) { return; }
         ESP_LOGD(LOG_CYCLE_TAG, "Sending %s (0x%02X)", req.description, req.code);
         req.awaiting = true;
+        req.last_request_time = CUSTOM_MILLIS;
         this->buildAndSendInfoPacket(req.code);
         if (req.soft_timeout_ms > 0) {
             uint8_t code_copy = req.code;
@@ -171,6 +196,8 @@ void CN105Climate::sendNextAfter(uint8_t code) {
         auto& req = info_requests_[idx];
         if (req.disabled) continue;
         if (req.canSend && !req.canSend(*this)) continue;
+        if (req.interval_ms > 0 && (CUSTOM_MILLIS - req.last_request_time < req.interval_ms)) continue;
+
         this->sendInfoRequest(req.code);
         return;
     }

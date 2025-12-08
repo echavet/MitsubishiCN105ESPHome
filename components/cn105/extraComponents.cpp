@@ -229,3 +229,18 @@ void CN105Climate::set_use_fahrenheit_support_mode(bool value) {
     this->fahrenheitSupport_.setUseFahrenheitSupportMode(value);
     ESP_LOGI(TAG, "Fahrenheit compatibility mode enabled: %s", value ? "true" : "false");
 }
+
+void CN105Climate::add_hardware_setting(HardwareSettingSelect* setting) {
+    this->hardware_settings_.push_back(setting);
+    setting->setCallbackFunction([this, setting](const std::string& value, int int_value) {
+        ESP_LOGI(TAG, "Hardware setting change: Code %d -> %d (%s)", setting->get_code(), int_value, value.c_str());
+
+        // Optimistic update done in component
+
+        // Update internal structure
+        this->functions.setValue(setting->get_code(), int_value);
+
+        // Trigger write to device
+        this->setFunctions(this->functions);
+        });
+}
