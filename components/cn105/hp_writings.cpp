@@ -411,7 +411,7 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
         this->loopCycle.cycleStarted();
         this->nbCycles_++;
         // Envoie la première requête activable (la liste est enregistrée une fois au constructeur)
-        this->sendNextAfter(0x00); // 0x00 -> start, pick first eligible
+        this->scheduler_.send_next_after(0x00); // 0x00 -> start, pick first eligible
     } else {
         this->reconnectIfConnectionLost();
     }

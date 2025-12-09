@@ -25,6 +25,9 @@ void CN105Climate::setup() {
     this->nbCycles_ = 0;
     this->nbHeatpumpConnections_ = 0;
 
+    // Register info requests here to ensure all dependencies (like hardware_settings) are ready
+    this->registerInfoRequests();
+
     ESP_LOGI(TAG, "tx_pin: %d rx_pin: %d", this->tx_pin_, this->rx_pin_);
     //ESP_LOGI(TAG, "remote_temp_timeout is set to %lu", this->remote_temp_timeout_);
     log_info_uint32(TAG, "remote_temp_timeout is set to ", this->remote_temp_timeout_);

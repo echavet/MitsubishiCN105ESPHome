@@ -10,7 +10,7 @@ esphome:
   #name_add_mac_suffix: true
   project:
     name: esphome.clim_and_nt_proxy
-    version: "25.11.0"
+    version: "25.12.6"
   
   # on_boot:
   #   - priority: 1001

@@ -82,6 +82,9 @@ CONF_AIRFLOW_CONTROL_SELECT = "airflow_control_select"
 CONF_AIR_PURIFIER_SWITCH = "air_purifier_switch"
 CONF_NIGHT_MODE_SWITCH = "night_mode_switch"
 CONF_CIRCULATOR_SWITCH = "circulator_switch"
+CONF_HARDWARE_SETTINGS = "hardware_settings"
+CONF_CODE = "code"
+CONF_OPTIONS = "options"
 
 # Support explicite du DUAL setpoint via YAML
 CONF_DUAL_SETPOINT = "dual_setpoint"
@@ -131,6 +134,9 @@ FlowControlSensor = cg.global_ns.class_(
     "FlowControlSensor", text_sensor.TextSensor, cg.Component
 )
 HVACOptionSwitch = cg.global_ns.class_("HVACOptionSwitch", switch.Switch, cg.Component)
+HardwareSettingSelect = cg.global_ns.class_(
+    "HardwareSettingSelect", select.Select, cg.Component
+)
 
 
 # --- Fonction d'aide pour récupérer les pins TX/RX (identique à votre version corrigée) ---
@@ -238,6 +244,24 @@ HVAC_OPTION_SWITCH_SCHEMA = switch.switch_schema(HVACOptionSwitch).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(HVACOptionSwitch)}
 )
 
+HARDWARE_SETTING_ITEM_SCHEMA = select.select_schema(HardwareSettingSelect).extend(
+    {
+        cv.Required(CONF_CODE): cv.int_range(min=101, max=128),
+        cv.Required(CONF_OPTIONS): cv.Schema({cv.int_range(min=1, max=3): cv.string}),
+    }
+)
+
+CONF_HARDWARE_SETTINGS_LIST = "list"
+
+HARDWARE_SETTING_SCHEMA = cv.Schema(
+    {
+        cv.Optional(CONF_UPDATE_INTERVAL, default="24h"): cv.update_interval,
+        cv.Required(CONF_HARDWARE_SETTINGS_LIST): cv.ensure_list(
+            HARDWARE_SETTING_ITEM_SCHEMA
+        ),
+    }
+)
+
 CONFIG_SCHEMA = (
     climate.climate_schema(CN105Climate)
     .extend(
@@ -288,6 +312,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_AIR_PURIFIER_SWITCH): HVAC_OPTION_SWITCH_SCHEMA,
             cv.Optional(CONF_NIGHT_MODE_SWITCH): HVAC_OPTION_SWITCH_SCHEMA,
             cv.Optional(CONF_CIRCULATOR_SWITCH): HVAC_OPTION_SWITCH_SCHEMA,
+            cv.Optional(CONF_HARDWARE_SETTINGS): HARDWARE_SETTING_SCHEMA,
             cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
                 {
                     cv.Optional(
@@ -300,7 +325,9 @@ CONFIG_SCHEMA = (
                         CONF_SWING_MODE, default=DEFAULT_SWING_MODES
                     ): cv.ensure_list(climate.validate_climate_swing_mode),
                     cv.Optional(CONF_DUAL_SETPOINT, default=False): cv.boolean,
-                    cv.Optional(CONF_SUPPORTS_HORIZONTAL_VANE_MODE): cv.ensure_list(cv.string),
+                    cv.Optional(CONF_SUPPORTS_HORIZONTAL_VANE_MODE): cv.ensure_list(
+                        cv.string
+                    ),
                 }
             ),
         }
@@ -380,7 +407,9 @@ def to_code(config):
         swing_select_var = yield select.new_select(conf_item, options=[])
         if horizontal_vane_options:
             options_vector = cg.RawExpression(
-                "std::vector<std::string>{" + ", ".join([f'"{opt}"' for opt in horizontal_vane_options]) + "}"
+                "std::vector<std::string>{"
+                + ", ".join([f'"{opt}"' for opt in horizontal_vane_options])
+                + "}"
             )
         else:
             options_vector = cg.RawExpression("std::vector<std::string>{}")
@@ -513,6 +542,34 @@ def to_code(config):
         hp_connection_sensor_ = yield sensor.new_sensor(conf)
         yield cg.register_component(hp_connection_sensor_, conf)
         cg.add(var.set_hp_uptime_connection_sensor(hp_connection_sensor_))
+
+    if CONF_HARDWARE_SETTINGS in config:
+        hw_config = config[CONF_HARDWARE_SETTINGS]
+
+        # Extract and set the update interval
+        interval_ms = int(hw_config[CONF_UPDATE_INTERVAL].total_milliseconds)
+        cg.add(var.set_hardware_settings_interval(interval_ms))
+
+        # Iterate over the list of hardware settings
+        for setting_conf in hw_config[CONF_HARDWARE_SETTINGS_LIST]:
+            code = setting_conf[CONF_CODE]
+            options_map = setting_conf[CONF_OPTIONS]
+
+            # Build inline initializer list for std::map: {{key1, "val1"}, {key2, "val2"}, ...}
+            map_entries = ", ".join(
+                [f'{{{val}, "{label}"}}' for val, label in options_map.items()]
+            )
+            map_expr = cg.RawExpression(f"std::map<int, std::string>{{{map_entries}}}")
+
+            setting_var = cg.new_Pvariable(setting_conf[CONF_ID], code, map_expr)
+
+            # Extract options list sorted by key (1, 2, 3...) to ensure consistent order
+            options_list = [options_map[k] for k in sorted(options_map.keys())]
+            yield select.register_select(
+                setting_var, setting_conf, options=options_list
+            )
+
+            cg.add(var.add_hardware_setting(setting_var))
 
     yield cg.register_component(var, config)
     yield climate.register_climate(var, config)
