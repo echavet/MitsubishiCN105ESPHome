@@ -19,16 +19,31 @@ namespace esphome {
 
     void HardwareSettingSelect::update_state_from_value(int value) {
         ESP_LOGD(LOG_HARDWARE_SELECT_TAG, "Code %d update request with value: %d", this->code_, value);
-        if (this->mapping_.count(value)) {
-            std::string new_state = this->mapping_[value];
-            if (this->state != new_state) {
-                ESP_LOGI(LOG_HARDWARE_SELECT_TAG, "Code %d state changed: %s -> %s (val: %d)", this->code_, this->state.c_str(), new_state.c_str(), value);
-                this->publish_state(new_state);
-            } else {
-                ESP_LOGD(LOG_HARDWARE_SELECT_TAG, "Code %d state unchanged: %s (val: %d)", this->code_, new_state.c_str(), value);
-            }
+
+        auto it = this->mapping_.find(value);
+        if (it == this->mapping_.end()) {
+        ESP_LOGW(LOG_HARDWARE_SELECT_TAG, "Code %d received unknown value: %d", this->code_, value);
+            return;
+        }
+
+        const std::string &new_state = it->second;
+
+        bool changed = false;
+        const char *cur_opt = nullptr;
+        
+        #if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+            cur_opt = this->current_option(); 
+            changed = (cur_opt == nullptr) || (std::strcmp(cur_opt, new_state.c_str()) != 0);
+        #else
+            cur_opt = this->state.c_str();
+            changed = (this->state != new_state);
+        #endif
+        
+        if (changed) {
+            ESP_LOGI(LOG_HARDWARE_SELECT_TAG, "Code %d state changed: %s -> %s (val: %d)", this->code_, (cur_opt ? cur_opt : "<none>"), new_state.c_str(), value);
+            this->publish_state(new_state);
         } else {
-            ESP_LOGW(LOG_HARDWARE_SELECT_TAG, "Code %d received unknown value: %d", this->code_, value);
+            ESP_LOGD(LOG_HARDWARE_SELECT_TAG, "Code %d state unchanged: %s (val: %d)", this->code_, new_state.c_str(), value);
         }
     }
 
