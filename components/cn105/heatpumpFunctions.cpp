@@ -1,5 +1,6 @@
 #include "cn105.h"
 #include "heatpumpFunctions.h"
+#include "Globals.h"
 
 using namespace esphome;
 //#region heatpump_functions fonctions clim
@@ -62,6 +63,16 @@ void CN105Climate::functionsArrived() {
     if (this->Functions_sensor_ != nullptr) {
         this->Functions_sensor_->publish_state(states);
     }
+
+    // Update Hardware Settings Selects
+    for (auto* setting : this->hardware_settings_) {
+        int val = functions.getValue(setting->get_code());
+        if (val > 0) {
+            setting->update_state_from_value(val);
+        } else {
+            ESP_LOGD(LOG_HARDWARE_SELECT_TAG, "Code %d received unknown value: %d", setting->get_code(), val);
+        }
+    }
 }
 
 bool CN105Climate::setFunctions(heatpumpFunctions const& functions) {
@@ -82,14 +93,16 @@ bool CN105Climate::setFunctions(heatpumpFunctions const& functions) {
     functions.getData2(&packet2[6]);
 
     // sanity check, we expect data byte 15 (index 20) to be 0
-    if (packet1[20] != 0 || packet2[20] != 0)
-        return false;
+    // REMOVED for Bug #485 - newer units use these bytes
+    // if (packet1[20] != 0 || packet2[20] != 0)
+    //    return false;
 
     // make sure all the other data bytes are set
-    for (int i = 6; i < 20; ++i) {
+    // REMOVED for Bug #485
+    /* for (int i = 6; i < 20; ++i) {
         if (packet1[i] == 0 || packet2[i] == 0)
             return false;
-    }
+    } */
 
     packet1[21] = checkSum(packet1, 21);
     packet2[21] = checkSum(packet2, 21);

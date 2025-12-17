@@ -397,7 +397,7 @@ void CN105Climate::getDataFromResponsePacket() {
 
     // D'abord, laissons l'orchestrateur traiter les codes connus
     const uint8_t code = this->data[0];
-    if (this->processInfoResponse(code)) {
+    if (this->scheduler_.process_response(code)) {
         return;
     }
     // Sinon, switch pour les cas non gérés par l'orchestrateur
