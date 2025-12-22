@@ -99,6 +99,8 @@ CN105Climate = cg.global_ns.class_(
 )
 CONF_REMOTE_TEMP_TIMEOUT = "remote_temperature_timeout"
 CONF_DEBOUNCE_DELAY = "debounce_delay"
+CONF_CONNECTION_BOOTSTRAP_DELAY = "connection_bootstrap_delay"
+CONF_INSTALLER_MODE = "installer_mode"
 
 # Définitions des classes C++ (identiques à votre version)
 VaneOrientationSelect = cg.global_ns.class_(
@@ -305,6 +307,10 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_DEBOUNCE_DELAY, default="100ms"): cv.All(
                 cv.update_interval
             ),
+            cv.Optional(CONF_CONNECTION_BOOTSTRAP_DELAY, default="10s"): cv.All(
+                cv.update_interval
+            ),
+            cv.Optional(CONF_INSTALLER_MODE, default=False): cv.boolean,
             cv.Optional(
                 CONF_HP_UP_TIME_CONNECTION_SENSOR
             ): HP_UP_TIME_CONNECTION_SENSOR_SCHEMA,
@@ -341,6 +347,8 @@ def to_code(config):
     uart_id_object = config[CONF_UART_ID]
     uart_var = yield cg.get_variable(uart_id_object)
     var = cg.new_Pvariable(config[CONF_ID], uart_var)
+
+    cg.add(var.set_installer_mode(config[CONF_INSTALLER_MODE]))
 
     cg.add(uart_var.set_data_bits(8))
     cg.add(uart_var.set_parity(UARTParityOptions.UART_CONFIG_PARITY_EVEN))
@@ -399,6 +407,11 @@ def to_code(config):
 
     cg.add(var.set_remote_temp_timeout(config[CONF_REMOTE_TEMP_TIMEOUT]))
     cg.add(var.set_debounce_delay(config[CONF_DEBOUNCE_DELAY]))
+    cg.add(
+        var.set_connection_bootstrap_delay(
+            int(config[CONF_CONNECTION_BOOTSTRAP_DELAY].total_milliseconds)
+        )
+    )
 
     # --- Configuration des entités optionnelles (style original) ---
     if CONF_HORIZONTAL_SWING_SELECT in config:

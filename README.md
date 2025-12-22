@@ -208,6 +208,12 @@ The `remote_temperature_timeout` setting allows the unit to revert back to the i
 
 `debounce_delay` adds a small delay to the command processing to account for some HomeAssistant buttons that may send repeat commands too quickly. A shorter value creates a more responsive UI, a longer value protects against repeat commands. (See https://github.com/echavet/MitsubishiCN105ESPHome/issues/21)
 
+`connection_bootstrap_delay` delays the initial CN105 UART connection sequence (UART init + CONNECT handshake) **after boot**, to ensure the OTA log stream has time to attach. This is useful when troubleshooting cold-boot issues remotely: without a delay, the very first connection logs can be missed because the log client connects a few seconds after reboot. While this delay is active, the component will **not start communication cycles** until the heatpump replies with the connection success packet.
+
+Recommended: start with `10s` and increase (e.g., `30s`) if you still miss early logs. A safety fallback starts anyway after 120s.
+
+`installer_mode` enables an extended CN105 connection handshake (CONNECT command `0x5B`) instead of the standard handshake (`0x5A`). Some indoor units (notably some ducted SEZ variants) may require this to unlock installer/service privileges so that Function Settings (ISU / `hardware_settings`) return real values instead of `0`. Default is `false` for maximum compatibility.
+
 `fahrenheit_compatibility` improves compatibility with HomeAssistant installations using Fahrenheit units. Mitsubishi uses a custom lookup table to convert F to C which doesn't correspond to the actual math in all cases. This can result in external thermostats and HomeAssistant "disagreeing" on what the current setpoint is. Setting this value to `true` forces the component to use the same lookup tables, resulting in more consistent display of setpoints. Recommended for Fahrenheit users. (See https://github.com/echavet/MitsubishiCN105ESPHome/pull/298.)
 
 `use_as_operating_fallback` in the `stage_sensor` enables a fallback mechanism for the activity indicator (idle/heating/cooling/etc.). By default, the activity status is based on the compressor running state. When this option is enabled, the system uses an OR logic: it shows active status if the compressor is running OR if the stage sensor indicates activity (not IDLE). This is particularly useful for 2-stage heating systems where the second stage (e.g., gas heating) may be active while the compressor is off. (See https://github.com/echavet/MitsubishiCN105ESPHome/issues/277 and https://github.com/echavet/MitsubishiCN105ESPHome/issues/469)
@@ -231,6 +237,10 @@ climate:
     remote_temperature_timeout: 30min
     update_interval: 2s
     debounce_delay: 100ms
+    # Delay the initial UART/CONNECT bootstrap to avoid missing early OTA logs
+    connection_bootstrap_delay: 30s
+    # Optional: use extended CONNECT handshake (0x5B) for installer/service privileges
+    installer_mode: false
     # Various optional sensors, not all sensors are supported by all heatpumps
     compressor_frequency_sensor:
       name: Compressor Frequency
@@ -315,6 +325,8 @@ logger:
     WRITE_SETTINGS: INFO
     SETTINGS: INFO
     STATUS: INFO
+    # CN105 connection/bootstrap diagnostics (UART init + CONNECT handshake)
+    CN105_CONN: INFO
     CN105Climate: WARN
     CN105: INFO
     climate: WARN
@@ -863,7 +875,7 @@ sensor:
 This advanced feature allows you to read and modify the internal "Function Settings" (ISU) of your Mitsubishi unit directly from Home Assistant. These settings control hardware behaviors like auto-restart, temperature sensing location, or static pressure.
 
 > [!NOTE]
-> This feature depends on your unit's compatibility. If your unit returns only zeros, it likely does not support reading/writing function settings via CN105. The component will automatically detect this and disable the polling to save resources.
+> This feature depends on your unit's compatibility. If your unit returns only zeros, it likely does not support reading/writing function settings via CN105, or it may require installer/service privileges. Try setting `installer_mode: true` if your unit supports Function Settings but reports `0` values (seen on some SEZ units). The component will automatically detect fully-zero responses and disable the polling to save resources.
 > Note that the firmware autor's units do not support theses functions settings. So implementation might not be reliable.
 
 ### Configuration

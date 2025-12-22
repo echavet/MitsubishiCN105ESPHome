@@ -15,10 +15,18 @@ void CN105Climate::sendFirstConnectionPacket() {
     if (this->isUARTConnected_) {
         this->lastReconnectTimeMs = CUSTOM_MILLIS;          // marker to prevent to many reconnections
         this->setHeatpumpConnected(false);
-        ESP_LOGD(TAG, "Envoi du packet de connexion...");
         uint8_t packet[CONNECT_LEN];
         memcpy(packet, CONNECT, CONNECT_LEN);
-        //for(int count = 0; count < 2; count++) {
+
+        // Choix du mode de handshake: standard (0x5A) ou installateur (0x5B)
+        packet[1] = this->installer_mode_effective_ ? 0x5B : 0x5A;
+        // CONNECT a un checksum pré-calculé dans la constante; si on modifie l'octet commande, on doit le recalculer.
+        packet[CONNECT_LEN - 1] = checkSum(packet, CONNECT_LEN - 1);
+
+        ESP_LOGI(LOG_CONN_TAG, "Envoi du paquet de connexion en mode %s (0x%02X)...", this->installer_mode_effective_ ? "Installateur" : "Standard", packet[1]);
+
+        // Détails des octets en DEBUG sur le tag de connexion
+        this->hpPacketDebug(packet, CONNECT_LEN, LOG_CONN_TAG);
 
         this->writePacket(packet, CONNECT_LEN, false);      // checkIsActive=false because it's the first packet and we don't have any reply yet
 
@@ -29,13 +37,20 @@ void CN105Climate::sendFirstConnectionPacket() {
         // we wait for a 10s timeout to check if the hp has replied to connection packet
         this->set_timeout("checkFirstConnection", 10000, [this]() {
             if (!this->isHeatpumpConnected_) {
-                ESP_LOGE(TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
-                ESP_LOGI(TAG, "Reinitializing UART and trying to connect again...");
+                ESP_LOGE(LOG_CONN_TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
+                // Fallback automatique: si le mode installateur est demandé mais que la PAC ignore 0x5B,
+                // on retente une fois en mode standard (0x5A) pour préserver la connectivité.
+                if (this->installer_mode_ && this->installer_mode_effective_ && !this->installer_mode_fallback_done_) {
+                    this->installer_mode_effective_ = false;
+                    this->installer_mode_fallback_done_ = true;
+                    ESP_LOGW(LOG_CONN_TAG, "No reply to installer handshake (0x5B). Falling back to standard handshake (0x5A).");
+                }
+                ESP_LOGI(LOG_CONN_TAG, "Reinitializing UART and trying to connect again...");
                 this->reconnectUART();
             }});
 
     } else {
-        ESP_LOGE(TAG, "UART doesn't seem to be connected...");
+        ESP_LOGE(LOG_CONN_TAG, "UART doesn't seem to be connected...");
         this->setupUART();
         // this delay to prevent a logging flood should never happen
         CUSTOM_DELAY(750);

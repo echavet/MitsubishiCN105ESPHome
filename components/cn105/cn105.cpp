@@ -135,16 +135,18 @@ void CN105Climate::registerHardwareSettingsRequests() {
             if (self.data[0] != code) return false;
 
             bool all_zeros = true;
-            // Masque 0x03 pour vérifier uniquement la valeur (bits de poids faible)
+            // Sur certaines unités (ex: SEZ), les codes peuvent être présents avec une valeur à 0
+            // tant que la session n'est pas en mode installateur. La présence de l'octet (code+valeur)
+            // suffit à valider le support.
             for (int i = 1; i < self.dataLength; i++) {
-                if ((self.data[i] & 0x03) != 0) {
+                if (self.data[i] != 0) {
                     all_zeros = false;
                     break;
                 }
             }
 
             if (all_zeros) {
-                ESP_LOGW(LOG_FUNCTIONS_TAG, "Response 0x%02X contains only zeros (value bits). Feature not supported by unit. Disabling.", code);
+                ESP_LOGW(LOG_FUNCTIONS_TAG, "Response 0x%02X contains only zeros. Feature not supported by unit. Disabling.", code);
 
                 // 1. Désactiver la requête via le scheduler
                 self.scheduler_.disable_request(code);
@@ -163,9 +165,10 @@ void CN105Climate::registerHardwareSettingsRequests() {
         // --- Part 1 (0x20) ---
         InfoRequest r_funcs1("functions1", "Functions Part 1", 0x20, 3, 0, interval, LOG_FUNCTIONS_TAG);
         r_funcs1.onResponse = [this, check_and_disable](CN105Climate& self) {
+            // Log the raw packet and decoded pairs even if the unit returns all zeros
+            self.hpPacketDebug(self.data, self.dataLength, "RX 0x20");
+            self.hpFunctionsDebug(self.data, self.dataLength);
             if (check_and_disable(self, 0x20)) {
-                self.hpPacketDebug(self.data, self.dataLength, "RX 0x20");
-                self.hpFunctionsDebug(self.data, self.dataLength);
                 self.functions.setData1(&self.data[1]);
                 ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 1 (via InfoRequest)");
             }
@@ -175,9 +178,10 @@ void CN105Climate::registerHardwareSettingsRequests() {
         // --- Part 2 (0x22) ---
         InfoRequest r_funcs2("functions2", "Functions Part 2", 0x22, 3, 0, interval, LOG_FUNCTIONS_TAG);
         r_funcs2.onResponse = [this, check_and_disable](CN105Climate& self) {
+            // Log the raw packet and decoded pairs even if the unit returns all zeros
+            self.hpPacketDebug(self.data, self.dataLength, "RX 0x22");
+            self.hpFunctionsDebug(self.data, self.dataLength);
             if (check_and_disable(self, 0x22)) {
-                self.hpPacketDebug(self.data, self.dataLength, "RX 0x22");
-                self.hpFunctionsDebug(self.data, self.dataLength);
                 self.functions.setData2(&self.data[1]);
                 ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 2 (via InfoRequest)");
                 self.functionsArrived();
@@ -261,6 +265,7 @@ bool CN105Climate::is_circulator() {
 void CN105Climate::setupUART() {
 
     log_info_uint32(TAG, "setupUART() with baudrate ", this->parent_->get_baud_rate());
+    ESP_LOGI(LOG_CONN_TAG, "setupUART(): baud=%d tx=%d rx=%d (UART port=%d)", this->parent_->get_baud_rate(), this->tx_pin_, this->rx_pin_, this->uart_port_);
     this->setHeatpumpConnected(false);
     this->isUARTConnected_ = false;
 
@@ -270,11 +275,11 @@ void CN105Climate::setupUART() {
     if (this->parent_->get_data_bits() == 8 &&
         this->parent_->get_parity() == uart::UART_CONFIG_PARITY_EVEN &&
         this->parent_->get_stop_bits() == 1) {
-        ESP_LOGD(TAG, "UART est configuré en SERIAL_8E1");
+        ESP_LOGI(LOG_CONN_TAG, "UART configuré en SERIAL_8E1");
         this->isUARTConnected_ = true;
         this->initBytePointer();
     } else {
-        ESP_LOGW(TAG, "UART n'est pas configuré en SERIAL_8E1");
+        ESP_LOGW(LOG_CONN_TAG, "UART n'est pas configuré en SERIAL_8E1");
     }
 
 }
@@ -306,7 +311,9 @@ void CN105Climate::reconnectUART() {
     ESP_LOGD(TAG, "reconnectUART()");
     this->lastReconnectTimeMs = CUSTOM_MILLIS;
     this->disconnectUART();
-    this->force_low_level_uart_reinit();
+    // Désactivé: le fallback UART bas-niveau (ESP-IDF 5.4.x) peut interférer avec les
+    // tests de handshake/fallback. On laisse UARTComponent gérer la réinit standard.
+    // this->force_low_level_uart_reinit();
     this->setupUART();
     this->sendFirstConnectionPacket();
 }
