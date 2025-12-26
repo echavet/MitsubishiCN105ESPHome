@@ -1,0 +1,199 @@
+# Dry-Out Logic (Standalone)
+globals:
+  # Previous AC mode
+  - id: prev_mode
+    type: climate::ClimateMode
+    initial_value: "climate::CLIMATE_MODE_OFF"
+    restore_value: no
+
+  # Timestamp when COOL mode started (ms)
+  - id: cool_start_time
+    type: uint32_t
+    initial_value: "0"
+    restore_value: no
+
+  # Drying status state machine:
+  # 0 = idle
+  # 1 = drying active
+  - id: drying_status
+    type: uint8_t
+    initial_value: "0"
+    restore_value: no
+
+  # Computed dry time (ms)
+  - id: dry_time_ms
+    type: uint32_t
+    initial_value: "0"
+    restore_value: no
+
+# Configurable numbers
+number:
+  - platform: template
+    id: dryout_max_minutes
+    name: "Dry-Out Duration (min)"
+    #internal: true
+    optimistic: true
+    min_value: 5
+    max_value: 60
+    step: 1
+    initial_value: 15
+    entity_category: config
+
+  - platform: template
+    id: dryout_start_buffer
+    name: "Dry-Out Start Buffer (sec)"
+    #internal: true
+    optimistic: true
+    min_value: 0
+    max_value: 300
+    step: 5
+    initial_value: 10
+    entity_category: config
+
+switch:
+  - platform: template
+    name: "Enable Auto Dry"
+    id: enable_auto_dry
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: True
+    entity_category: config
+    icon: "mdi:fan-auto"
+
+
+
+# Drying status text sensor (optional)
+text_sensor:
+  - platform: template
+    name: "${friendly_name} Drying Status"
+    id: drying_status_sensor
+    lambda: |-
+      switch (id(drying_status)) {
+        case 0: return {"Idle"};
+        case 1: return {"Drying"};
+        default: return {"Unknown"};
+      }
+
+
+# Dry-out script
+script:
+  - id: dryout_script
+    mode: restart
+    then:
+      - lambda: |-
+          ESP_LOGI("dryout", "%s Dry-out started. Will run fan for %u ms.", 
+                   "${friendly_name}", id(dry_time_ms));
+      #- delay: 1s  # optional slight delay before FAN_ONLY
+      - climate.control:
+          id: ${name}_climate
+          mode: "FAN_ONLY"
+      - delay: !lambda "return id(dry_time_ms);"
+      - climate.control:
+          id: ${name}_climate
+          mode: "OFF"
+      - lambda: |-
+          ESP_LOGI("dryout", "%s Dry-out complete, AC turned fully off.", "${friendly_name}");
+          id(drying_status) = 0;   // return to idle
+
+
+# Main interval check loop
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+
+          auto calculate_cool_duration = [](uint32_t start_time) -> uint32_t {
+            uint32_t now = millis();
+            return (now >= start_time) ? now - start_time : (UINT32_MAX - start_time + now);
+          };
+          
+          auto calculate_is_past_buffer = [](uint32_t cool_duration, uint32_t start_buffer) -> bool {
+            return cool_duration >= (uint32_t)(start_buffer * 1000);
+          };
+
+          auto calculate_dry_time = [](uint32_t cool_duration, uint32_t start_buffer_s, uint32_t max_dry_m) -> uint32_t {
+              // Compute dry time based on cool runtime
+              const uint32_t MAX_COOL = 60 * 60 * 1000;   // 60 min
+
+              uint32_t max_dry_ms = max_dry_m * 60000;
+              uint32_t start_buffer_ms = start_buffer_s * 1000;
+
+              uint32_t dry_time = 
+                cool_duration <= start_buffer_ms ? 0 
+                : cool_duration >= MAX_COOL ? max_dry_ms
+                : (uint32_t)(((float)(cool_duration - start_buffer_ms) / (float)(MAX_COOL - start_buffer_ms)) * (float)max_dry_ms);
+
+              return dry_time;
+          };
+          
+          // Check if auto dry is enabled first
+          if (!id(enable_auto_dry).state) {
+            ESP_LOGI("dryout", "%s Auto dry is disabled.", "${friendly_name}");
+            return;  // Exit early if auto dry is disabled
+          }
+
+          auto ac = id(${name}_climate);
+          auto current_mode = id(${name}_climate).mode;
+          uint32_t dryout_start_buffer_s = id(dryout_start_buffer).state; 
+
+          // Cancel dry-out if user intervenes
+          if (id(drying_status) == 1 && current_mode != climate::CLIMATE_MODE_FAN_ONLY) {
+              ESP_LOGI("dryout", "%s Dry-out cancelled by user intervention (mode changed to %d).",
+                       "${friendly_name}", int(current_mode));
+              id(drying_status) = 0;
+              // stop script if supported
+              id(dryout_script).stop();
+          }
+
+          // Detect entering COOL mode
+          if (current_mode == climate::CLIMATE_MODE_COOL) {
+            ESP_LOGI("dryout", "%s still in COOL mode.", "${friendly_name}");
+            if (id(prev_mode) != climate::CLIMATE_MODE_COOL) {
+              id(cool_start_time) = millis();
+              ESP_LOGI("dryout", "%s entered COOL mode, timer started.", "${friendly_name}");
+            } else {
+              uint32_t cool_duration = calculate_cool_duration(id(cool_start_time));
+              bool is_past_buffer = calculate_is_past_buffer(cool_duration, dryout_start_buffer_s);
+              uint32_t dry_time = calculate_dry_time(cool_duration, dryout_start_buffer_s, id(dryout_max_minutes).state);
+              ESP_LOGI("dryout", "%s still in COOL mode. Cool duration: %u sec, Buffer duration: %u sec, Past buffer: %s, Dry time: %u sec",
+                       "${friendly_name}",
+                       cool_duration / 1000,
+                       dryout_start_buffer_s,
+                       is_past_buffer ? "Yes" : "No",
+                       dry_time / 1000);
+            }
+          }
+
+          // Detect COOL OFF transition (eligible to dry)
+          if (id(prev_mode) == climate::CLIMATE_MODE_COOL &&
+              current_mode == climate::CLIMATE_MODE_OFF &&
+              id(drying_status) == 0) {
+
+            uint32_t cool_duration = calculate_cool_duration(id(cool_start_time));
+            bool is_past_buffer = calculate_is_past_buffer(cool_duration, id(dryout_start_buffer).state);
+
+            ESP_LOGI("dryout", "%s Cool -> Off detected. Cool duration: %u seconds",
+                     "${friendly_name}", cool_duration / 1000);
+
+            // Apply start buffer
+            if (!is_past_buffer) {
+              ESP_LOGI("dryout", "%s Skipping dry-out: below start buffer of %u sec",
+                       "${friendly_name}", (uint32_t)(dryout_start_buffer_s));
+            } else {
+              uint32_t dry_time = calculate_dry_time(cool_duration, dryout_start_buffer_s, id(dryout_max_minutes).state);
+              id(dry_time_ms) = dry_time;
+
+              if (dry_time == 0) {
+                ESP_LOGI("dryout", "%s Cool time < 10 min, No dry-out required.", "${friendly_name}");
+              } else {
+                ESP_LOGI("dryout",
+                         "%s Drying required. Cool time = %u min, Dry time = %u min",
+                         "${friendly_name}", cool_duration / 60000, dry_time / 60000);
+
+                id(drying_status) = 1;
+                id(dryout_script).execute();
+              }
+            }
+          }
+
+          // Save mode for next cycle
+          id(prev_mode) = current_mode;

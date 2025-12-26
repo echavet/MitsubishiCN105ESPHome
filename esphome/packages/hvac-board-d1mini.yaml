@@ -1,0 +1,14 @@
+# For ESP8266 Devices
+esp8266:
+  board: d1_mini
+
+uart:
+  id: ${name}_UART
+  baud_rate: 2400
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+
+# Default logging level
+logger:
+  hardware_uart: UART1 # Uncomment on ESP8266 devices
+  level: INFO

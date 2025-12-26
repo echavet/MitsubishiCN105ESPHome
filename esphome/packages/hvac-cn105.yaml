@@ -1,0 +1,93 @@
+# Text sensors with general information.
+text_sensor:
+  - platform: template
+    name: "Project URL"
+    id: project_url
+    lambda: |-
+      return {"https://github.com/echavet/MitsubishiCN105ESPHome"};
+    update_interval: never
+
+# Creates the sensor used to receive the remote temperature from Home Assistant
+# Uses sensor selected in substitutions area at top of config
+# Customize the filters to your application:
+#   Uncomment the first line to convert F to C when remote temps are sent
+#   If you have a fast or noisy sensor, consider some of the other filter
+#   options such as throttle_average.
+climate:
+  - platform: cn105
+    id: ${name}_climate
+    name: "${friendly_name}"
+    icon: mdi:heat-pump
+    visual:
+      min_temperature: 10 # Adjust to your unit's min temp. SmartSet units can go to 10C for heating
+      max_temperature: 31
+      temperature_step:
+        target_temperature: 1
+        current_temperature: 0.5
+    # Fahrenheit compatibility mode - uses Mitsubishi's "custom" unit conversions, set to
+    # "true" for better support of Fahrenheit units in HomeAssistant
+    fahrenheit_compatibility: false
+    # Timeout and communication settings
+    remote_temperature_timeout: 30min
+    update_interval: 2s
+    debounce_delay: 100ms
+    # Various optional sensors, not all sensors are supported by all heatpumps
+    compressor_frequency_sensor:
+      name: Compressor Frequency
+      entity_category: diagnostic
+      disabled_by_default: true
+    outside_air_temperature_sensor:
+      name: Outside Air Temp
+      disabled_by_default: true
+    vertical_vane_select:
+      name: Vertical Vane
+      disabled_by_default: false
+    horizontal_vane_select:
+      name: Horizontal Vane
+      disabled_by_default: true
+    isee_sensor:
+      name: ISEE Sensor
+      disabled_by_default: true
+    stage_sensor:
+      name: Stage
+      # use_as_operating_fallback: false     # set to true if your unit doesn't provide activity indicator
+      entity_category: diagnostic
+      disabled_by_default: true
+    sub_mode_sensor:
+      name: Sub Mode
+      entity_category: diagnostic
+      disabled_by_default: true
+    auto_sub_mode_sensor:
+      name: Auto Sub Mode
+      entity_category: diagnostic
+      disabled_by_default: true
+    input_power_sensor:
+      name: Input Power
+      disabled_by_default: true
+    kwh_sensor:
+      name: Energy Usage
+      disabled_by_default: true
+    runtime_hours_sensor:
+      name: Runtime Hours
+      entity_category: diagnostic
+      disabled_by_default: true
+    air_purifier_switch:
+      name: Air purifier
+      disabled_by_default: true
+    night_mode_switch:
+      name: Night mode
+      disabled_by_default: true
+    circulator_switch:
+      name: Circulator
+      disabled_by_default: true
+    airflow_control_select:
+      name: Airflow Control
+      disabled_by_default: true
+    supports:
+      # Explicitly control dual setpoint support in the UI/traits
+      # Defaults to false when omitted
+      dual_setpoint: true
+      # You can still specify supported modes as before
+      mode: [AUTO, COOL, HEAT, DRY, FAN_ONLY]
+      fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
+      swing_mode: ["OFF", VERTICAL]
