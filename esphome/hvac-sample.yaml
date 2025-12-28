@@ -1,6 +1,6 @@
 substitutions:
-  name: hvac_joe
-  friendly_name: HVAC Joe
+  name: hvac_name
+  friendly_name: HVAC Name
   remote_temp_sensor: sensor.my_room_temperature # Homeassistant sensor providing remote temperature
   api_encryption_key: !secret hvac_api
   ota_esphome_password: !secret hvac_ota
