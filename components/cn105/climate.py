@@ -93,6 +93,12 @@ DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
 DEFAULT_SWING_MODES = ["OFF", "VERTICAL", "HORIZONTAL", "BOTH"]
 
+FAHRENHEIT_MODES = {
+    "disabled": 0,
+    "standard": 1,
+    "alt": 2,
+}
+
 
 CN105Climate = cg.global_ns.class_(
     "CN105Climate", climate.Climate, cg.Component, uart.UARTDevice
@@ -295,7 +301,9 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_FUNCTIONS_SET_BUTTON): FUNCTIONS_BUTTON_SCHEMA,
             cv.Optional(CONF_FUNCTIONS_SET_CODE): FUNCTIONS_NUMBER_SCHEMA,
             cv.Optional(CONF_FUNCTIONS_SET_VALUE): FUNCTIONS_NUMBER_SCHEMA,
-            cv.Optional(CONF_FAHRENHEIT_SUPPORT_MODE): cv.boolean,
+            cv.Optional(CONF_FAHRENHEIT_SUPPORT_MODE, default="disabled"): cv.enum(
+                FAHRENHEIT_MODES, lower=True
+            ),
             cv.Optional(
                 CONF_STAGE_SENSOR
             ): STAGE_SENSOR_CONFIG_SCHEMA,  # Modifié pour le nouveau schéma
@@ -521,12 +529,13 @@ def to_code(config):
         switch_var = yield switch.new_switch(config[CONF_CIRCULATOR_SWITCH])
         cg.add(var.set_circulator_switch(switch_var))
 
-    if CONF_FAHRENHEIT_SUPPORT_MODE in config:
-        cg.add(
-            var.set_use_fahrenheit_support_mode(
-                config.get(CONF_FAHRENHEIT_SUPPORT_MODE)
-            )
-        )
+    # Set Fahrenheit compatibility mode (cast int to FahrenheitMode enum)
+    # The enum validator returns the integer value from FAHRENHEIT_MODES dict
+    fahrenheit_mode = config.get(CONF_FAHRENHEIT_SUPPORT_MODE)
+    # Ensure it's an integer (enum validator should already return int, but be explicit)
+    fahrenheit_value = int(fahrenheit_mode) if isinstance(fahrenheit_mode, int) else FAHRENHEIT_MODES.get(str(fahrenheit_mode).lower(), 0)
+    mode_enum = cg.RawExpression(f"static_cast<esphome::FahrenheitMode>({fahrenheit_value})")
+    cg.add(var.set_use_fahrenheit_support_mode(mode_enum))
 
     # --- TRAITEMENT POUR STAGE_SENSOR AVEC LA NOUVELLE OPTION ---
     if CONF_STAGE_SENSOR in config:

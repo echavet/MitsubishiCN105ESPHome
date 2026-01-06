@@ -56,7 +56,7 @@ namespace esphome {
         void set_isee_sensor(esphome::binary_sensor::BinarySensor* iSee_sensor);
         void set_stage_sensor(esphome::text_sensor::TextSensor* Stage_sensor);
         void set_use_stage_for_operating_status(bool value);
-        void set_use_fahrenheit_support_mode(bool value);
+        void set_use_fahrenheit_support_mode(FahrenheitMode mode);
         void set_air_purifier_switch(HVACOptionSwitch* air_purifier_switch);
         void set_night_mode_switch(HVACOptionSwitch* night_mode_switch);
         void set_circulator_switch(HVACOptionSwitch* circulator_switch);
