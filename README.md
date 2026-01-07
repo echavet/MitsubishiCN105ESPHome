@@ -214,7 +214,7 @@ Recommended: start with `10s` and increase (e.g., `30s`) if you still miss early
 
 `installer_mode` enables an extended CN105 connection handshake (CONNECT command `0x5B`) instead of the standard handshake (`0x5A`). Some indoor units (notably some ducted SEZ variants) may require this to unlock installer/service privileges so that Function Settings (ISU / `hardware_settings`) return real values instead of `0`. Default is `false` for maximum compatibility.
 
-`fahrenheit_compatibility` improves compatibility with HomeAssistant installations using Fahrenheit units. Mitsubishi uses a custom lookup table to convert F to C which doesn't correspond to the actual math in all cases. This can result in external thermostats and HomeAssistant "disagreeing" on what the current setpoint is. Setting this value to `true` forces the component to use the same lookup tables, resulting in more consistent display of setpoints. Recommended for Fahrenheit users. (See https://github.com/echavet/MitsubishiCN105ESPHome/pull/298.)
+`fahrenheit_compatibility` improves compatibility with HomeAssistant installations using Fahrenheit units. Mitsubishi uses a custom lookup table to convert F to C which doesn't correspond to the actual math in all cases. This can result in external thermostats and HomeAssistant "disagreeing" on what the current setpoint is. Setting this value to `standard` (or `alt` for alternative conversion tables) forces the component to use the same lookup tables, resulting in more consistent display of setpoints. Recommended for Fahrenheit users. (See https://github.com/echavet/MitsubishiCN105ESPHome/pull/298.)
 
 `use_as_operating_fallback` in the `stage_sensor` enables a fallback mechanism for the activity indicator (idle/heating/cooling/etc.). By default, the activity status is based on the compressor running state. When this option is enabled, the system uses an OR logic: it shows active status if the compressor is running OR if the stage sensor indicates activity (not IDLE). This is particularly useful for 2-stage heating systems where the second stage (e.g., gas heating) may be active while the compressor is off. (See https://github.com/echavet/MitsubishiCN105ESPHome/issues/277 and https://github.com/echavet/MitsubishiCN105ESPHome/issues/469)
 
@@ -231,8 +231,9 @@ climate:
         target_temperature: 1
         current_temperature: 0.5
     # Fahrenheit compatibility mode - uses Mitsubishi's "custom" unit conversions, set to
-    # "true" for better support of Fahrenheit units in HomeAssistant
-    fahrenheit_compatibility: false
+    # "standard" (or "alt") for better support of Fahrenheit units in HomeAssistant.
+    # Options: "disabled" (default), "standard", "alt"
+    fahrenheit_compatibility: "disabled"
     # Timeout and communication settings
     remote_temperature_timeout: 30min
     update_interval: 2s
@@ -636,8 +637,9 @@ climate:
         target_temperature: 1
         current_temperature: 0.5
     # Fahrenheit compatibility mode - uses Mitsubishi's "custom" unit conversions, set to
-    # "true" for better support of Fahrenheit units in HomeAssistant
-    fahrenheit_compatibility: false
+    # "standard" (or "alt") for better support of Fahrenheit units in HomeAssistant.
+    # Options: "disabled" (default), "standard", "alt"
+    fahrenheit_compatibility: "disabled"
     # Timeout and communication settings
     remote_temperature_timeout: 30min
     update_interval: 2s

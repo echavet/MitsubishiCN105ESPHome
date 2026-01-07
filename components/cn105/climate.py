@@ -97,6 +97,8 @@ FAHRENHEIT_MODES = {
     "disabled": 0,
     "standard": 1,
     "alt": 2,
+    "false": 0,
+    "true": 1,
 }
 
 
