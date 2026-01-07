@@ -16,7 +16,7 @@ jobs:
       max-parallel: 2
       matrix:
         version: [2025.11.0]
-        variant: [esp32-test, hp-debug]
+        variant: [examples/root-configs/esp32-test, examples/root-configs/hp-debug]
     container:
       image: ghcr.io/esphome/esphome:${{ matrix.version }}
     env:
@@ -39,4 +39,6 @@ jobs:
           value=`head -c 32 /dev/urandom | base64`
           echo "${key}: ${value}" >> secrets.yaml
         done
+        # Copy secrets to example directory
+        cp secrets.yaml examples/root-configs/
     - run: esphome compile ${{ matrix.variant }}.yaml

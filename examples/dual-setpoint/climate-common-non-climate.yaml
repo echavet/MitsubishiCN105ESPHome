@@ -76,8 +76,9 @@ button:
 # which provides the climate control functionality for Mitsubishi heat pumps.
 
 external_components:
-  - source: github://echavet/MitsubishiCN105ESPHome  # CN105 component repository
-    refresh: 0s                                     # Don't auto-update (use specific version)
+  - source:
+      type: local
+      path: ../../components
 
 # =============================================================================
 # UART COMMUNICATION
