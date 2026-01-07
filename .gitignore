@@ -31,5 +31,5 @@ components/climate_test/climate.py
 RESUME-EVOLUTIONS-ET-TENTATIVES.md
 examples/root-configs/hp-esp32-c6-esp-idf.yaml
 examples/root-configs/hp-esp32-s2-saola-arduino.yaml
-myfirmware/*
 examples/climate-test/climate-test.yaml
+myfirmware/*
