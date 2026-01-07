@@ -92,6 +92,12 @@ bool CN105Climate::checkSum() {
         ESP_LOGD("chkSum", "OK-> %02X=%02X ", processedCS, packetCheckSum);
     } else {
         ESP_LOGW("chkSum", "KO-> %02X!=%02X ", processedCS, packetCheckSum);
+        // Pendant le handshake, une erreur de checksum est un signal utile: logguer la trame sous CN105_CONN
+        if (!this->isHeatpumpConnected_) {
+            ESP_LOGD(LOG_CONN_TAG, "Checksum KO during handshake (computed=%02X packet=%02X, cmd=0x%02X len=%d)",
+                processedCS, packetCheckSum, this->command, this->dataLength);
+            this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, LOG_CONN_TAG);
+        }
     }
 
     return (packetCheckSum == processedCS);
@@ -130,6 +136,13 @@ void CN105Climate::processDataPacket() {
     this->data = &this->storedInputData[5];
 
     this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "READ");
+
+    // Pendant le handshake (tant que non connecté), logguer toute trame RX sous CN105_CONN en DEBUG
+    // afin de faciliter le diagnostic (0x7A/0x7B attendus, ou autre réponse inattendue).
+    if (!this->isHeatpumpConnected_) {
+        ESP_LOGD(LOG_CONN_TAG, "RX during handshake (cmd=0x%02X len=%d)", this->command, this->dataLength);
+        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, LOG_CONN_TAG);
+    }
 
     if (this->checkSum()) {
         // checkPoint of a heatpump response
@@ -470,8 +483,13 @@ void CN105Climate::processCommand() {
     case 0x62:  /* packet contains data (room °C, settings, timer, status, or functions...)*/
         this->getDataFromResponsePacket();
         break;
-    case 0x7a:
-        ESP_LOGI(TAG, "--> Heatpump did reply: connection success! <--");
+    case 0x7a:  // Connection success (User / standard)
+    case 0x7b:  // Connection success (Installer / extended)
+        // Log en INFO sur le tag dédié, détails en DEBUG via hpPacketDebug
+        ESP_LOGI(LOG_CONN_TAG, "--> Heatpump did reply: connection success (%s, 0x%02X)! <--",
+            (this->command == 0x7b) ? "Installer" : "User",
+            this->command);
+        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, LOG_CONN_TAG);
         //this->isHeatpumpConnected_ = true;
         this->setHeatpumpConnected(true);
         // let's say that the last complete cycle was over now
