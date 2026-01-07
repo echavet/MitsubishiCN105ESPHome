@@ -2,8 +2,9 @@
 
 # External component: https://github.com/echavet/MitsubishiCN105ESPHome
 external_components:
-  - source: github://echavet/MitsubishiCN105ESPHome
-    refresh: 0s
+  - source:
+      type: local
+      path: ../../../components
 
 # Add remote temperature action (previously service) to the API
 api:

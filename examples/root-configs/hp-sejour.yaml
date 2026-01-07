@@ -114,7 +114,7 @@ time:
 external_components:
  - source:
      type: local
-     path: components 
+     path: ../../components 
 
 
 # this setting is for github component 

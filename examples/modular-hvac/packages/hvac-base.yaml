@@ -4,7 +4,9 @@ esphome:
 
 # External component reference
 external_components:
-  - source: github://echavet/MitsubishiCN105ESPHome
+  - source:
+      type: local
+      path: ../../../components
 
 # Enable Home Assistant API
 api:

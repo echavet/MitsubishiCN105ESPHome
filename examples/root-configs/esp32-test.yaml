@@ -117,7 +117,7 @@ external_components:
 #   - source: github://echavet/MitsubishiCN105ESPHome
  - source:
      type: local
-     path: components 
+     path: ../../components 
 
         # Text sensors with general information.
 text_sensor:

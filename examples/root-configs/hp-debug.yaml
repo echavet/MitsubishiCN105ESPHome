@@ -83,7 +83,7 @@ time:
 external_components:
  - source:  
      type: local
-     path: components 
+     path: ../../components 
  
 #external_components:
 #  - source: github://echavet/MitsubishiCN105ESPHome
