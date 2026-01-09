@@ -227,7 +227,7 @@ void CN105Climate::set_hp_uptime_connection_sensor(uptime::HpUpTimeConnectionSen
 
 void CN105Climate::set_use_fahrenheit_support_mode(FahrenheitMode mode) {
     this->fahrenheitSupport_.setUseFahrenheitSupportMode(mode);
-    const char* mode_name = (mode == FahrenheitMode::DISABLED) ? "disabled" :
+    const char* mode_name = (mode == FahrenheitMode::OFF) ? "disabled" :
                            (mode == FahrenheitMode::STANDARD) ? "standard" : "alt";
     ESP_LOGI(TAG, "Fahrenheit compatibility mode: %s", mode_name);
 }
