@@ -313,7 +313,7 @@ void CN105Climate::reconnectUART() {
     this->disconnectUART();
     // Désactivé: le fallback UART bas-niveau (ESP-IDF 5.4.x) peut interférer avec les
     // tests de handshake/fallback. On laisse UARTComponent gérer la réinit standard.
-    // this->force_low_level_uart_reinit();
+    this->force_low_level_uart_reinit();
     this->setupUART();
     this->sendFirstConnectionPacket();
 }
