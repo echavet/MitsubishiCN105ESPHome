@@ -76,27 +76,27 @@ void CN105Climate::updateTargetTemperaturesFromSettings(float temperature) {
             if (std::isnan(this->getTargetTemperatureLow())) {
                 this->setTargetTemperatureLow(temperature);
             }
-        } else if (this->mode == climate::CLIMATE_MODE_AUTO) {
-            // En AUTO: si les deux bornes existent déjà, ne pas recentrer
+        } else if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
+            // En HEAT_COOL (mapped from Mitsubishi AUTO): si les deux bornes existent déjà, ne pas recentrer
             bool lowDefined = !std::isnan(this->getTargetTemperatureLow());
             bool highDefined = !std::isnan(this->getTargetTemperatureHigh());
 
             if (lowDefined && highDefined) {
-                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO keep dual setpoints [%.1f - %.1f], median %.1f",
+                ESP_LOGD(LOG_SETTINGS_TAG, "HEAT_COOL keep dual setpoints [%.1f - %.1f], median %.1f",
                     this->getTargetTemperatureLow(), this->getTargetTemperatureHigh(), temperature);
             } else if (lowDefined && !highDefined) {
                 this->setTargetTemperatureHigh(this->getTargetTemperatureLow() + 2.0f);
-                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO fill missing high: [%.1f - %.1f]",
+                ESP_LOGD(LOG_SETTINGS_TAG, "HEAT_COOL fill missing high: [%.1f - %.1f]",
                     this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
             } else if (!lowDefined && highDefined) {
                 this->setTargetTemperatureLow(this->getTargetTemperatureHigh() - 2.0f);
-                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO fill missing low: [%.1f - %.1f]",
+                ESP_LOGD(LOG_SETTINGS_TAG, "HEAT_COOL fill missing low: [%.1f - %.1f]",
                     this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
             } else {
                 // aucune borne connue: initialiser autour de la médiane fournie
                 this->setTargetTemperatureLow(temperature - 2.0f);
                 this->setTargetTemperatureHigh(temperature + 2.0f);
-                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO init dual setpoints [%.1f - %.1f], median %.1f",
+                ESP_LOGD(LOG_SETTINGS_TAG, "HEAT_COOL init dual setpoints [%.1f - %.1f], median %.1f",
                     this->getTargetTemperatureLow(), this->getTargetTemperatureHigh(), temperature);
             }
 
@@ -224,7 +224,7 @@ void CN105Climate::sanitizeDualSetpoints() {
             this->setTargetTemperatureHigh(22.0f);
         }
 
-        ESP_LOGD(LOG_DUAL_SP_TAG, "AUTO sanitized dual setpoints [%.1f - %.1f]",
+        ESP_LOGD(LOG_DUAL_SP_TAG, "HEAT_COOL sanitized dual setpoints [%.1f - %.1f]",
             this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
 
         return;
@@ -232,18 +232,18 @@ void CN105Climate::sanitizeDualSetpoints() {
 
     if (lowIsNaN && !highIsNaN) {
         // Reconstruire low à partir de high
-        this->setTargetTemperatureLow((this->mode == climate::CLIMATE_MODE_AUTO)
+        this->setTargetTemperatureLow((this->mode == climate::CLIMATE_MODE_HEAT_COOL)
             ? (this->getTargetTemperatureHigh() - 4.0f)
             : this->getTargetTemperatureHigh()); // en HEAT/COOL, une seule consigne peut suffire
     } else if (!lowIsNaN && highIsNaN) {
         // Reconstruire high à partir de low
-        this->setTargetTemperatureHigh((this->mode == climate::CLIMATE_MODE_AUTO)
+        this->setTargetTemperatureHigh((this->mode == climate::CLIMATE_MODE_HEAT_COOL)
             ? (this->getTargetTemperatureLow() + 4.0f)
             : this->getTargetTemperatureLow());
     }
 
 
-    ESP_LOGD(LOG_DUAL_SP_TAG, "AUTO sanitized dual setpoints [%.1f - %.1f]",
+    ESP_LOGD(LOG_DUAL_SP_TAG, "HEAT_COOL sanitized dual setpoints [%.1f - %.1f]",
         this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
 }
 

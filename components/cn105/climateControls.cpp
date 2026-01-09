@@ -87,10 +87,10 @@ void CN105Climate::handleDualSetpointLowOnly(float low) {
         return;
     }
     this->setTargetTemperatureLow(low);
-    if (this->mode == climate::CLIMATE_MODE_AUTO) {
+    if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
         const float amplitude = 4.0f;
         this->setTargetTemperatureHigh(this->getTargetTemperatureLow() + amplitude);
-        ESP_LOGD("control", "mode auto: sliding high to preserve amplitude %.1f => [%.1f - %.1f]", amplitude, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
+        ESP_LOGD("control", "mode heat_cool: sliding high to preserve amplitude %.1f => [%.1f - %.1f]", amplitude, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
     }
     this->last_dual_setpoint_side_ = 'L';
     this->last_dual_setpoint_change_ms_ = CUSTOM_MILLIS;
@@ -109,10 +109,10 @@ void CN105Climate::handleDualSetpointHighOnly(float high) {
         return;
     }
     this->setTargetTemperatureHigh(high);
-    if (this->mode == climate::CLIMATE_MODE_AUTO) {
+    if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
         const float amplitude = 4.0f;
         this->setTargetTemperatureLow(this->getTargetTemperatureHigh() - amplitude);
-        ESP_LOGD("control", "mode auto: sliding low to preserve amplitude %.1f => [%.1f - %.1f]", amplitude, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
+        ESP_LOGD("control", "mode heat_cool: sliding low to preserve amplitude %.1f => [%.1f - %.1f]", amplitude, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
     }
     this->last_dual_setpoint_side_ = 'H';
     this->last_dual_setpoint_change_ms_ = CUSTOM_MILLIS;
@@ -122,7 +122,7 @@ void CN105Climate::handleDualSetpointHighOnly(float high) {
 
 void CN105Climate::handleSingleTargetInAutoOrDry(float requested) {
     ESP_LOGD("control", "handleSingleTargetInAutoOrDry - SINGLE: %.1f", requested);
-    if (this->mode == climate::CLIMATE_MODE_AUTO) {
+    if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
         const float half_span = 2.0f;
         this->setTargetTemperatureLow(requested - half_span);
         this->setTargetTemperatureHigh(requested + half_span);
@@ -131,7 +131,7 @@ void CN105Climate::handleSingleTargetInAutoOrDry(float requested) {
         this->currentSettings.dual_low_target = this->getTargetTemperatureLow();
         this->currentSettings.dual_high_target = this->getTargetTemperatureHigh();
         this->setTargetTemperature(requested);
-        ESP_LOGD("control", "AUTO received single target: median=%.1f => [%.1f - %.1f]", requested, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
+        ESP_LOGD("control", "HEAT_COOL received single target: median=%.1f => [%.1f - %.1f]", requested, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
     }
     if (this->mode == climate::CLIMATE_MODE_DRY) {
         this->setTargetTemperatureHigh(requested);
@@ -191,7 +191,7 @@ bool CN105Climate::processTemperatureChange(const esphome::climate::ClimateCall&
         } else if (call.get_target_temperature_high().has_value()) {
             this->handleDualSetpointHighOnly(temp_high);
         } else if (call.get_target_temperature().has_value() &&
-            (this->mode == climate::CLIMATE_MODE_AUTO || this->mode == climate::CLIMATE_MODE_DRY)) {
+            (this->mode == climate::CLIMATE_MODE_HEAT_COOL || this->mode == climate::CLIMATE_MODE_DRY)) {
             this->handleSingleTargetInAutoOrDry(temp_single);
         }
     } else {
@@ -358,18 +358,18 @@ void CN105Climate::controlTemperature() {
         this->sanitizeDualSetpoints();
         // Dual setpoint : choisir la bonne consigne selon le mode
         switch (this->mode) {
-        case climate::CLIMATE_MODE_AUTO:
-
+        case climate::CLIMATE_MODE_HEAT_COOL:
+            // HEAT_COOL mode (mapped from Mitsubishi AUTO) uses dual setpoints
             if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
                 if ((!std::isnan(currentSettings.temperature)) && (currentSettings.temperature > 0)) {
                     this->setTargetTemperatureLow(currentSettings.temperature - 2.0f);
                     this->setTargetTemperatureHigh(currentSettings.temperature + 2.0f);
-                    ESP_LOGI("control", "Initializing AUTO mode temps from current PAC temp: %.1f -> [%.1f - %.1f]",
+                    ESP_LOGI("control", "Initializing HEAT_COOL mode temps from current PAC temp: %.1f -> [%.1f - %.1f]",
                         currentSettings.temperature, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
                     //this->publish_state();
                 }
                 setting = currentSettings.temperature;
-                ESP_LOGD("control", "AUTO mode : getting median temperature from current PAC temp: %.1f", setting);
+                ESP_LOGD("control", "HEAT_COOL mode : getting median temperature from current PAC temp: %.1f", setting);
             } else {
                 setting = this->getTargetTemperature();
             }
@@ -433,8 +433,9 @@ void CN105Climate::controlMode() {
 
         break;
 
-    case climate::CLIMATE_MODE_AUTO:
-        ESP_LOGI("control", "changing mode to AUTO");
+    case climate::CLIMATE_MODE_HEAT_COOL:
+        // HEAT_COOL from Home Assistant maps to AUTO on Mitsubishi heat pump
+        ESP_LOGI("control", "changing mode to HEAT_COOL (Mitsubishi AUTO)");
         this->setModeSetting("AUTO");
         this->setPowerSetting("ON");
 
@@ -516,8 +517,8 @@ void CN105Climate::updateAction() {
         //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_COOLING);
         this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
         break;
-    case climate::CLIMATE_MODE_AUTO:
-
+    case climate::CLIMATE_MODE_HEAT_COOL:
+        // HEAT_COOL mode (mapped from Mitsubishi AUTO)
         if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
             this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
             // If the unit supports both heating and cooling
@@ -547,7 +548,7 @@ void CN105Climate::updateAction() {
                 this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
             }
         } else {
-            ESP_LOGE(TAG, "AUTO mode is not supported by this unit");
+            ESP_LOGE(TAG, "HEAT_COOL mode is not supported by this unit");
             this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
         }
         break;
