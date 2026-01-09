@@ -5,7 +5,7 @@
 
 namespace esphome {
     enum class FahrenheitMode {
-        DISABLED = 0,
+        OFF = 0,
         STANDARD = 1,
         ALT = 2
     };
@@ -17,7 +17,7 @@ namespace esphome {
         }
 
         float normalizeHeatpumpTemperatureToUiTemperature(const float c) {
-            if (fahrenheit_mode_ == FahrenheitMode::DISABLED || c == NAN) {
+            if (fahrenheit_mode_ == FahrenheitMode::OFF || c == NAN) {
                 return c; // If disabled, return the Celsius value as is.
             }
 
@@ -46,7 +46,7 @@ namespace esphome {
         }
 
         float normalizeUiTemperatureToHeatpumpTemperature(const float c) {
-            if (fahrenheit_mode_ == FahrenheitMode::DISABLED || c == NAN) {
+            if (fahrenheit_mode_ == FahrenheitMode::OFF || c == NAN) {
                 return c; // If disabled, return the Celsius value as is.
             }
 
@@ -75,7 +75,7 @@ namespace esphome {
         }
 
     private:
-        FahrenheitMode fahrenheit_mode_ = FahrenheitMode::DISABLED;
+        FahrenheitMode fahrenheit_mode_ = FahrenheitMode::OFF;
 
         // Given a temperature in Celsius that was converted from Fahrenheit, converts
         // it to the Celsius value (at half-degree precision) that matches what
