@@ -246,9 +246,9 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 #ifdef USE_ESP32
     std::lock_guard<std::mutex> guard(wantedSettingsMutex);
     this->controlDelegate(call);
-#else    
+#else
     this->emulateMutex("CONTROL_WANTED_SETTINGS", std::bind(&CN105Climate::controlDelegate, this, call));
-#endif    
+#endif
 
 }
 
@@ -361,15 +361,22 @@ void CN105Climate::controlTemperature() {
         case climate::CLIMATE_MODE_HEAT_COOL:
             // HEAT_COOL mode (mapped from Mitsubishi AUTO) uses dual setpoints
             if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
-                if ((!std::isnan(currentSettings.temperature)) && (currentSettings.temperature > 0)) {
-                    this->setTargetTemperatureLow(currentSettings.temperature - 2.0f);
-                    this->setTargetTemperatureHigh(currentSettings.temperature + 2.0f);
-                    ESP_LOGI("control", "Initializing HEAT_COOL mode temps from current PAC temp: %.1f -> [%.1f - %.1f]",
-                        currentSettings.temperature, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
-                    //this->publish_state();
+                // Only initialize from PAC temp if setpoints are not yet defined
+                bool lowDefined = !std::isnan(this->getTargetTemperatureLow());
+                bool highDefined = !std::isnan(this->getTargetTemperatureHigh());
+
+                if (!lowDefined || !highDefined) {
+                    // Initialize missing setpoints from PAC temperature
+                    if ((!std::isnan(currentSettings.temperature)) && (currentSettings.temperature > 0)) {
+                        if (!lowDefined) this->setTargetTemperatureLow(currentSettings.temperature - 2.0f);
+                        if (!highDefined) this->setTargetTemperatureHigh(currentSettings.temperature + 2.0f);
+                        ESP_LOGI("control", "Initializing HEAT_COOL mode temps from current PAC temp: %.1f -> [%.1f - %.1f]",
+                            currentSettings.temperature, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
+                    }
                 }
-                setting = currentSettings.temperature;
-                ESP_LOGD("control", "HEAT_COOL mode : getting median temperature from current PAC temp: %.1f", setting);
+                // Use the median of the dual setpoints for the PAC command
+                setting = (this->getTargetTemperatureLow() + this->getTargetTemperatureHigh()) / 2.0f;
+                ESP_LOGD("control", "HEAT_COOL mode : using median of dual setpoints: %.1f", setting);
             } else {
                 setting = this->getTargetTemperature();
             }
@@ -510,7 +517,7 @@ void CN105Climate::updateAction() {
     }
     switch (this->mode) {
     case climate::CLIMATE_MODE_HEAT:
-        //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_HEATING);       
+        //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_HEATING);
         this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
         break;
     case climate::CLIMATE_MODE_COOL:
