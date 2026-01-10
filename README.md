@@ -299,7 +299,7 @@ climate:
       # Defaults to false when omitted
       dual_setpoint: true
       # You can still specify supported modes as before
-      mode: [AUTO, COOL, HEAT, DRY, FAN_ONLY]
+      mode: [HEAT_COOL, COOL, HEAT, DRY, FAN_ONLY]
       fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
       swing_mode: ["OFF", VERTICAL]
       # Specify which options to display in horizontal_vane_select dropdown
@@ -307,6 +307,14 @@ climate:
       # Example to hide "←→" and "AIRFLOW CONTROL" if not supported by your unit:
       horizontal_vane_mode: ["←←", "←", "|", "→", "→→", SWING]
 ```
+
+#### HEAT_COOL Mode and Dual Setpoint
+
+Mitsubishi's AUTO mode is mapped to Home Assistant's `HEAT_COOL` mode. In this mode, the heat pump automatically switches between heating and cooling based on room temperature.
+
+**Important limitation:** Mitsubishi heat pumps only accept a single temperature setpoint via the CN105 protocol. The heat pump manages its own internal hysteresis around that value.
+
+When `dual_setpoint: true` is enabled, Home Assistant displays two temperature sliders (low and high). Since the heat pump only accepts one setpoint, this component sends the **median** of both values to the heat pump.
 
 > [!TIP]
 > An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
