@@ -190,6 +190,9 @@ If this is the case, you will see logs in the form:
 This will give you a good idea of your microcontroller's performance in completing an entire cycle. It is unnecessary to set the `update_interval` below this value.
 In this example, setting an `update_interval` to 1500ms could be a fine tuned value.
 
+> [!TIP]
+> An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
+
 ### Step 5: Optional components and variables
 
 These optional additional configurations add customization and additional capabilities. The examples below assume you have added a substitutions component to your configuration file to allow for easy renaming, and that you have added a `secrets.yaml` file to your ESPHome configuration to hide private variables like your random API keys, OTA passwords, and Wifi passwords.
@@ -338,8 +341,7 @@ The room temperature can drift naturally within the deadband zone without the he
 > [!NOTE]
 > The deadband algorithm runs automatically whenever the heat pump reports a new temperature reading. This ensures responsive control without manual intervention.
 
-> [!TIP]
-> An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
+> [!NOTE] > **Transition delay in AUTO mode:** When operating in HEAT_COOL mode, the Mitsubishi heat pump may take several minutes (typically 5-15 minutes) to switch between heating and cooling after a significant temperature change. This is normal behavior - the heat pump uses its own internal logic to decide when to act, and it may remain idle temporarily even when the temperature crosses a setpoint boundary. The setpoint commands are sent immediately by the component, but the heat pump decides when to start operating.
 
 #### Logger granularity
 
