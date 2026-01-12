@@ -542,12 +542,27 @@ void CN105Climate::updateAction() {
         if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
             this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
             // If the unit supports both heating and cooling
-            if (this->getCurrentTemperature() > this->getTargetTemperatureHigh()) {
+            float low = this->getTargetTemperatureLow();
+            float high = this->getTargetTemperatureHigh();
+            float current = this->getCurrentTemperature();
+
+            if (current > high) {
                 this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
-            } else if (this->getCurrentTemperature() < this->getTargetTemperatureLow()) {
+            } else if (current < low) {
                 this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
             } else {
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
+                // In deadband zone
+                if (std::isnan(current)) {
+                    this->action = climate::CLIMATE_ACTION_IDLE;
+                } else if (this->currentStatus.operating) {
+                    // Heat pump is still operating - determine action based on position in deadband
+                    float midpoint = (low + high) / 2.0f;
+                    this->action = (current <= midpoint)
+                        ? climate::CLIMATE_ACTION_HEATING
+                        : climate::CLIMATE_ACTION_COOLING;
+                } else {
+                    this->action = climate::CLIMATE_ACTION_IDLE;
+                }
             }
         } else if (this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
             // If the unit only supports cooling
