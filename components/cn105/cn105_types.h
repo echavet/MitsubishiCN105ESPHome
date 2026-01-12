@@ -104,6 +104,8 @@ static const uint8_t FUNCTIONS_GET_PART2 = 0x22;
 const uint8_t ESPMHP_MIN_TEMPERATURE = 16;
 const uint8_t ESPMHP_MAX_TEMPERATURE = 26;
 const float ESPMHP_TEMPERATURE_STEP = 0.5;
+const float ESPMHP_DEFAULT_LOW_SETPOINT = 18.0f;
+const float ESPMHP_DEFAULT_HIGH_SETPOINT = 22.0f;
 
 struct heatpumpSettings {
     const char* power;

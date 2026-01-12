@@ -157,6 +157,8 @@ namespace esphome {
 
         void sendWantedSettings();
         void sendWantedSettingsDelegate();
+        void checkDeadbandAndSend();
+        float calculateDeadbandSetpoint(float current, float low, float high);
         // Use the temperature from an external sensor. Use
         // set_remote_temp(0) to switch back to the internal sensor.
         void set_remote_temperature(float);

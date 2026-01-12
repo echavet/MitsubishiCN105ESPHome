@@ -314,7 +314,29 @@ Mitsubishi's AUTO mode is mapped to Home Assistant's `HEAT_COOL` mode. In this m
 
 **Important limitation:** Mitsubishi heat pumps only accept a single temperature setpoint via the CN105 protocol. The heat pump manages its own internal hysteresis around that value.
 
-When `dual_setpoint: true` is enabled, Home Assistant displays two temperature sliders (low and high). Since the heat pump only accepts one setpoint, this component sends the **median** of both values to the heat pump.
+When `dual_setpoint: true` is enabled, Home Assistant displays two temperature sliders (low and high). This component implements a **thermostat-like behavior with deadband** to manage these dual setpoints:
+
+**How it works:**
+
+| Room Temperature                | Heat Pump Setpoint | Behavior                    |
+| ------------------------------- | ------------------ | --------------------------- |
+| Below LOW setpoint              | Set to LOW         | Heat pump heats toward LOW  |
+| Above HIGH setpoint             | Set to HIGH        | Heat pump cools toward HIGH |
+| Between LOW and HIGH (deadband) | Follows room temp  | Heat pump stays idle        |
+
+**Example with setpoints [18°C - 26°C]:**
+
+```
+Room at 22°C → Heat pump set to 22°C → Idle (setpoint = room temp)
+Room drifts to 20°C → Heat pump set to 20°C → Idle
+Room drops to 17°C → Heat pump set to 18°C → Heats toward 18°C
+Room rises to 27°C → Heat pump set to 26°C → Cools toward 26°C
+```
+
+The room temperature can drift naturally within the deadband zone without the heat pump intervening. The heat pump only activates when the temperature crosses the LOW or HIGH boundaries.
+
+> [!NOTE]
+> The deadband algorithm runs automatically whenever the heat pump reports a new temperature reading. This ensures responsive control without manual intervention.
 
 > [!TIP]
 > An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.

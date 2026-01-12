@@ -519,6 +519,9 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->currentStatus.outsideAirTemperature = status.outsideAirTemperature;
         this->setCurrentTemperature(this->currentStatus.roomTemperature);
 
+        // Check deadband in HEAT_COOL mode and send command if needed
+        this->checkDeadbandAndSend();
+
         this->updateAction();       // update action info on HA climate component
         this->publish_state();
 

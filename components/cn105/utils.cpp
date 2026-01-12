@@ -219,9 +219,10 @@ void CN105Climate::sanitizeDualSetpoints() {
             this->setTargetTemperatureLow(this->currentSettings.temperature - 2.0f);
             this->setTargetTemperatureHigh(this->currentSettings.temperature + 2.0f);
         } else {
-            ESP_LOGD(LOG_DUAL_SP_TAG, "No known temperature, using default values 18.0f - 22.0f");
-            this->setTargetTemperatureLow(18.0f);
-            this->setTargetTemperatureHigh(22.0f);
+            ESP_LOGD(LOG_DUAL_SP_TAG, "No known temperature, using default setpoints [%.1f - %.1f]",
+                ESPMHP_DEFAULT_LOW_SETPOINT, ESPMHP_DEFAULT_HIGH_SETPOINT);
+            this->setTargetTemperatureLow(ESPMHP_DEFAULT_LOW_SETPOINT);
+            this->setTargetTemperatureHigh(ESPMHP_DEFAULT_HIGH_SETPOINT);
         }
 
         ESP_LOGD(LOG_DUAL_SP_TAG, "HEAT_COOL sanitized dual setpoints [%.1f - %.1f]",
