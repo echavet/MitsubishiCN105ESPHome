@@ -519,6 +519,9 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->currentStatus.outsideAirTemperature = status.outsideAirTemperature;
         this->setCurrentTemperature(this->currentStatus.roomTemperature);
 
+        // Check deadband in HEAT_COOL mode and send command if needed
+        this->checkDeadbandAndSend();
+
         this->updateAction();       // update action info on HA climate component
         this->publish_state();
 
@@ -749,7 +752,9 @@ void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings, bool up
             } else if (strcmp(settings.mode, "FAN") == 0) {
                 this->mode = climate::CLIMATE_MODE_FAN_ONLY;
             } else if (strcmp(settings.mode, "AUTO") == 0) {
-                this->mode = climate::CLIMATE_MODE_AUTO;
+                // Map Mitsubishi AUTO to HEAT_COOL for Home Assistant
+                // HEAT_COOL mode properly supports dual setpoints in HA UI
+                this->mode = climate::CLIMATE_MODE_HEAT_COOL;
             } else {
                 ESP_LOGW(
                     TAG,

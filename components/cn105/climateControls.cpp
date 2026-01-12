@@ -87,10 +87,10 @@ void CN105Climate::handleDualSetpointLowOnly(float low) {
         return;
     }
     this->setTargetTemperatureLow(low);
-    if (this->mode == climate::CLIMATE_MODE_AUTO) {
+    if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
         const float amplitude = 4.0f;
         this->setTargetTemperatureHigh(this->getTargetTemperatureLow() + amplitude);
-        ESP_LOGD("control", "mode auto: sliding high to preserve amplitude %.1f => [%.1f - %.1f]", amplitude, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
+        ESP_LOGD("control", "mode heat_cool: sliding high to preserve amplitude %.1f => [%.1f - %.1f]", amplitude, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
     }
     this->last_dual_setpoint_side_ = 'L';
     this->last_dual_setpoint_change_ms_ = CUSTOM_MILLIS;
@@ -109,10 +109,10 @@ void CN105Climate::handleDualSetpointHighOnly(float high) {
         return;
     }
     this->setTargetTemperatureHigh(high);
-    if (this->mode == climate::CLIMATE_MODE_AUTO) {
+    if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
         const float amplitude = 4.0f;
         this->setTargetTemperatureLow(this->getTargetTemperatureHigh() - amplitude);
-        ESP_LOGD("control", "mode auto: sliding low to preserve amplitude %.1f => [%.1f - %.1f]", amplitude, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
+        ESP_LOGD("control", "mode heat_cool: sliding low to preserve amplitude %.1f => [%.1f - %.1f]", amplitude, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
     }
     this->last_dual_setpoint_side_ = 'H';
     this->last_dual_setpoint_change_ms_ = CUSTOM_MILLIS;
@@ -122,7 +122,7 @@ void CN105Climate::handleDualSetpointHighOnly(float high) {
 
 void CN105Climate::handleSingleTargetInAutoOrDry(float requested) {
     ESP_LOGD("control", "handleSingleTargetInAutoOrDry - SINGLE: %.1f", requested);
-    if (this->mode == climate::CLIMATE_MODE_AUTO) {
+    if (this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
         const float half_span = 2.0f;
         this->setTargetTemperatureLow(requested - half_span);
         this->setTargetTemperatureHigh(requested + half_span);
@@ -131,7 +131,7 @@ void CN105Climate::handleSingleTargetInAutoOrDry(float requested) {
         this->currentSettings.dual_low_target = this->getTargetTemperatureLow();
         this->currentSettings.dual_high_target = this->getTargetTemperatureHigh();
         this->setTargetTemperature(requested);
-        ESP_LOGD("control", "AUTO received single target: median=%.1f => [%.1f - %.1f]", requested, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
+        ESP_LOGD("control", "HEAT_COOL received single target: median=%.1f => [%.1f - %.1f]", requested, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
     }
     if (this->mode == climate::CLIMATE_MODE_DRY) {
         this->setTargetTemperatureHigh(requested);
@@ -191,7 +191,7 @@ bool CN105Climate::processTemperatureChange(const esphome::climate::ClimateCall&
         } else if (call.get_target_temperature_high().has_value()) {
             this->handleDualSetpointHighOnly(temp_high);
         } else if (call.get_target_temperature().has_value() &&
-            (this->mode == climate::CLIMATE_MODE_AUTO || this->mode == climate::CLIMATE_MODE_DRY)) {
+            (this->mode == climate::CLIMATE_MODE_HEAT_COOL || this->mode == climate::CLIMATE_MODE_DRY)) {
             this->handleSingleTargetInAutoOrDry(temp_single);
         }
     } else {
@@ -246,9 +246,9 @@ void CN105Climate::control(const esphome::climate::ClimateCall& call) {
 #ifdef USE_ESP32
     std::lock_guard<std::mutex> guard(wantedSettingsMutex);
     this->controlDelegate(call);
-#else    
+#else
     this->emulateMutex("CONTROL_WANTED_SETTINGS", std::bind(&CN105Climate::controlDelegate, this, call));
-#endif    
+#endif
 
 }
 
@@ -358,22 +358,42 @@ void CN105Climate::controlTemperature() {
         this->sanitizeDualSetpoints();
         // Dual setpoint : choisir la bonne consigne selon le mode
         switch (this->mode) {
-        case climate::CLIMATE_MODE_AUTO:
-
+        case climate::CLIMATE_MODE_HEAT_COOL:
             if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
-                if ((!std::isnan(currentSettings.temperature)) && (currentSettings.temperature > 0)) {
-                    this->setTargetTemperatureLow(currentSettings.temperature - 2.0f);
-                    this->setTargetTemperatureHigh(currentSettings.temperature + 2.0f);
-                    ESP_LOGI("control", "Initializing AUTO mode temps from current PAC temp: %.1f -> [%.1f - %.1f]",
-                        currentSettings.temperature, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
-                    //this->publish_state();
+                float low = this->getTargetTemperatureLow();
+                float high = this->getTargetTemperatureHigh();
+                float current = this->getCurrentTemperature();
+
+                // Initialize setpoints if not defined
+                if (std::isnan(low) || std::isnan(high)) {
+                    if ((!std::isnan(currentSettings.temperature)) && (currentSettings.temperature > 0)) {
+                        if (std::isnan(low)) this->setTargetTemperatureLow(currentSettings.temperature - 2.0f);
+                        if (std::isnan(high)) this->setTargetTemperatureHigh(currentSettings.temperature + 2.0f);
+                        low = this->getTargetTemperatureLow();
+                        high = this->getTargetTemperatureHigh();
+                        ESP_LOGI("control", "Initializing HEAT_COOL setpoints from heat pump temp: %.1f -> [%.1f - %.1f]",
+                            currentSettings.temperature, low, high);
+                    } else {
+                        // Fallback to defaults when no heat pump temperature available
+                        if (std::isnan(low)) this->setTargetTemperatureLow(ESPMHP_DEFAULT_LOW_SETPOINT);
+                        if (std::isnan(high)) this->setTargetTemperatureHigh(ESPMHP_DEFAULT_HIGH_SETPOINT);
+                        low = this->getTargetTemperatureLow();
+                        high = this->getTargetTemperatureHigh();
+                        ESP_LOGW("control", "HEAT_COOL: using default setpoints [%.1f - %.1f]", low, high);
+                    }
                 }
-                setting = currentSettings.temperature;
-                ESP_LOGD("control", "AUTO mode : getting median temperature from current PAC temp: %.1f", setting);
+
+                // Deadband algorithm: send LOW, HIGH, or current temp to keep heat pump idle
+                setting = this->calculateDeadbandSetpoint(current, low, high);
+                if (std::isnan(setting)) {
+                    ESP_LOGD("control", "HEAT_COOL: no current temp yet, waiting for heat pump data");
+                    return;
+                }
+                ESP_LOGD("control", "HEAT_COOL: deadband -> setting=%.1f (current=%.1f, range=[%.1f-%.1f])",
+                         setting, current, low, high);
             } else {
                 setting = this->getTargetTemperature();
             }
-
             break;
 
         case climate::CLIMATE_MODE_HEAT:
@@ -433,8 +453,9 @@ void CN105Climate::controlMode() {
 
         break;
 
-    case climate::CLIMATE_MODE_AUTO:
-        ESP_LOGI("control", "changing mode to AUTO");
+    case climate::CLIMATE_MODE_HEAT_COOL:
+        // HEAT_COOL from Home Assistant maps to AUTO on Mitsubishi heat pump
+        ESP_LOGI("control", "changing mode to HEAT_COOL (Mitsubishi AUTO)");
         this->setModeSetting("AUTO");
         this->setPowerSetting("ON");
 
@@ -509,24 +530,39 @@ void CN105Climate::updateAction() {
     }
     switch (this->mode) {
     case climate::CLIMATE_MODE_HEAT:
-        //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_HEATING);       
+        //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_HEATING);
         this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
         break;
     case climate::CLIMATE_MODE_COOL:
         //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_COOLING);
         this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
         break;
-    case climate::CLIMATE_MODE_AUTO:
-
+    case climate::CLIMATE_MODE_HEAT_COOL:
+        // HEAT_COOL mode (mapped from Mitsubishi AUTO)
         if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
             this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
             // If the unit supports both heating and cooling
-            if (this->getCurrentTemperature() >= this->getTargetTemperatureHigh()) {
+            float low = this->getTargetTemperatureLow();
+            float high = this->getTargetTemperatureHigh();
+            float current = this->getCurrentTemperature();
+
+            if (current > high) {
                 this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
-            } else if (this->getCurrentTemperature() <= this->getTargetTemperatureLow()) {
+            } else if (current < low) {
                 this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
             } else {
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
+                // In deadband zone
+                if (std::isnan(current)) {
+                    this->action = climate::CLIMATE_ACTION_IDLE;
+                } else if (this->currentStatus.operating) {
+                    // Heat pump is still operating - determine action based on position in deadband
+                    float midpoint = (low + high) / 2.0f;
+                    this->action = (current <= midpoint)
+                        ? climate::CLIMATE_ACTION_HEATING
+                        : climate::CLIMATE_ACTION_COOLING;
+                } else {
+                    this->action = climate::CLIMATE_ACTION_IDLE;
+                }
             }
         } else if (this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
             // If the unit only supports cooling
@@ -547,7 +583,7 @@ void CN105Climate::updateAction() {
                 this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
             }
         } else {
-            ESP_LOGE(TAG, "AUTO mode is not supported by this unit");
+            ESP_LOGE(TAG, "HEAT_COOL mode is not supported by this unit");
             this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
         }
         break;
@@ -649,5 +685,54 @@ void CN105Climate::set_remote_temperature(float setting) {
     // ne repasse sur la sonde interne faute de mise à jour régulière (#474).
     this->remoteTemperature_ = setting;
     this->shouldSendExternalTemperature_ = true;
+
+    // Update current_temperature immediately for deadband algorithm in heat_cool mode and HA display
+    this->setCurrentTemperature(setting);
+
     ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
+
+    // React to temperature change immediately in HEAT_COOL mode
+    this->checkDeadbandAndSend();
+}
+
+float CN105Climate::calculateDeadbandSetpoint(float current, float low, float high) {
+    if (std::isnan(current)) {
+        return NAN;
+    }
+    if (current < low) {
+        return low;
+    }
+    if (current > high) {
+        return high;
+    }
+    return current;  // In deadband: follow room temp
+}
+
+void CN105Climate::checkDeadbandAndSend() {
+    // Only in HEAT_COOL mode with dual_setpoint
+    if (this->mode != climate::CLIMATE_MODE_HEAT_COOL) return;
+    if (!this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) return;
+
+    float low = this->getTargetTemperatureLow();
+    float high = this->getTargetTemperatureHigh();
+    float current = this->getCurrentTemperature();
+
+    // Check that values are defined
+    if (std::isnan(low) || std::isnan(high)) return;
+
+    float newSetting = this->calculateDeadbandSetpoint(current, low, high);
+    if (std::isnan(newSetting)) {
+        ESP_LOGD("control", "DEADBAND: current temp is NaN, skipping");
+        return;
+    }
+    ESP_LOGD("control", "DEADBAND: setting=%.1f (current=%.1f, range=[%.1f-%.1f])",
+             newSetting, current, low, high);
+
+    // Send only if significantly different from last setpoint (avoid float precision issues)
+    if (fabsf(newSetting - this->currentSettings.temperature) > 0.01f) {
+        this->wantedSettings.temperature = this->calculateTemperatureSetting(newSetting);
+        this->wantedSettings.hasChanged = true;
+        this->wantedSettings.hasBeenSent = false;
+        this->wantedSettings.lastChange = CUSTOM_MILLIS;
+    }
 }

@@ -190,6 +190,9 @@ If this is the case, you will see logs in the form:
 This will give you a good idea of your microcontroller's performance in completing an entire cycle. It is unnecessary to set the `update_interval` below this value.
 In this example, setting an `update_interval` to 1500ms could be a fine tuned value.
 
+> [!TIP]
+> An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
+
 ### Step 5: Optional components and variables
 
 These optional additional configurations add customization and additional capabilities. The examples below assume you have added a substitutions component to your configuration file to allow for easy renaming, and that you have added a `secrets.yaml` file to your ESPHome configuration to hide private variables like your random API keys, OTA passwords, and Wifi passwords.
@@ -299,7 +302,7 @@ climate:
       # Defaults to false when omitted
       dual_setpoint: true
       # You can still specify supported modes as before
-      mode: [AUTO, COOL, HEAT, DRY, FAN_ONLY]
+      mode: [HEAT_COOL, COOL, HEAT, DRY, FAN_ONLY]
       fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
       swing_mode: ["OFF", VERTICAL]
       # Specify which options to display in horizontal_vane_select dropdown
@@ -308,8 +311,37 @@ climate:
       horizontal_vane_mode: ["←←", "←", "|", "→", "→→", SWING]
 ```
 
-> [!TIP]
-> An `update_interval` between 1s and 4s is recommended, because the underlying process divides this into three separate requests which need time to complete. If some updates get "missed" from your heatpump, consider making this interval longer.
+#### HEAT_COOL Mode and Dual Setpoint
+
+Mitsubishi's AUTO mode is mapped to Home Assistant's `HEAT_COOL` mode. In this mode, the heat pump automatically switches between heating and cooling based on room temperature.
+
+**Important limitation:** Mitsubishi heat pumps only accept a single temperature setpoint via the CN105 protocol. The heat pump manages its own internal hysteresis around that value.
+
+When `dual_setpoint: true` is enabled, Home Assistant displays two temperature sliders (low and high). This component implements a **thermostat-like behavior with deadband** to manage these dual setpoints:
+
+**How it works:**
+
+| Room Temperature                | Heat Pump Setpoint | Behavior                    |
+| ------------------------------- | ------------------ | --------------------------- |
+| Below LOW setpoint              | Set to LOW         | Heat pump heats toward LOW  |
+| Above HIGH setpoint             | Set to HIGH        | Heat pump cools toward HIGH |
+| Between LOW and HIGH (deadband) | Follows room temp  | Heat pump stays idle        |
+
+**Example with setpoints [18°C - 26°C]:**
+
+```
+Room at 22°C → Heat pump set to 22°C → Idle (setpoint = room temp)
+Room drifts to 20°C → Heat pump set to 20°C → Idle
+Room drops to 17°C → Heat pump set to 18°C → Heats toward 18°C
+Room rises to 27°C → Heat pump set to 26°C → Cools toward 26°C
+```
+
+The room temperature can drift naturally within the deadband zone without the heat pump intervening. The heat pump only activates when the temperature crosses the LOW or HIGH boundaries.
+
+> [!NOTE]
+> The deadband algorithm runs automatically whenever the heat pump reports a new temperature reading. This ensures responsive control without manual intervention.
+
+> [!NOTE] > **Transition delay in AUTO mode:** When operating in HEAT_COOL mode, the Mitsubishi heat pump may take several minutes (typically 5-15 minutes) to switch between heating and cooling after a significant temperature change. This is normal behavior - the heat pump uses its own internal logic to decide when to act, and it may remain idle temporarily even when the temperature crosses a setpoint boundary. The setpoint commands are sent immediately by the component, but the heat pump decides when to start operating.
 
 #### Logger granularity
 

@@ -89,7 +89,7 @@ CONF_OPTIONS = "options"
 # Support explicite du DUAL setpoint via YAML
 CONF_DUAL_SETPOINT = "dual_setpoint"
 
-DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
+DEFAULT_CLIMATE_MODES = ["HEAT_COOL", "COOL", "HEAT", "DRY", "FAN_ONLY"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
 DEFAULT_SWING_MODES = ["OFF", "VERTICAL", "HORIZONTAL", "BOTH"]
 
@@ -382,8 +382,11 @@ def to_code(config):
         for mode_str in supported_modes:
             if mode_str == "OFF":
                 continue
-            if mode_str in climate.CLIMATE_MODES:
-                cg.add(traits.add_supported_mode(climate.CLIMATE_MODES[mode_str]))
+            # Map AUTO to HEAT_COOL for Home Assistant compatibility
+            # HEAT_COOL mode natively supports dual setpoints in HA
+            effective_mode = "HEAT_COOL" if mode_str == "AUTO" else mode_str
+            if effective_mode in climate.CLIMATE_MODES:
+                cg.add(traits.add_supported_mode(climate.CLIMATE_MODES[effective_mode]))
 
         # Configure the horizontal vane options
         horizontal_vane_options = supports.get(CONF_SUPPORTS_HORIZONTAL_VANE_MODE, [])
