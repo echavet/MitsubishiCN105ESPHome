@@ -89,7 +89,7 @@ CONF_OPTIONS = "options"
 # Support explicite du DUAL setpoint via YAML
 CONF_DUAL_SETPOINT = "dual_setpoint"
 
-DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
+DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY", "HEAT_COOL"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
 DEFAULT_SWING_MODES = ["OFF", "VERTICAL", "HORIZONTAL", "BOTH"]
 
@@ -384,12 +384,20 @@ def to_code(config):
                 continue
             if mode_str in climate.CLIMATE_MODES:
                 cg.add(traits.add_supported_mode(climate.CLIMATE_MODES[mode_str]))
+            # Handle mapping for HA HEAT_COOL -> Mitsu AUTO without replacing the real AUTO
+            if mode_str == "HEAT_COOL" and "HEAT_COOL" in climate.CLIMATE_MODES:
+                 cg.add(traits.add_supported_mode(climate.CLIMATE_MODES["HEAT_COOL"]))
 
         # Configure the horizontal vane options
         horizontal_vane_options = supports.get(CONF_SUPPORTS_HORIZONTAL_VANE_MODE, [])
 
         # Définir le support du dual setpoint via YAML (par défaut: False si absent)
+        # Note: ceci active le support global du dual setpoint dans HA.
+        # Idéalement, on voudrait l'activer par mode, mais ESPHome traits sont globaux.
+        # Avec HA 2025.10+, HA masque dynamiquement le 2e curseur si le mode ne le requiert pas
+        # MAIS il faut que le composant le déclare.
         yaml_dual = supports.get(CONF_DUAL_SETPOINT, False)
+        
         # Utilise directement la constante C++ via une RawExpression pour éviter d'aller la chercher côté Python
         dual_flag = cg.RawExpression(
             "climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE"

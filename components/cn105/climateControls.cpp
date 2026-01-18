@@ -358,22 +358,52 @@ void CN105Climate::controlTemperature() {
         this->sanitizeDualSetpoints();
         // Dual setpoint : choisir la bonne consigne selon le mode
         switch (this->mode) {
-        case climate::CLIMATE_MODE_AUTO:
-
+        case climate::CLIMATE_MODE_HEAT_COOL:
+            // Mode HEAT_COOL (nouveau): on affiche les 2 curseurs
+            // MAIS on envoie la commande AUTO au hardware Mitsubishi
+            // avec un deadband interne
             if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
                 if ((!std::isnan(currentSettings.temperature)) && (currentSettings.temperature > 0)) {
-                    this->setTargetTemperatureLow(currentSettings.temperature - 2.0f);
-                    this->setTargetTemperatureHigh(currentSettings.temperature + 2.0f);
-                    ESP_LOGI("control", "Initializing AUTO mode temps from current PAC temp: %.1f -> [%.1f - %.1f]",
+                    // Initialiser si pas de valeur
+                    if (std::isnan(this->getTargetTemperatureLow())) {
+                        this->setTargetTemperatureLow(currentSettings.temperature - 2.0f);
+                    }
+                    if (std::isnan(this->getTargetTemperatureHigh())) {
+                        this->setTargetTemperatureHigh(currentSettings.temperature + 2.0f);
+                    }
+                    ESP_LOGI("control", "Initializing HEAT_COOL mode temps from current PAC temp: %.1f -> [%.1f - %.1f]",
                         currentSettings.temperature, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
-                    //this->publish_state();
                 }
-                setting = currentSettings.temperature;
-                ESP_LOGD("control", "AUTO mode : getting median temperature from current PAC temp: %.1f", setting);
+                // En HEAT_COOL, on utilise le deadband pour calculer 'setting'
+                float current = this->getCurrentTemperature();
+                if (!std::isnan(current)) {
+                    float low = this->getTargetTemperatureLow();
+                    float high = this->getTargetTemperatureHigh();
+                    if (current < low) setting = low;
+                    else if (current > high) setting = high;
+                    else setting = current; // Idle
+                    ESP_LOGD("control", "HEAT_COOL deadband: current=%.1f, low=%.1f, high=%.1f => setting=%.1f", current, low, high, setting);
+                } else {
+                    // fallback
+                    setting = this->getTargetTemperature();
+                }
             } else {
                 setting = this->getTargetTemperature();
             }
+            break;
 
+        case climate::CLIMATE_MODE_AUTO:
+            // Mode AUTO (classique): conserve son comportement original
+            // On ignore le dual setpoint ici si possible, ou on prend la médiane
+            // Mais pour Mitsu AUTO, c'est un single setpoint qui compte.
+            setting = this->getTargetTemperature();
+            // Si on est forcé en dual point par le trait global, on prend la médiane
+            if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+                if (!std::isnan(this->getTargetTemperatureLow()) && !std::isnan(this->getTargetTemperatureHigh())) {
+                     setting = (this->getTargetTemperatureLow() + this->getTargetTemperatureHigh()) / 2.0f;
+                }
+            }
+            ESP_LOGD("control", "AUTO mode (legacy) : using target temperature: %.1f", setting);
             break;
 
         case climate::CLIMATE_MODE_HEAT:
@@ -431,6 +461,12 @@ void CN105Climate::controlMode() {
         this->setModeSetting("DRY");
         this->setPowerSetting("ON");
 
+        break;
+
+    case climate::CLIMATE_MODE_HEAT_COOL:
+        ESP_LOGI("control", "changing mode to HEAT_COOL (hardware AUTO)");
+        this->setModeSetting("AUTO");
+        this->setPowerSetting("ON");
         break;
 
     case climate::CLIMATE_MODE_AUTO:
@@ -516,6 +552,22 @@ void CN105Climate::updateAction() {
         //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_COOLING);
         this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
         break;
+    case climate::CLIMATE_MODE_HEAT_COOL:
+         if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
+            this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
+            // Logique Deadband pour HEAT_COOL
+            if (this->getCurrentTemperature() >= this->getTargetTemperatureHigh()) {
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
+            } else if (this->getCurrentTemperature() <= this->getTargetTemperatureLow()) {
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
+            } else {
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
+            }
+        } else {
+             this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
+        }
+        break;
+
     case climate::CLIMATE_MODE_AUTO:
 
         if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
