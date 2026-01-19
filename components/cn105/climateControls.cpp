@@ -354,6 +354,7 @@ void CN105Climate::controlTemperature() {
 
 
     // Utiliser la logique appropriée selon les traits
+    switch (this->mode) {
         case climate::CLIMATE_MODE_HEAT_COOL:
             // Mode HEAT_COOL (new): displays 2 sliders
             // BUT sends AUTO command to Mitsubishi hardware
@@ -426,10 +427,6 @@ void CN105Climate::controlTemperature() {
             }
             ESP_LOGD("control", "DEFAULT mode : getting temperature median:%1.f", setting);
             break;
-        }
-    } else {
-        // Single setpoint : utiliser target_temperature
-        setting = this->getTargetTemperature();
     }
 
     setting = this->calculateTemperatureSetting(setting);
