@@ -363,6 +363,30 @@ logger:
 
 Build the project in ESPHome and install to your device. Install the device in your indoor unit connected to the CN105 port, and confirm that it powers up and connects to the Wifi. Visit the local IP address of the device, and confirm that you can change modes and temperature setpoints. HomeAssistant should now include a climate entity for your heatpump.
 
+> [!TIP]
+> To force an OTA upload via command line without interactive prompts, use:
+> `esphome run myfirmware/clim-chambre-awox.yaml --device <IP_ADDRESS>`
+
+### Step 7: (Optional) Install Hybrid Climate Component via HACS
+
+This repository also contains a Home Assistant Custom Component that solves the "Auto vs Heat/Cool" UI issue by wrapping your ESPHome entity. It enables a dynamic UI that shows a single temperature slider for HEAT/COOL/AUTO modes and dual sliders only for HEAT_COOL mode.
+
+1.  Open **HACS** > **Integrations**.
+2.  Click the three dots in the top right > **Custom repositories**.
+3.  Add `echavet/MitsubishiCN105ESPHome` as category **Integration**.
+4.  Adding the repository will allow you to find "Mitsubishi Hybrid Climate" in the list.
+5.  Install **Mitsubishi Hybrid Climate** and restart Home Assistant.
+6.  Add the configuration to your `configuration.yaml`:
+
+```yaml
+climate:
+  - platform: mitsubishi_hybrid
+    source_entity: climate.my_esphome_entity # Replace with your actual ESPHome entity ID
+    name: "Bedroom Hybrid" # Name for the new wrapper entity
+```
+
+7. Use this new entity (`climate.bedroom_hybrid`) in your dashboard. It will forward controls to the ESPHome entity while presenting the optimized UI.
+
 ## Example Configuration - Minimal
 
 This minimal configuration includes the basic components necessary for the firmware to operate. Note that you need to choose between the ESP32 and the ESP8266 sections to get the correct UART configuration. Utilizes a `secrets.yaml` file to store your credentials.

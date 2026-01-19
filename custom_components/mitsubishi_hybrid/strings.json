@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Mitsubishi Hybrid Climate",
+        "description": "Create a hybrid entity (Dual/Single setpoint wrapper)",
+        "data": {
+          "source": "Source Entity (ESPHome Climate)",
+          "name": "Name for the new Hybrid Entity"
+        }
+      }
+    },
+    "error": {
+      "already_configured": "This entity is already configured."
+    },
+    "abort": {
+      "already_configured": "This entity is already configured."
+    }
+  }
+}

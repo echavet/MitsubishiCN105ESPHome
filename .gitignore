@@ -34,3 +34,5 @@ examples/root-configs/hp-esp32-s2-saola-arduino.yaml
 examples/climate-test/climate-test.yaml
 myfirmware/*
 examples/users/*
+.cursor/*
+**/*.diff

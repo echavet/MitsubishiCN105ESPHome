@@ -1,0 +1,14 @@
+{
+    "domain": "mitsubishi_hybrid",
+    "name": "Mitsubishi Hybrid Climate",
+    "version": "1.0.0",
+    "documentation": "https://github.com/echavet/MitsubishiCN105ESPHome",
+    "dependencies": [],
+    "codeowners": [
+        "@echavet"
+    ],
+    "config_flow": true,
+    "requirements": [],
+    "integration_type": "device",
+    "iot_class": "local_polling"
+}

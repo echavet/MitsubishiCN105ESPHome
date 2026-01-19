@@ -454,5 +454,6 @@ namespace esphome {
         bool installer_mode_{ false };
         bool installer_mode_effective_{ false };
         bool installer_mode_fallback_done_{ false };
+        bool supports_dual_setpoint_ = false;
     };
 }
