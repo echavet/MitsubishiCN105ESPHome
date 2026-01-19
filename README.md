@@ -380,7 +380,7 @@ This repository also contains a Home Assistant Custom Component that solves the 
 
 ```yaml
 climate:
-  - platform: mitsubishi_hybrid
+  - platform: mitsubishi_climate_proxy
     source_entity: climate.my_esphome_entity # Replace with your actual ESPHome entity ID
     name: "Bedroom Hybrid" # Name for the new wrapper entity
 ```
