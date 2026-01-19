@@ -92,3 +92,7 @@ This component is designed as a **"Thin Wrapper"**.
 *   It contains **no network code**. It does not talk to the device directly.
 *   It relies on the official ESPHome integration to handle connection, protocol (API/MQTT), and state updates.
 *   This makes it highly resistant to updates. As long as the underlying entity remains a valid `climate` entity in Home Assistant, this wrapper will work.
+
+## Disclaimer
+
+This project is not affiliated with, endorsed by, or associated with Mitsubishi Electric Corporation. "Mitsubishi Electric" and the three-diamond logo are registered trademarks of Mitsubishi Electric Corporation. The use of these trademarks in this project is for identification purposes only, to indicate compatibility with their products.
