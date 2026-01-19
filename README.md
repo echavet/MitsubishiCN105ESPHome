@@ -577,6 +577,15 @@ api:
     key: !secret api_key
 
 sensor:
+  # Uptime sensor.
+  - platform: uptime
+    name: Uptime
+
+  # WiFi Signal sensor.
+  - platform: wifi_signal
+    name: WiFi Signal
+    update_interval: 120s
+
   - platform: homeassistant
     name: "Remote Temperature Sensor"
     entity_id: ${remote_temp_sensor} # Replace with your HomeAssistant remote sensor entity id, or include in substitutions
@@ -626,17 +635,6 @@ text_sensor:
       name: SSID
     bssid:
       name: BSSID
-
-# Sensors with general information.
-sensor:
-  # Uptime sensor.
-  - platform: uptime
-    name: Uptime
-
-  # WiFi Signal sensor.
-  - platform: wifi_signal
-    name: WiFi Signal
-    update_interval: 120s
 
 # Create a button to restart the unit from HomeAssistant. Rarely needed, but can be handy.
 button:
