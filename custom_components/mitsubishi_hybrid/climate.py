@@ -39,7 +39,7 @@ async def async_setup_platform(
     async_add_entities: Any,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
-    """Set up the Mitsubishi Hybrid Climate platform."""
+    """Set up the Mitsubishi Hybrid Climate platform via YAML."""
     source_entity_id = config[CONF_SOURCE_ENTITY]
     name = config.get(CONF_NAME)
 
@@ -48,17 +48,33 @@ async def async_setup_platform(
         True,
     )
 
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigType,
+    async_add_entities: Any,
+) -> None:
+    """Set up the Mitsubishi Hybrid Climate platform via Config Flow."""
+    source_entity_id = entry.data[CONF_SOURCE_ENTITY]
+    name = entry.data.get(CONF_NAME)
+
+    async_add_entities(
+        [MitsubishiHybridClimate(hass, name, source_entity_id, entry.entry_id)],
+        True,
+    )
+
 
 class MitsubishiHybridClimate(ClimateEntity):
     """Representation of a Mitsubishi Hybrid Climate device."""
 
-    def __init__(self, hass: HomeAssistant, name: str, source_entity_id: str) -> None:
+    def __init__(self, hass: HomeAssistant, name: str, source_entity_id: str, unique_id: str = None) -> None:
         """Initialize the climate device."""
         self._hass = hass
         self._name = name or source_entity_id
         self._source_entity_id = source_entity_id
         self._source_state = None
         self._attr_should_poll = False
+        self._attr_unique_id = unique_id or f"{source_entity_id}_hybrid"
+
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
@@ -86,7 +102,7 @@ class MitsubishiHybridClimate(ClimateEntity):
     @property
     def unique_id(self) -> str:
         """Return the unique ID of the entity."""
-        return f"{self._source_entity_id}_hybrid"
+        return self._attr_unique_id
 
     @property
     def available(self) -> bool:
