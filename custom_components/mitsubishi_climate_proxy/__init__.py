@@ -5,7 +5,7 @@ from homeassistant.helpers.typing import ConfigType
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "mitsubishi_hybrid"
+DOMAIN = "mitsubishi_climate_proxy"
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Mitsubishi Hybrid Climate component via YAML (legacy)."""

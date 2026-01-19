@@ -380,7 +380,7 @@ This repository also contains a Home Assistant Custom Component that solves the 
 
 ```yaml
 climate:
-  - platform: mitsubishi_hybrid
+  - platform: mitsubishi_climate_proxy
     source_entity: climate.my_esphome_entity # Replace with your actual ESPHome entity ID
     name: "Bedroom Hybrid" # Name for the new wrapper entity
 ```
@@ -1032,6 +1032,7 @@ climate:
             1: "ON (Default)"
             2: "OFF"
 
+```
 
 ## Other Implementations
 
@@ -1049,4 +1050,7 @@ Refer to these for further understanding:
 - [ESPHome's Climate Component Source](https://github.com/esphome/esphome/tree/master/esphome/components/climate)
 
 ---
-```
+
+## Disclaimer
+
+This project is not affiliated with, endorsed by, or associated with Mitsubishi Electric Corporation. "Mitsubishi Electric" and the three-diamond logo are registered trademarks of Mitsubishi Electric Corporation. The use of these trademarks in this project is for identification purposes only, to indicate compatibility with their products.
