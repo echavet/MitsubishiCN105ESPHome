@@ -1,6 +1,6 @@
 {
     "domain": "mitsubishi_hybrid",
-    "name": "Mitsubishi Hybrid Climate",
+    "name": "Mitsubishi Climate Proxy",
     "version": "1.0.0",
     "documentation": "https://github.com/echavet/MitsubishiCN105ESPHome",
     "dependencies": [],

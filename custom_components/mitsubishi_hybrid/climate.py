@@ -12,6 +12,7 @@ from homeassistant.const import (
     ATTR_ENTITY_ID,
     ATTR_TEMPERATURE,
     CONF_NAME,
+    CONF_SOURCE,
     UnitOfTemperature,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
@@ -54,7 +55,12 @@ async def async_setup_entry(
     async_add_entities: Any,
 ) -> None:
     """Set up the Mitsubishi Hybrid Climate platform via Config Flow."""
-    source_entity_id = entry.data[CONF_SOURCE_ENTITY]
+    # Handle key difference between YAML and Config Flow
+    if CONF_SOURCE in entry.data:
+        source_entity_id = entry.data[CONF_SOURCE]
+    else:
+        source_entity_id = entry.data.get(CONF_SOURCE_ENTITY)
+        
     name = entry.data.get(CONF_NAME)
 
     async_add_entities(
