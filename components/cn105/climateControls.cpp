@@ -354,27 +354,11 @@ void CN105Climate::controlTemperature() {
 
 
     // Utiliser la logique appropriée selon les traits
-    if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
-        this->sanitizeDualSetpoints();
-        // Dual setpoint : choisir la bonne consigne selon le mode
-        switch (this->mode) {
-        case climate::CLIMATE_MODE_HEAT_COOL:
-            // Mode HEAT_COOL (nouveau): on affiche les 2 curseurs
-            // MAIS on envoie la commande AUTO au hardware Mitsubishi
-            // avec un deadband interne
-            if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
-                if ((!std::isnan(currentSettings.temperature)) && (currentSettings.temperature > 0)) {
-                    // Initialiser si pas de valeur
-                    if (std::isnan(this->getTargetTemperatureLow())) {
-                        this->setTargetTemperatureLow(currentSettings.temperature - 2.0f);
-                    }
-                    if (std::isnan(this->getTargetTemperatureHigh())) {
-                        this->setTargetTemperatureHigh(currentSettings.temperature + 2.0f);
                     }
                     ESP_LOGI("control", "Initializing HEAT_COOL mode temps from current PAC temp: %.1f -> [%.1f - %.1f]",
                         currentSettings.temperature, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
                 }
-                // En HEAT_COOL, on utilise le deadband pour calculer 'setting'
+                // In HEAT_COOL, use deadband to calculate 'setting'
                 float current = this->getCurrentTemperature();
                 if (!std::isnan(current)) {
                     float low = this->getTargetTemperatureLow();
@@ -393,14 +377,14 @@ void CN105Climate::controlTemperature() {
             break;
 
         case climate::CLIMATE_MODE_AUTO:
-            // Mode AUTO (classique): conserve son comportement original
-            // On ignore le dual setpoint ici si possible, ou on prend la médiane
-            // Mais pour Mitsu AUTO, c'est un single setpoint qui compte.
+            // Mode AUTO (legacy): keeps original behavior
+            // Ignore dual setpoint here if possible, or take median
+            // But for Mitsu AUTO, a single setpoint matters.
             setting = this->getTargetTemperature();
-            // Si on est forcé en dual point par le trait global, on prend la médiane
+            // If forced to dual point by global trait, take the median
             if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
                 if (!std::isnan(this->getTargetTemperatureLow()) && !std::isnan(this->getTargetTemperatureHigh())) {
-                     setting = (this->getTargetTemperatureLow() + this->getTargetTemperatureHigh()) / 2.0f;
+                    setting = (this->getTargetTemperatureLow() + this->getTargetTemperatureHigh()) / 2.0f;
                 }
             }
             ESP_LOGD("control", "AUTO mode (legacy) : using target temperature: %.1f", setting);
@@ -444,6 +428,7 @@ void CN105Climate::controlTemperature() {
 
 
 void CN105Climate::controlMode() {
+
     switch (this->mode) {
     case climate::CLIMATE_MODE_COOL:
         ESP_LOGI("control", "changing mode to COOL");
@@ -553,7 +538,7 @@ void CN105Climate::updateAction() {
         this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
         break;
     case climate::CLIMATE_MODE_HEAT_COOL:
-         if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
+        if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
             this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
             // Logique Deadband pour HEAT_COOL
             if (this->getCurrentTemperature() >= this->getTargetTemperatureHigh()) {
@@ -564,7 +549,7 @@ void CN105Climate::updateAction() {
                 this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
             }
         } else {
-             this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
+            this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
         }
         break;
 
