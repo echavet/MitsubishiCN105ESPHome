@@ -354,6 +354,18 @@ void CN105Climate::controlTemperature() {
 
 
     // Utiliser la logique appropriée selon les traits
+        case climate::CLIMATE_MODE_HEAT_COOL:
+            // Mode HEAT_COOL (new): displays 2 sliders
+            // BUT sends AUTO command to Mitsubishi hardware
+            // with internal deadband logic
+            if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+                if ((!std::isnan(currentSettings.temperature)) && (currentSettings.temperature > 0)) {
+                    // Initialize if values are missing
+                    if (std::isnan(this->getTargetTemperatureLow())) {
+                        this->setTargetTemperatureLow(currentSettings.temperature - 2.0f);
+                    }
+                    if (std::isnan(this->getTargetTemperatureHigh())) {
+                        this->setTargetTemperatureHigh(currentSettings.temperature + 2.0f);
                     }
                     ESP_LOGI("control", "Initializing HEAT_COOL mode temps from current PAC temp: %.1f -> [%.1f - %.1f]",
                         currentSettings.temperature, this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
@@ -384,7 +396,7 @@ void CN105Climate::controlTemperature() {
             // If forced to dual point by global trait, take the median
             if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
                 if (!std::isnan(this->getTargetTemperatureLow()) && !std::isnan(this->getTargetTemperatureHigh())) {
-                    setting = (this->getTargetTemperatureLow() + this->getTargetTemperatureHigh()) / 2.0f;
+                     setting = (this->getTargetTemperatureLow() + this->getTargetTemperatureHigh()) / 2.0f;
                 }
             }
             ESP_LOGD("control", "AUTO mode (legacy) : using target temperature: %.1f", setting);
