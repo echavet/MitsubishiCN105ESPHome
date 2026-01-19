@@ -151,6 +151,9 @@ class MitsubishiHybridClimate(ClimateEntity):
             return low if low is not None else high
         elif self.hvac_mode == HVACMode.COOL:
             return high if high is not None else low
+        elif self.hvac_mode == HVACMode.DRY:
+            # Mode DRY uses cooling logic (high setpoint or single)
+            return high if high is not None else low
         elif self.hvac_mode == HVACMode.AUTO:
             if low is not None and high is not None:
                 return (low + high) / 2.0
@@ -221,6 +224,14 @@ class MitsubishiHybridClimate(ClimateEntity):
              elif mode == HVACMode.COOL:
                  service_data["target_temp_high"] = t
                  # Ensure low <= high
+                 curr_low = self.target_temperature_low
+                 if curr_low is not None and t < curr_low:
+                      service_data["target_temp_low"] = t
+
+             elif mode == HVACMode.DRY:
+                 # Mode DRY treats target as a cooling setpoint
+                 service_data["target_temp_high"] = t
+                 # Ensure low <= high to keep consistency
                  curr_low = self.target_temperature_low
                  if curr_low is not None and t < curr_low:
                       service_data["target_temp_low"] = t
