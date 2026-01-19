@@ -89,7 +89,7 @@ CONF_OPTIONS = "options"
 # Support explicite du DUAL setpoint via YAML
 CONF_DUAL_SETPOINT = "dual_setpoint"
 
-DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY"]
+DEFAULT_CLIMATE_MODES = ["AUTO", "COOL", "HEAT", "DRY", "FAN_ONLY", "HEAT_COOL"]
 DEFAULT_FAN_MODES = ["AUTO", "MIDDLE", "QUIET", "LOW", "MEDIUM", "HIGH"]
 DEFAULT_SWING_MODES = ["OFF", "VERTICAL", "HORIZONTAL", "BOTH"]
 
@@ -384,21 +384,29 @@ def to_code(config):
                 continue
             if mode_str in climate.CLIMATE_MODES:
                 cg.add(traits.add_supported_mode(climate.CLIMATE_MODES[mode_str]))
+            # Handle mapping for HA HEAT_COOL -> Mitsu AUTO without replacing the real AUTO
+            if mode_str == "HEAT_COOL" and "HEAT_COOL" in climate.CLIMATE_MODES:
+                cg.add(traits.add_supported_mode(climate.CLIMATE_MODES["HEAT_COOL"]))
 
         # Configure the horizontal vane options
         horizontal_vane_options = supports.get(CONF_SUPPORTS_HORIZONTAL_VANE_MODE, [])
 
-        # Définir le support du dual setpoint via YAML (par défaut: False si absent)
+        # Set dual setpoint support via YAML (default: False if missing)
+        # Note: this enables global dual setpoint support in HA.
+        # Ideally, we would want to enable it per mode, but ESPHome traits are global.
+        # With HA 2025.10+, HA dynamically masks the 2nd slider if the mode doesn't require it
+        # BUT the component must declare it.
         yaml_dual = supports.get(CONF_DUAL_SETPOINT, False)
-        # Utilise directement la constante C++ via une RawExpression pour éviter d'aller la chercher côté Python
+
+        # Use the C++ constant directly via RawExpression to avoid fetching it from Python side
         dual_flag = cg.RawExpression(
             "climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE"
         )
         if yaml_dual:
-            # Active le flag de dual setpoint via l'API de feature flags (remplace l'appel déprécié)
+            # Enable dual setpoint flag via feature flags API (replaces deprecated call)
             cg.add(traits.add_feature_flags(dual_flag))
         else:
-            # S'assure que le flag est désactivé si l'option YAML est à False
+            # Ensure the flag is disabled if YAML option is False
             cg.add(traits.clear_feature_flags(dual_flag))
         for fan_mode_str in supports.get(CONF_FAN_MODE, DEFAULT_FAN_MODES):
             if fan_mode_str in climate.CLIMATE_FAN_MODES:
@@ -535,8 +543,14 @@ def to_code(config):
     # The enum validator returns the integer value from FAHRENHEIT_MODES dict
     fahrenheit_mode = config.get(CONF_FAHRENHEIT_SUPPORT_MODE)
     # Ensure it's an integer (enum validator should already return int, but be explicit)
-    fahrenheit_value = int(fahrenheit_mode) if isinstance(fahrenheit_mode, int) else FAHRENHEIT_MODES.get(str(fahrenheit_mode).lower(), 0)
-    mode_enum = cg.RawExpression(f"static_cast<esphome::FahrenheitMode>({fahrenheit_value})")
+    fahrenheit_value = (
+        int(fahrenheit_mode)
+        if isinstance(fahrenheit_mode, int)
+        else FAHRENHEIT_MODES.get(str(fahrenheit_mode).lower(), 0)
+    )
+    mode_enum = cg.RawExpression(
+        f"static_cast<esphome::FahrenheitMode>({fahrenheit_value})"
+    )
     cg.add(var.set_use_fahrenheit_support_mode(mode_enum))
 
     # --- TRAITEMENT POUR STAGE_SENSOR AVEC LA NOUVELLE OPTION ---
