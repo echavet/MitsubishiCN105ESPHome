@@ -749,7 +749,7 @@ void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings, bool up
             } else if (strcmp(settings.mode, "FAN") == 0) {
                 this->mode = climate::CLIMATE_MODE_FAN_ONLY;
             } else if (strcmp(settings.mode, "AUTO") == 0) {
-                // Si on était en HEAT_COOL via HA, on reste en HEAT_COOL même si le HP dit AUTO
+                // If we were in HEAT_COOL via HA, stay in HEAT_COOL even if HP says AUTO
                 if (this->mode != climate::CLIMATE_MODE_HEAT_COOL) {
                     this->mode = climate::CLIMATE_MODE_AUTO;
                 }
