@@ -1,4 +1,3 @@
-
 import logging
 from typing import Any, List, Optional
 import voluptuous as vol
@@ -33,6 +32,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     }
 )
 
+
 async def async_setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
@@ -48,6 +48,7 @@ async def async_setup_platform(
         True,
     )
 
+
 class MitsubishiHybridClimate(ClimateEntity):
     """Representation of a Mitsubishi Hybrid Climate device."""
 
@@ -58,12 +59,12 @@ class MitsubishiHybridClimate(ClimateEntity):
         self._source_entity_id = source_entity_id
         self._source_state = None
         self._attr_should_poll = False
-        
+
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
         # Get initial state
         self._source_state = self.hass.states.get(self._source_entity_id)
-        
+
         self.async_on_remove(
             async_track_state_change_event(
                 self.hass, [self._source_entity_id], self._async_source_changed
@@ -101,10 +102,10 @@ class MitsubishiHybridClimate(ClimateEntity):
         """Return the list of supported features."""
         if not self._source_state:
             return ClimateEntityFeature(0)
-        
+
         # Get source features
         source_features = self._source_state.attributes.get("supported_features", 0)
-        
+
         # Mask out the temperature related flags to reset them
         # We start fresh with temperature features
         features = source_features & ~ClimateEntityFeature.TARGET_TEMPERATURE
@@ -115,14 +116,16 @@ class MitsubishiHybridClimate(ClimateEntity):
             features |= ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
         else:
             features |= ClimateEntityFeature.TARGET_TEMPERATURE
-            
+
         return ClimateEntityFeature(features)
 
     @property
     def temperature_unit(self) -> str:
         """Return the unit of measurement."""
         if self._source_state:
-            return self._source_state.attributes.get("unit_of_measurement", UnitOfTemperature.CELSIUS)
+            return self._source_state.attributes.get(
+                "unit_of_measurement", UnitOfTemperature.CELSIUS
+            )
         return UnitOfTemperature.CELSIUS
 
     @property
@@ -137,11 +140,11 @@ class MitsubishiHybridClimate(ClimateEntity):
         """Return the temperature we try to reach."""
         if not self._source_state:
             return None
-            
+
         # Try to get direct attribute first
         val = self._source_state.attributes.get("temperature")
         if val is not None:
-             return val
+            return val
 
         # Fallback to derived values if source is in dual mode but we are presenting single
         low = self._source_state.attributes.get("target_temp_low")
@@ -158,7 +161,7 @@ class MitsubishiHybridClimate(ClimateEntity):
             if low is not None and high is not None:
                 return (low + high) / 2.0
             return low if low is not None else high
-            
+
         return None
 
     @property
@@ -203,56 +206,79 @@ class MitsubishiHybridClimate(ClimateEntity):
     async def async_set_temperature(self, **kwargs) -> None:
         """Set new target temperature."""
         service_data = {"entity_id": self._source_entity_id}
-        
+
         # Determine effective mode (target mode if changing, else current)
         mode = kwargs.get("hvac_mode", self.hvac_mode)
-        
-        if "target_temp_low" in kwargs or "target_temp_high" in kwargs:
-             # Direct dual control
-             if "target_temp_low" in kwargs: service_data["target_temp_low"] = kwargs["target_temp_low"]
-             if "target_temp_high" in kwargs: service_data["target_temp_high"] = kwargs["target_temp_high"]
-        elif "temperature" in kwargs:
-             t = kwargs["temperature"]
-             
-             if mode == HVACMode.HEAT:
-                 service_data["target_temp_low"] = t
-                 # Ensure high >= low to avoid errors if source validates it
-                 curr_high = self.target_temperature_high
-                 if curr_high is not None and t > curr_high:
-                      service_data["target_temp_high"] = t
-                      
-             elif mode == HVACMode.COOL:
-                 service_data["target_temp_high"] = t
-                 # Ensure low <= high
-                 curr_low = self.target_temperature_low
-                 if curr_low is not None and t < curr_low:
-                      service_data["target_temp_low"] = t
 
-             elif mode == HVACMode.DRY:
-                 # Mode DRY treats target as a cooling setpoint
-                 service_data["target_temp_high"] = t
-                 # Ensure low <= high to keep consistency
-                 curr_low = self.target_temperature_low
-                 if curr_low is not None and t < curr_low:
-                      service_data["target_temp_low"] = t
-                      
-             elif mode == HVACMode.AUTO:
-                 # Move range, keeping spread
-                 curr_low = self.target_temperature_low
-                 curr_high = self.target_temperature_high
-                 
-                 # Default spread if unknown
-                 if curr_low is None: curr_low = t - 2
-                 if curr_high is None: curr_high = t + 2
-                 
-                 spread = curr_high - curr_low
-                 
-                 service_data["target_temp_low"] = t - (spread / 2.0)
-                 service_data["target_temp_high"] = t + (spread / 2.0)
-             else:
-                 # Dry, Fan_only, etc.
-                 service_data["temperature"] = t
-                 
+        if "target_temp_low" in kwargs or "target_temp_high" in kwargs:
+            # Direct dual control
+            if "target_temp_low" in kwargs:
+                service_data["target_temp_low"] = kwargs["target_temp_low"]
+            if "target_temp_high" in kwargs:
+                service_data["target_temp_high"] = kwargs["target_temp_high"]
+        elif "temperature" in kwargs:
+            t = kwargs["temperature"]
+
+            if mode == HVACMode.HEAT:
+                service_data["target_temp_low"] = t
+                # Get current high to ensure we send a complete pair
+                curr_high = self.target_temperature_high
+                if curr_high is None:
+                    # Fallback if unknown, usually safe to assume a delta or max
+                    curr_high = self.max_temp
+
+                # Ensure high >= low
+                if t > curr_high:
+                    service_data["target_temp_high"] = t
+                else:
+                    service_data["target_temp_high"] = curr_high
+
+            elif mode == HVACMode.COOL:
+                service_data["target_temp_high"] = t
+                # Get current low to ensure we send a complete pair
+                curr_low = self.target_temperature_low
+                if curr_low is None:
+                    curr_low = self.min_temp
+
+                # Ensure low <= high
+                if t < curr_low:
+                     service_data["target_temp_low"] = t
+                else:
+                     service_data["target_temp_low"] = curr_low
+
+            elif mode == HVACMode.DRY:
+                # Mode DRY treats target as a cooling setpoint
+                service_data["target_temp_high"] = t
+                # Get current low to ensure we send a complete pair
+                curr_low = self.target_temperature_low
+                if curr_low is None:
+                    curr_low = self.min_temp
+
+                # Ensure low <= high to keep consistency
+                if t < curr_low:
+                     service_data["target_temp_low"] = t
+                else:
+                     service_data["target_temp_low"] = curr_low
+
+            elif mode == HVACMode.AUTO:
+                # Move range, keeping spread
+                curr_low = self.target_temperature_low
+                curr_high = self.target_temperature_high
+
+                # Default spread if unknown
+                if curr_low is None:
+                    curr_low = t - 2
+                if curr_high is None:
+                    curr_high = t + 2
+
+                spread = curr_high - curr_low
+
+                service_data["target_temp_low"] = t - (spread / 2.0)
+                service_data["target_temp_high"] = t + (spread / 2.0)
+            else:
+                # Dry, Fan_only, etc.
+                service_data["temperature"] = t
+
         if "hvac_mode" in kwargs:
             service_data["hvac_mode"] = kwargs["hvac_mode"]
 
@@ -308,7 +334,7 @@ class MitsubishiHybridClimate(ClimateEntity):
             {"entity_id": self._source_entity_id, "swing_mode": swing_mode},
             blocking=True,
         )
-        
+
     @property
     def min_temp(self) -> float:
         """Return the minimum temperature."""
