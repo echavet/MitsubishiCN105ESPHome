@@ -367,15 +367,15 @@ Build the project in ESPHome and install to your device. Install the device in y
 > To force an OTA upload via command line without interactive prompts, use:
 > `esphome run myfirmware/clim-chambre-awox.yaml --device <IP_ADDRESS>`
 
-### Step 7: (Optional) Install Hybrid Climate Component via HACS
+### Step 7: (Optional) Install Mitsubishi Climate Proxy via HACS
 
 This repository also contains a Home Assistant Custom Component that solves the "Auto vs Heat/Cool" UI issue by wrapping your ESPHome entity. It enables a dynamic UI that shows a single temperature slider for HEAT/COOL/AUTO modes and dual sliders only for HEAT_COOL mode.
 
 1.  Open **HACS** > **Integrations**.
 2.  Click the three dots in the top right > **Custom repositories**.
 3.  Add `echavet/MitsubishiCN105ESPHome` as category **Integration**.
-4.  Adding the repository will allow you to find "Mitsubishi Hybrid Climate" in the list.
-5.  Install **Mitsubishi Hybrid Climate** and restart Home Assistant.
+4.  Adding the repository will allow you to find "Mitsubishi Climate Proxy" in the list.
+5.  Install **Mitsubishi Climate Proxy** and restart Home Assistant.
 6.  Add the configuration to your `configuration.yaml`:
 
 ```yaml
