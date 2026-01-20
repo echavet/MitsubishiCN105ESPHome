@@ -44,6 +44,7 @@ void CN105Climate::setup() {
     // Initialize the internal flag based on the static configuration provided by YAML/Python
     this->supports_dual_setpoint_ = this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE);
     ESP_LOGI(TAG, "Dual setpoint support configured: %s", this->supports_dual_setpoint_ ? "YES" : "NO");
+    ESP_LOGI(TAG, "Vertical vanes configured: %d", this->vertical_vanes_);
 }
 
 

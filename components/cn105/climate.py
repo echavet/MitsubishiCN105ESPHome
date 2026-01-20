@@ -78,6 +78,7 @@ CONF_AUTO_SUB_MODE_SENSOR = "auto_sub_mode_sensor"
 CONF_HP_UP_TIME_CONNECTION_SENSOR = "hp_uptime_connection_sensor"
 CONF_USE_AS_OPERATING_FALLBACK = "use_as_operating_fallback"  # Nouvelle constante
 CONF_FAHRENHEIT_SUPPORT_MODE = "fahrenheit_compatibility"
+CONF_VERTICAL_VANES = "vertical_vanes"
 CONF_AIRFLOW_CONTROL_SELECT = "airflow_control_select"
 CONF_AIR_PURIFIER_SWITCH = "air_purifier_switch"
 CONF_NIGHT_MODE_SWITCH = "night_mode_switch"
@@ -306,6 +307,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_FAHRENHEIT_SUPPORT_MODE, default="disabled"): cv.enum(
                 FAHRENHEIT_MODES, lower=True
             ),
+            cv.Optional(CONF_VERTICAL_VANES, default=1): cv.int_range(1, 2),
             cv.Optional(
                 CONF_STAGE_SENSOR
             ): STAGE_SENSOR_CONFIG_SCHEMA,  # Modifié pour le nouveau schéma
@@ -359,6 +361,7 @@ def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID], uart_var)
 
     cg.add(var.set_installer_mode(config[CONF_INSTALLER_MODE]))
+    cg.add(var.set_vertical_vanes(config[CONF_VERTICAL_VANES]))
 
     cg.add(uart_var.set_data_bits(8))
     cg.add(uart_var.set_parity(UARTParityOptions.UART_CONFIG_PARITY_EVEN))

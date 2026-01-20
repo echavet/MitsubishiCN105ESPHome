@@ -253,7 +253,16 @@ void CN105Climate::createPacket(uint8_t* packet) {
     if (this->wantedSettings.vane != nullptr) {
         ESP_LOGD(TAG, "heatpump vane -> %s", getVaneSetting());
         int idx = lookupByteMapIndex(VANE_MAP, 7, getVaneSetting(), "vane (write)");
-        if (idx >= 0) { packet[12] = VANE[idx]; packet[6] += CONTROL_PACKET_1[4]; } else { ESP_LOGW(TAG, "Ignoring invalid vane setting while building packet"); }
+        if (idx >= 0) {
+            packet[12] = VANE[idx];
+            packet[6] += CONTROL_PACKET_1[4];
+
+            // Experimental: Left Vane support for dual vane units
+            // Byte 16 is used in IR protocol for Left Vane, assuming similar mapping in CN105
+            if (this->vertical_vanes_ > 1) {
+                packet[16] = packet[12];
+            }
+        } else { ESP_LOGW(TAG, "Ignoring invalid vane setting while building packet"); }
     }
 
     if (this->wantedSettings.wideVane != nullptr) {
