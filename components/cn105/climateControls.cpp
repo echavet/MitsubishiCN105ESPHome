@@ -405,18 +405,30 @@ void CN105Climate::controlTemperature() {
 
         case climate::CLIMATE_MODE_HEAT:
             // Mode HEAT : using low target temperature
-            setting = this->getTargetTemperatureLow();
-            ESP_LOGD("control", "HEAT mode : getting temperature low:%1.f", this->getTargetTemperatureLow());
+            if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+                setting = this->getTargetTemperatureLow();
+            } else {
+                setting = this->getTargetTemperature();
+            }
+            ESP_LOGD("control", "HEAT mode : getting temperature (low/target): %1.f", setting);
             break;
         case climate::CLIMATE_MODE_COOL:
             // Mode COOL : using high target temperature
-            setting = this->getTargetTemperatureHigh();
-            ESP_LOGD("control", "COOL mode : getting temperature high:%1.f", this->getTargetTemperatureHigh());
+            if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+                setting = this->getTargetTemperatureHigh();
+            } else {
+                setting = this->getTargetTemperature();
+            }
+            ESP_LOGD("control", "COOL mode : getting temperature (high/target): %1.f", setting);
             break;
         case climate::CLIMATE_MODE_DRY:
             // Mode DRY : using high target temperature
-            setting = this->getTargetTemperatureHigh();
-            ESP_LOGD("control", "COOL mode : getting temperature high:%1.f", this->getTargetTemperatureHigh());
+            if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+                setting = this->getTargetTemperatureHigh();
+            } else {
+                setting = this->getTargetTemperature();
+            }
+            ESP_LOGD("control", "DRY mode : getting temperature (high/target): %1.f", setting);
             break;
         default:
             // Other modes : use median temperature

@@ -49,6 +49,7 @@ async def async_setup_platform(
         True,
     )
 
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigType,
@@ -60,7 +61,7 @@ async def async_setup_entry(
         source_entity_id = entry.data[CONF_SOURCE]
     else:
         source_entity_id = entry.data.get(CONF_SOURCE_ENTITY)
-        
+
     name = entry.data.get(CONF_NAME)
 
     async_add_entities(
@@ -72,7 +73,13 @@ async def async_setup_entry(
 class MitsubishiHybridClimate(ClimateEntity):
     """Representation of a Mitsubishi Hybrid Climate device."""
 
-    def __init__(self, hass: HomeAssistant, name: str, source_entity_id: str, unique_id: str = None) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        name: str,
+        source_entity_id: str,
+        unique_id: str = None,
+    ) -> None:
         """Initialize the climate device."""
         self._hass = hass
         self._name = name or source_entity_id
@@ -80,7 +87,6 @@ class MitsubishiHybridClimate(ClimateEntity):
         self._source_state = None
         self._attr_should_poll = False
         self._attr_unique_id = unique_id or f"{source_entity_id}_hybrid"
-
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
@@ -136,7 +142,9 @@ class MitsubishiHybridClimate(ClimateEntity):
         # Dynamically add the flag based on current mode
         # Use RANGE if we are in HEAT_COOL mode, OR if we are in OFF mode and the device supports HEAT_COOL
         # (This ensures OFF mode shows dual setpoints instead of being empty, as OFF typically lacks a single 'temperature' attribute on dual-sp entities)
-        if self.hvac_mode == HVACMode.HEAT_COOL or (self.hvac_mode == HVACMode.OFF and HVACMode.HEAT_COOL in self.hvac_modes):
+        if self.hvac_mode == HVACMode.HEAT_COOL or (
+            self.hvac_mode == HVACMode.OFF and HVACMode.HEAT_COOL in self.hvac_modes
+        ):
             features |= ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
         else:
             features |= ClimateEntityFeature.TARGET_TEMPERATURE
@@ -231,6 +239,13 @@ class MitsubishiHybridClimate(ClimateEntity):
         """Set new target temperature."""
         service_data = {"entity_id": self._source_entity_id}
 
+        # Check source capabilities
+        source_features = 0
+        if self._source_state:
+            source_features = self._source_state.attributes.get("supported_features", 0)
+
+        source_is_dual = source_features & ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+
         # Determine effective mode (target mode if changing, else current)
         mode = kwargs.get("hvac_mode", self.hvac_mode)
 
@@ -243,7 +258,10 @@ class MitsubishiHybridClimate(ClimateEntity):
         elif "temperature" in kwargs:
             t = kwargs["temperature"]
 
-            if mode == HVACMode.HEAT:
+            # If source is NOT dual (single setpoint), just send temperature directly
+            if not source_is_dual:
+                service_data["temperature"] = t
+            elif mode == HVACMode.HEAT:
                 service_data["target_temp_low"] = t
                 # Get current high to ensure we send a complete pair
                 curr_high = self.target_temperature_high
@@ -266,9 +284,9 @@ class MitsubishiHybridClimate(ClimateEntity):
 
                 # Ensure low <= high
                 if t < curr_low:
-                     service_data["target_temp_low"] = t
+                    service_data["target_temp_low"] = t
                 else:
-                     service_data["target_temp_low"] = curr_low
+                    service_data["target_temp_low"] = curr_low
 
             elif mode == HVACMode.DRY:
                 # Mode DRY treats target as a cooling setpoint
@@ -280,9 +298,9 @@ class MitsubishiHybridClimate(ClimateEntity):
 
                 # Ensure low <= high to keep consistency
                 if t < curr_low:
-                     service_data["target_temp_low"] = t
+                    service_data["target_temp_low"] = t
                 else:
-                     service_data["target_temp_low"] = curr_low
+                    service_data["target_temp_low"] = curr_low
 
             elif mode == HVACMode.AUTO:
                 # Move range, keeping spread
@@ -300,7 +318,7 @@ class MitsubishiHybridClimate(ClimateEntity):
                 service_data["target_temp_low"] = t - (spread / 2.0)
                 service_data["target_temp_high"] = t + (spread / 2.0)
             else:
-                # Dry, Fan_only, etc.
+                # Fan_only, etc.
                 service_data["temperature"] = t
 
         if "hvac_mode" in kwargs:
