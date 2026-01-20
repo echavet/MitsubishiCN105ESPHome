@@ -376,7 +376,22 @@ This repository also contains a Home Assistant Custom Component that solves the 
 3.  Add `echavet/MitsubishiCN105ESPHome` as category **Integration**.
 4.  Adding the repository will allow you to find "Mitsubishi Climate Proxy" in the list.
 5.  Install **Mitsubishi Climate Proxy** and restart Home Assistant.
-6.  Add the configuration to your `configuration.yaml`:
+
+#### Configuration (UI Method - Recommended)
+
+1.  Navigate to **Settings** > **Devices & Services**.
+2.  Click the **+ ADD INTEGRATION** button at the bottom right.
+3.  Search for **Mitsubishi Climate Proxy**.
+4.  Follow the on-screen instructions:
+    *   Select the source ESPHome entity (e.g., `climate.living_room_esphome`).
+    *   Give your new proxy entity a name (e.g., `Living Room Climate`).
+5.  Click **Submit**.
+
+Your new entity (e.g., `climate.living_room_climate`) is created immediately and can be used in your dashboard.
+
+#### Configuration (YAML Method - Legacy)
+
+If you prefer configuration via YAML, add this to your `configuration.yaml`:
 
 ```yaml
 climate:
@@ -384,8 +399,6 @@ climate:
     source_entity: climate.my_esphome_entity # Replace with your actual ESPHome entity ID
     name: "Bedroom Hybrid" # Name for the new wrapper entity
 ```
-
-7. Use this new entity (`climate.bedroom_hybrid`) in your dashboard. It will forward controls to the ESPHome entity while presenting the optimized UI.
 
 ## Example Configuration - Minimal
 
