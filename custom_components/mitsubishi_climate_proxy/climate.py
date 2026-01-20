@@ -133,8 +133,8 @@ class MitsubishiHybridClimate(ClimateEntity):
         features = source_features & ~ClimateEntityFeature.TARGET_TEMPERATURE
         features = features & ~ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
 
-        # Dynamically add the flag based on current mode
-        if self.hvac_mode == HVACMode.HEAT_COOL:
+        # Dynamically add the flag based on available modes
+        if HVACMode.HEAT_COOL in self.hvac_modes:
             features |= ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
         else:
             features |= ClimateEntityFeature.TARGET_TEMPERATURE

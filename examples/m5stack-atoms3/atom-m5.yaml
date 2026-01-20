@@ -10,14 +10,7 @@ esphome:
   #name_add_mac_suffix: true
   project:
     name: esphome.clim_and_nt_proxy
-    version: "25.12.6"
-  
-  # on_boot:
-  #   - priority: 1001
-  #     then:
-  #       - lambda: |-
-  #           gpio_reset_pin((gpio_num_t)01);
-  #           gpio_reset_pin((gpio_num_t)02);    
+    version: "25.12.7"
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -31,8 +24,6 @@ esp32:
     #version: 5.4.0
   flash_size: 8MB
 
-
-
 debug:
   update_interval: 5s
 
@@ -42,34 +33,34 @@ logger:
   baud_rate: 0
   level: DEBUG
   logs:
-    EVT_SETS : DEBUG
-    WIFI : INFO
-    MQTT : INFO
-    WRITE_SETTINGS : INFO
-    SETTINGS : DEBUG
-    STATUS : INFO
+    EVT_SETS: DEBUG
+    WIFI: INFO
+    MQTT: INFO
+    WRITE_SETTINGS: INFO
+    SETTINGS: DEBUG
+    STATUS: INFO
     CN105Climate: WARN
     CN105: INFO
     climate: DEBUG
     sensor: WARN
-    chkSum : INFO
-    WRITE : WARN
-    READ : WARN
-    ACK : INFO
-    REMOTE_TEMP : DEBUG
+    chkSum: INFO
+    WRITE: WARN
+    READ: WARN
+    ACK: INFO
+    REMOTE_TEMP: DEBUG
     Header: INFO
-    Decoder : INFO
-    CONTROL_WANTED_SETTINGS: INFO    
-    control: INFO    
+    Decoder: INFO
+    CONTROL_WANTED_SETTINGS: INFO
+    control: INFO
     UPDT_ITVL: DEBUG
-    CYCLE: WARN    
+    CYCLE: WARN
     esp32_ble_tracker: INFO
     esp32_ble_client: INFO
     esp-idf: INFO
     OPERATING_STATUS: DEBUG
     # Nouveaux tags pour HEAT_COOL / AUTO dual setpoint
-    HEAT_COOL: DEBUG  # Traces détaillées consigne glissante et mode AUTO/HEAT_COOL
-    DUAL_SP: DEBUG    # Traces dual setpoint AUTO mode
+    HEAT_COOL: DEBUG # Traces détaillées consigne glissante et mode AUTO/HEAT_COOL
+    DUAL_SP: DEBUG # Traces dual setpoint AUTO mode
     TEMP_SENSOR: INFO
     UARTFix: WARN
 
