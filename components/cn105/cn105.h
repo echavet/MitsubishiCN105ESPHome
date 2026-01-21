@@ -63,7 +63,7 @@ namespace esphome {
 
         void add_hardware_setting(HardwareSettingSelect* setting);
         void set_hardware_settings_interval(uint32_t interval_ms) { this->hardware_settings_interval_ms_ = interval_ms; }
-        void set_vertical_vanes(int vertical_vanes) { this->vertical_vanes_ = vertical_vanes; }
+        void set_horizontal_vanes(int horizontal_vanes) { this->horizontal_vanes_ = horizontal_vanes; }
 
         void set_functions_sensor(esphome::text_sensor::TextSensor* Functions_sensor);
         void set_functions_get_button(FunctionsButton* Button);
@@ -461,6 +461,6 @@ namespace esphome {
         bool installer_mode_effective_{ false };
         bool installer_mode_fallback_done_{ false };
         bool supports_dual_setpoint_ = false;
-        int vertical_vanes_{ 1 };
+        int horizontal_vanes_{ 1 };
     };
 }
