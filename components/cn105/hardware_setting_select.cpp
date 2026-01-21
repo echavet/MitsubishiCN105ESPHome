@@ -31,11 +31,19 @@ namespace esphome {
         bool changed = false;
         const char *cur_opt = nullptr;
         
-        #if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
-            auto cur = this->current_option();              
-            changed = cur.empty() || (cur != new_state);    
+        #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 1, 0)
+            // 2026.1+ : current_option() -> StringRef
+            auto cur = this->current_option();            // StringRef
             cur_opt = cur.c_str();
+            changed = cur_opt == nullptr || std::strcmp(cur_opt, new_state.c_str()) != 0;
+        
+        #elif ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+            // 2025.11 .. 2025.12 : current_option() -> const char*
+            cur_opt = this->current_option();             // const char*
+            changed = cur_opt == nullptr || std::strcmp(cur_opt, new_state.c_str()) != 0;
+        
         #else
+            // < 2025.11 : niente current_option(), usa state
             cur_opt = this->state.c_str();
             changed = (this->state != new_state);
         #endif
