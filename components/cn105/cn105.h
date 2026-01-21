@@ -130,7 +130,9 @@ namespace esphome {
         bool is_circulator();
 
         // checks if the field has changed
-        bool hasChanged(const char* before, const char* now, const char* field, bool checkNotNull = false);
+        bool hasChanged(esphome::StringRef before, const char* now, const char* field, bool checkNotNull = false) {
+            return hasChanged(before.c_str(), now, field, checkNotNull);
+        }
 
 
         float get_setup_priority() const override {
