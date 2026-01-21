@@ -32,7 +32,7 @@ namespace esphome {
         const char *cur_opt = nullptr;
         
         #if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
-            cur_opt = this->current_option(); 
+            cur_opt = this->current_option().c_str();
             changed = (cur_opt == nullptr) || (std::strcmp(cur_opt, new_state.c_str()) != 0);
         #else
             cur_opt = this->state.c_str();
