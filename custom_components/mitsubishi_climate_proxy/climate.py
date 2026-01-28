@@ -8,9 +8,13 @@ from homeassistant.components.climate import (
     ClimateEntityFeature,
     HVACMode,
 )
+
+try:
+    # HA versions vary: `HVACAction` moved in some releases.
+    from homeassistant.components.climate import HVACAction
+except ImportError:  # pragma: no cover
+    from homeassistant.components.climate.const import HVACAction
 from homeassistant.const import (
-    ATTR_ENTITY_ID,
-    ATTR_TEMPERATURE,
     CONF_NAME,
     CONF_SOURCE,
     UnitOfTemperature,
@@ -76,9 +80,9 @@ class MitsubishiHybridClimate(ClimateEntity):
     def __init__(
         self,
         hass: HomeAssistant,
-        name: str,
+        name: str | None,
         source_entity_id: str,
-        unique_id: str = None,
+        unique_id: str | None = None,
     ) -> None:
         """Initialize the climate device."""
         self._hass = hass
@@ -215,16 +219,54 @@ class MitsubishiHybridClimate(ClimateEntity):
         """Return hvac operation ie. heat, cool mode."""
         if self._source_state:
             state = self._source_state.state
-            if state in HVACMode:
+            try:
                 return HVACMode(state)
+            except ValueError:
+                return HVACMode.OFF
         return HVACMode.OFF
 
     @property
     def hvac_modes(self) -> List[HVACMode]:
         """Return the list of available hvac operation modes."""
-        if self._source_state:
-            return self._source_state.attributes.get("hvac_modes", [])
-        return []
+        if not self._source_state:
+            return []
+
+        raw_modes = self._source_state.attributes.get("hvac_modes", []) or []
+        modes: list[HVACMode] = []
+        for raw in raw_modes:
+            try:
+                modes.append(HVACMode(raw))
+            except ValueError:
+                _LOGGER.debug(
+                    "Unsupported hvac_mode from source %s: %r",
+                    self._source_entity_id,
+                    raw,
+                )
+        return modes
+
+    @property
+    def hvac_action(self) -> HVACAction | None:
+        """Return the current HVAC action (heating/cooling/idle...)."""
+        if not self._source_state:
+            return None
+
+        # Home Assistant uses `hvac_action`. Some integrations may expose `action`.
+        raw = self._source_state.attributes.get("hvac_action")
+        if raw is None:
+            raw = self._source_state.attributes.get("action")
+
+        if raw is None:
+            return None
+
+        try:
+            return HVACAction(raw)
+        except ValueError:
+            _LOGGER.debug(
+                "Unsupported hvac_action from source %s: %r",
+                self._source_entity_id,
+                raw,
+            )
+            return None
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
@@ -237,7 +279,7 @@ class MitsubishiHybridClimate(ClimateEntity):
 
     async def async_set_temperature(self, **kwargs) -> None:
         """Set new target temperature."""
-        service_data = {"entity_id": self._source_entity_id}
+        service_data: dict[str, Any] = {"entity_id": self._source_entity_id}
 
         # Check source capabilities
         source_features = 0
