@@ -73,7 +73,7 @@ namespace esphome {
 
         void set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor);
         void set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor);
-        void set_hp_uptime_connection_sensor(uptime::HpUpTimeConnectionSensor* hp_up_connection_sensor);
+        void set_hp_uptime_connection_sensor(cn105::HpUpTimeConnectionSensor* hp_up_connection_sensor);
 
         //sensor::Sensor* compressor_frequency_sensor;
         binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
@@ -119,7 +119,7 @@ namespace esphome {
             nullptr;  // Outside air temperature
 
         // sensor to monitor heatpump connection time
-        uptime::HpUpTimeConnectionSensor* hp_uptime_connection_sensor_ = nullptr;
+        cn105::HpUpTimeConnectionSensor* hp_uptime_connection_sensor_ = nullptr;
 
         float get_compressor_frequency();
         float get_input_power();
