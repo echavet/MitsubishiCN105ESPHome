@@ -487,7 +487,10 @@ void CN105Climate::sendRemoteTemperaturePacket() {
 
         // Detect conflicting heartbeat pattern: multiple rapid calls with same value
         // After 3 consecutive skips, warn the user (only once)
-        if (this->remote_temp_debounce_skip_count_ >= 3 && !this->remote_temp_heartbeat_warning_shown_) {
+        // Only show warning if keep-alive is enabled - if disabled, manual heartbeat is intentional
+        if (this->remote_temp_debounce_skip_count_ >= 3 && 
+            !this->remote_temp_heartbeat_warning_shown_ &&
+            this->remote_temp_keepalive_interval_ms_ > 0) {
             this->remote_temp_heartbeat_warning_shown_ = true;
             ESP_LOGW(LOG_REMOTE_TEMP,
                 "Detected repeated remote temperature calls with unchanged value (%.1f). "
