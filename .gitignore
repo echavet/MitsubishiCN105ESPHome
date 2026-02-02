@@ -36,3 +36,4 @@ myfirmware/*
 examples/users/*
 .cursor/*
 **/*.diff
+analyze_packets.py
