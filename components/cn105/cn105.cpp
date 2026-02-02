@@ -84,17 +84,18 @@ void CN105Climate::registerInfoRequests() {
     scheduler_.clear_requests();
 
     // 0x02 Settings
-    InfoRequest r_settings("settings", "Settings", 0x02, 3, 0);
+    // Soft timeout 500ms, high failure tolerance for noisy buses
+    InfoRequest r_settings("settings", "Settings", 0x02, 50, 500);
     r_settings.onResponse = [this](CN105Climate& self) { (void)self; this->getSettingsFromResponsePacket(); };
     scheduler_.register_request(r_settings);
 
     // 0x03 Room temperature
-    InfoRequest r_room("room_temp", "Room temperature", 0x03, 3, 0);
+    InfoRequest r_room("room_temp", "Room temperature", 0x03, 50, 500);
     r_room.onResponse = [this](CN105Climate& self) { (void)self; this->getRoomTemperatureFromResponsePacket(); };
     scheduler_.register_request(r_room);
 
     // 0x06 Status
-    InfoRequest r_status("status", "Status", 0x06, 3, 0);
+    InfoRequest r_status("status", "Status", 0x06, 50, 500);
     r_status.onResponse = [this](CN105Climate& self) { (void)self; this->getOperatingAndCompressorFreqFromResponsePacket(); };
     scheduler_.register_request(r_status);
 
