@@ -167,15 +167,25 @@ namespace esphome {
         // set_remote_temp(0) to switch back to the internal sensor.
         void set_remote_temperature(float);
         void sendRemoteTemperature();
+        void sendRemoteTemperaturePacket();  // Send packet only, without resetting watchdog
         void sendWantedRunStates();
         float getDeadbandAdjustedTemperature(float remoteTemperature);
 
         void set_remote_temp_timeout(uint32_t timeout);
 
+        // Configure the interval for remote temperature keep-alive (in milliseconds)
+        // Set to 0 to disable keep-alive
+        void set_remote_temp_keepalive_interval(uint32_t interval_ms);
+
         void set_debounce_delay(uint32_t delay);
 
         // this is the ping or heartbeat of the setRemotetemperature for timeout management
         void pingExternalTemperature();
+
+        // Start/stop the remote temperature keep-alive timer
+        // Keep-alive periodically re-sends the remote temperature to prevent PAC fallback to internal sensor
+        void startRemoteTempKeepAlive();
+        void stopRemoteTempKeepAlive();
 
         uint32_t get_update_interval() const;
         void set_update_interval(uint32_t update_interval);
@@ -394,6 +404,12 @@ namespace esphome {
 
 
         uint32_t remote_temp_timeout_;
+        uint32_t remote_temp_keepalive_interval_ms_ = DEFAULT_REMOTE_TEMP_KEEPALIVE_INTERVAL_MS;
+        bool remote_temp_keepalive_active_ = false;
+        uint32_t last_remote_temp_send_ms_ = 0;      // Timestamp of last remote temp packet sent
+        float last_remote_temp_sent_ = 0;            // Last remote temp value actually sent (for change detection)
+        uint8_t remote_temp_debounce_skip_count_ = 0;   // Counter for consecutive debounce skips
+        bool remote_temp_heartbeat_warning_shown_ = false;  // Avoid spamming the warning
         uint32_t debounce_delay_;
 
         int baud_ = 0;

@@ -107,6 +107,7 @@ CN105Climate = cg.global_ns.class_(
     "CN105Climate", climate.Climate, cg.Component, uart.UARTDevice
 )
 CONF_REMOTE_TEMP_TIMEOUT = "remote_temperature_timeout"
+CONF_REMOTE_TEMP_KEEPALIVE_INTERVAL = "remote_temperature_keepalive_interval"
 CONF_DEBOUNCE_DELAY = "debounce_delay"
 CONF_CONNECTION_BOOTSTRAP_DELAY = "connection_bootstrap_delay"
 CONF_INSTALLER_MODE = "installer_mode"
@@ -315,6 +316,11 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_REMOTE_TEMP_TIMEOUT, default="never"): cv.All(
                 cv.update_interval
             ),
+            # Keep-alive interval for remote temperature (like Kumo does every ~20s)
+            # Set to 0s to disable keep-alive
+            cv.Optional(CONF_REMOTE_TEMP_KEEPALIVE_INTERVAL, default="20s"): cv.All(
+                cv.update_interval
+            ),
             cv.Optional(CONF_DEBOUNCE_DELAY, default="100ms"): cv.All(
                 cv.update_interval
             ),
@@ -431,6 +437,11 @@ def to_code(config):
 
     cg.add(var.set_remote_temp_timeout(config[CONF_REMOTE_TEMP_TIMEOUT]))
     cg.add(var.set_debounce_delay(config[CONF_DEBOUNCE_DELAY]))
+    cg.add(
+        var.set_remote_temp_keepalive_interval(
+            int(config[CONF_REMOTE_TEMP_KEEPALIVE_INTERVAL].total_milliseconds)
+        )
+    )
     cg.add(
         var.set_connection_bootstrap_delay(
             int(config[CONF_CONNECTION_BOOTSTRAP_DELAY].total_milliseconds)

@@ -214,6 +214,7 @@ void CN105Climate::set_tx_rx_pins(int tx_pin, int rx_pin) {
 void CN105Climate::pingExternalTemperature() {
     this->set_timeout(SHEDULER_REMOTE_TEMP_TIMEOUT, this->remote_temp_timeout_, [this]() {
         ESP_LOGW(LOG_REMOTE_TEMP, "Remote temperature timeout occured, fall back to internal temperature!");
+        this->stopRemoteTempKeepAlive();
         this->set_remote_temperature(0);
         });
 }
@@ -228,6 +229,51 @@ void CN105Climate::set_remote_temp_timeout(uint32_t timeout) {
 
         this->pingExternalTemperature();
     }
+}
+
+void CN105Climate::set_remote_temp_keepalive_interval(uint32_t interval_ms) {
+    this->remote_temp_keepalive_interval_ms_ = interval_ms;
+    if (interval_ms == 0) {
+        ESP_LOGI(LOG_REMOTE_TEMP, "Remote temperature keep-alive disabled.");
+    } else {
+        log_info_uint32(LOG_REMOTE_TEMP, "Remote temperature keep-alive interval set to ", interval_ms);
+    }
+}
+
+void CN105Climate::startRemoteTempKeepAlive() {
+    // Don't start if keep-alive is disabled or already active
+    if (this->remote_temp_keepalive_interval_ms_ == 0) {
+        ESP_LOGD(LOG_REMOTE_TEMP, "Keep-alive disabled, not starting.");
+        return;
+    }
+    if (this->remote_temp_keepalive_active_) {
+        ESP_LOGV(LOG_REMOTE_TEMP, "Keep-alive already active.");
+        return;
+    }
+
+    this->remote_temp_keepalive_active_ = true;
+    log_info_uint32(LOG_REMOTE_TEMP, "Starting remote temperature keep-alive with interval ", this->remote_temp_keepalive_interval_ms_);
+
+    this->set_interval(SCHEDULER_REMOTE_TEMP_KEEPALIVE, this->remote_temp_keepalive_interval_ms_, [this]() {
+        if (this->remoteTemperature_ > 0 && this->isHeatpumpConnected_) {
+            ESP_LOGD(LOG_REMOTE_TEMP, "Keep-alive: re-sending remote temperature %.1f", this->remoteTemperature_);
+            // Send the temperature packet without resetting the watchdog timeout
+            // (watchdog is only reset when HA sends a new value via set_remote_temperature)
+            this->sendRemoteTemperaturePacket();
+        } else {
+            ESP_LOGV(LOG_REMOTE_TEMP, "Keep-alive skipped: remoteTemp=%.1f, connected=%d",
+                this->remoteTemperature_, this->isHeatpumpConnected_);
+        }
+        });
+}
+
+void CN105Climate::stopRemoteTempKeepAlive() {
+    if (!this->remote_temp_keepalive_active_) {
+        return;
+    }
+    this->remote_temp_keepalive_active_ = false;
+    this->cancel_interval(SCHEDULER_REMOTE_TEMP_KEEPALIVE);
+    ESP_LOGI(LOG_REMOTE_TEMP, "Stopped remote temperature keep-alive.");
 }
 
 void CN105Climate::set_debounce_delay(uint32_t delay) {

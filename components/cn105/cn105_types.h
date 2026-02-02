@@ -8,22 +8,26 @@
 #define MAX_DELAY_RESPONSE_FACTOR 10  
 
 static const char* LOG_ACTION_EVT_TAG = "EVT_SETS";
-static const char* TAG = "CN105"; 
-static const char* LOG_REMOTE_TEMP = "REMOTE_TEMP"; 
-static const char* LOG_ACK = "ACK"; 
-static const char* LOG_SETTINGS_TAG = "SETTINGS";   
-static const char* LOG_STATUS_TAG = "STATUS";       
-static const char* LOG_CYCLE_TAG = "CYCLE";         
-static const char* LOG_UPD_INT_TAG = "UPDT_ITVL";   
+static const char* TAG = "CN105";
+static const char* LOG_REMOTE_TEMP = "REMOTE_TEMP";
+static const char* LOG_ACK = "ACK";
+static const char* LOG_SETTINGS_TAG = "SETTINGS";
+static const char* LOG_STATUS_TAG = "STATUS";
+static const char* LOG_CYCLE_TAG = "CYCLE";
+static const char* LOG_UPD_INT_TAG = "UPDT_ITVL";
 static const char* LOG_SET_RUN_STATE = "SET_RUN_STATE";
-static const char* LOG_OPERATING_STATUS_TAG = "OPERATING_STATUS"; 
-static const char* LOG_TEMP_SENSOR_TAG = "TEMP_SENSOR"; 
-static const char* LOG_DUAL_SP_TAG = "DUAL_SP"; 
-static const char* LOG_FUNCTIONS_TAG = "FUNCTIONS"; 
+static const char* LOG_OPERATING_STATUS_TAG = "OPERATING_STATUS";
+static const char* LOG_TEMP_SENSOR_TAG = "TEMP_SENSOR";
+static const char* LOG_DUAL_SP_TAG = "DUAL_SP";
+static const char* LOG_FUNCTIONS_TAG = "FUNCTIONS";
 static const char* LOG_HARDWARE_SELECT_TAG = "HardwareSelect";
 static const char* LOG_CONN_TAG = "CN105_CONN";
 
 static const char* SHEDULER_REMOTE_TEMP_TIMEOUT = "->remote_temp_timeout";
+static const char* SCHEDULER_REMOTE_TEMP_KEEPALIVE = "->remote_temp_keepalive";
+
+// Default interval for remote temperature keep-alive (20 seconds, as observed on Kumo)
+static const uint32_t DEFAULT_REMOTE_TEMP_KEEPALIVE_INTERVAL_MS = 20000;
 
 static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 750;
 static const uint32_t RECEIVED_SETPOINT_GRACE_WINDOW_MS = 3000;
