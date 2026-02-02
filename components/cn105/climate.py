@@ -59,6 +59,7 @@ DEPENDENCIES = ["uart", "uptime"]  # Garder uart ici aussi
 
 CONF_SUPPORTS = "supports"
 CONF_SUPPORTS_HORIZONTAL_VANE_MODE = "horizontal_vane_mode"
+CONF_HORIZONTAL_VANES = "horizontal_vanes"
 CONF_HORIZONTAL_SWING_SELECT = "horizontal_vane_select"
 CONF_VERTICAL_SWING_SELECT = "vertical_vane_select"
 CONF_COMPRESSOR_FREQUENCY_SENSOR = "compressor_frequency_sensor"
@@ -344,6 +345,9 @@ CONFIG_SCHEMA = (
                     cv.Optional(CONF_SUPPORTS_HORIZONTAL_VANE_MODE): cv.ensure_list(
                         cv.string
                     ),
+                    cv.Optional(CONF_HORIZONTAL_VANES, default=1): cv.int_range(
+                        min=1, max=2
+                    ),
                 }
             ),
         }
@@ -391,22 +395,25 @@ def to_code(config):
         # Configure the horizontal vane options
         horizontal_vane_options = supports.get(CONF_SUPPORTS_HORIZONTAL_VANE_MODE, [])
 
+        # Set the number of horizontal vanes
+        cg.add(var.set_horizontal_vanes(supports.get(CONF_HORIZONTAL_VANES, 1)))
+
         # Set dual setpoint support via YAML (default: False if missing)
         # Note: this enables global dual setpoint support in HA.
         yaml_dual = supports.get(CONF_DUAL_SETPOINT, False)
-        
+
         # Use the C++ constant directly via RawExpression
         dual_flag = cg.RawExpression(
             "climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE"
         )
 
         if yaml_dual:
-             cg.add(traits.add_feature_flags(dual_flag))
-        
+            cg.add(traits.add_feature_flags(dual_flag))
+
         # Note: If yaml_dual is False, we simply do NOT add the dual_flag.
         # ESPHome's default behavior for modes like COOL/HEAT is to enable single-point target temperature.
         # We don't need to explicitly force single-point or clear the dual flag (it's off by default).
-        
+
         for fan_mode_str in supports.get(CONF_FAN_MODE, DEFAULT_FAN_MODES):
             if fan_mode_str in climate.CLIMATE_FAN_MODES:
                 cg.add(
