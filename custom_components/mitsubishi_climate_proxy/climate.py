@@ -85,6 +85,7 @@ class MitsubishiHybridClimate(ClimateEntity):
         unique_id: str | None = None,
     ) -> None:
         """Initialize the climate device."""
+        super().__init__()
         self._hass = hass
         self._name = name or source_entity_id
         self._source_entity_id = source_entity_id
@@ -416,6 +417,32 @@ class MitsubishiHybridClimate(ClimateEntity):
             "climate",
             "set_swing_mode",
             {"entity_id": self._source_entity_id, "swing_mode": swing_mode},
+            blocking=True,
+        )
+
+    @property
+    def preset_mode(self) -> Optional[str]:
+        """Return the current preset mode."""
+        if self._source_state:
+            return self._source_state.attributes.get("preset_mode")
+        return None
+
+    @property
+    def preset_modes(self) -> Optional[List[str]]:
+        """Return a list of available preset modes."""
+        if self._source_state:
+            return self._source_state.attributes.get("preset_modes")
+        return None
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set new preset mode."""
+        await self.hass.services.async_call(
+            "climate",
+            "set_preset_mode",
+            {
+                "entity_id": self._source_entity_id,
+                "preset_mode": preset_mode,
+            },
             blocking=True,
         )
 
