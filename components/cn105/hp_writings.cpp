@@ -259,7 +259,17 @@ void CN105Climate::createPacket(uint8_t* packet) {
     if (this->wantedSettings.wideVane != nullptr) {
         ESP_LOGD(TAG, "heatpump widevane -> %s", getWideVaneSetting());
         int idx = lookupByteMapIndex(WIDEVANE_MAP, 8, getWideVaneSetting(), "wideVane (write)");
-        if (idx >= 0) { packet[18] = WIDEVANE[idx] | (this->wideVaneAdj ? 0x80 : 0x00); packet[7] += CONTROL_PACKET_2[0]; } else { ESP_LOGW(TAG, "Ignoring invalid wideVane setting while building packet"); }
+        if (idx >= 0) {
+            packet[18] = WIDEVANE[idx] | (this->wideVaneAdj ? 0x80 : 0x00);
+            packet[7] += CONTROL_PACKET_2[0];
+
+            // Experimental: Left Horizontal Vane support for dual vane units
+            // Byte 16 is used in IR protocol for Left Vane (which corresponds to Horizontal/Wide Vane on these units)
+            if (this->horizontal_vanes_ > 1) {
+                // Copy the base WIDEVANE value (without adjustment bit) to Byte 16
+                packet[16] = WIDEVANE[idx];
+            }
+        } else { ESP_LOGW(TAG, "Ignoring invalid wideVane setting while building packet"); }
     }
 
 
