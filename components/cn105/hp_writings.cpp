@@ -1,4 +1,5 @@
 #include "cn105.h"
+#include <algorithm>  // for std::max
 
 using namespace esphome;
 
@@ -467,9 +468,42 @@ void CN105Climate::createInfoPacket(uint8_t* packet, uint8_t code) {
 }
 
 
-void CN105Climate::sendRemoteTemperature() {
+void CN105Climate::sendRemoteTemperaturePacket() {
+    // Build and send the remote temperature packet (0x07) without affecting watchdog/keep-alive timers
 
-    this->shouldSendExternalTemperature_ = false;
+    // Debounce logic: avoid flooding the bus with identical temperature values
+    // Only skip if: same temperature AND sent recently (within half of keep-alive interval, min 5s)
+    uint32_t now = CUSTOM_MILLIS;
+    uint32_t min_interval = this->remote_temp_keepalive_interval_ms_ > 0
+        ? std::max(this->remote_temp_keepalive_interval_ms_ / 2, (uint32_t)5000)
+        : 5000;  // Default 5s if keep-alive disabled
+
+    bool temp_changed = (this->remoteTemperature_ != this->last_remote_temp_sent_);
+    uint32_t elapsed = now - this->last_remote_temp_send_ms_;
+
+    if (!temp_changed && elapsed < min_interval) {
+        // Debounce: skip this send
+        this->remote_temp_debounce_skip_count_++;
+
+        // Detect conflicting heartbeat pattern: multiple rapid calls with same value
+        // After 3 consecutive skips, warn the user (only once)
+        if (this->remote_temp_debounce_skip_count_ >= 3 && !this->remote_temp_heartbeat_warning_shown_) {
+            this->remote_temp_heartbeat_warning_shown_ = true;
+            ESP_LOGW(LOG_REMOTE_TEMP,
+                "Detected repeated remote temperature calls with unchanged value (%.1f). "
+                "If you have a manual heartbeat/interval in YAML, consider removing it - "
+                "the built-in keep-alive (every %lu ms) handles this automatically. "
+                "See 'remote_temperature_keepalive_interval' option in documentation.",
+                this->remoteTemperature_, (unsigned long)this->remote_temp_keepalive_interval_ms_);
+        }
+
+        ESP_LOGV(LOG_REMOTE_TEMP, "Debounce: skipping remote temp send (same value %.1f, %lu ms since last send, min interval %lu ms, skip #%d)",
+            this->remoteTemperature_, (unsigned long)elapsed, (unsigned long)min_interval, this->remote_temp_debounce_skip_count_);
+        return;
+    }
+
+    // Reset debounce skip counter on successful send
+    this->remote_temp_debounce_skip_count_ = 0;
 
     uint8_t packet[PACKET_LEN] = {};
 
@@ -487,10 +521,23 @@ void CN105Climate::sendRemoteTemperature() {
     // add the checksum
     uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
-    ESP_LOGD(LOG_REMOTE_TEMP, "Sending remote temperature packet... -> %f", this->remoteTemperature_);
+
+    ESP_LOGD(LOG_REMOTE_TEMP, "Sending remote temperature packet... -> %.1f%s",
+        this->remoteTemperature_, temp_changed ? " (changed)" : " (keep-alive)");
     writePacket(packet, PACKET_LEN);
 
-    // this resets the timeout
+    // Update debounce tracking
+    this->last_remote_temp_send_ms_ = now;
+    this->last_remote_temp_sent_ = this->remoteTemperature_;
+}
+
+void CN105Climate::sendRemoteTemperature() {
+    this->shouldSendExternalTemperature_ = false;
+
+    // Send the packet
+    this->sendRemoteTemperaturePacket();
+
+    // Reset the watchdog timeout (HA sent us a fresh value)
     this->pingExternalTemperature();
 }
 

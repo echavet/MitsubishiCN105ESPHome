@@ -206,6 +206,8 @@ This example adds support for configuring the temperature steps, adding an icon,
 
 The `remote_temperature_timeout` setting allows the unit to revert back to the internal temperature measurement if it does not receive an update in the specified time range (highly recommended if using remote temperature updates).
 
+`remote_temperature_keepalive_interval` configures the automatic keep-alive that periodically re-sends the external temperature to the heat pump (similar to Kumo Cloud behavior). Default is `20s`. Set to `0s` to disable. See [Methods for updating external temperature](#methods-for-updating-external-temperature) for details.
+
 `debounce_delay` adds a small delay to the command processing to account for some HomeAssistant buttons that may send repeat commands too quickly. A shorter value creates a more responsive UI, a longer value protects against repeat commands. (See https://github.com/echavet/MitsubishiCN105ESPHome/issues/21)
 
 `connection_bootstrap_delay` delays the initial CN105 UART connection sequence (UART init + CONNECT handshake) **after boot**, to ensure the OTA log stream has time to attach. This is useful when troubleshooting cold-boot issues remotely: without a delay, the very first connection logs can be missed because the log client connects a few seconds after reboot. While this delay is active, the component will **not start communication cycles** until the heatpump replies with the connection success packet.
@@ -236,6 +238,7 @@ climate:
     fahrenheit_compatibility: "disabled"
     # Timeout and communication settings
     remote_temperature_timeout: 30min
+    remote_temperature_keepalive_interval: 20s # Auto re-send external temp (like Kumo)
     update_interval: 2s
     debounce_delay: 100ms
     # Delay the initial UART/CONNECT bootstrap to avoid missing early OTA logs
@@ -383,8 +386,8 @@ This repository also contains a Home Assistant Custom Component that solves the 
 2.  Click the **+ ADD INTEGRATION** button at the bottom right.
 3.  Search for **Mitsubishi Climate Proxy**.
 4.  Follow the on-screen instructions:
-    *   Select the source ESPHome entity (e.g., `climate.living_room_esphome`).
-    *   Give your new proxy entity a name (e.g., `Living Room Climate`).
+    - Select the source ESPHome entity (e.g., `climate.living_room_esphome`).
+    - Give your new proxy entity a name (e.g., `Living Room Climate`).
 5.  Click **Submit**.
 
 Your new entity (e.g., `climate.living_room_climate`) is created immediately and can be used in your dashboard.
@@ -546,24 +549,24 @@ captive_portal:
 
 # Enable logging
 logger:
-#  hardware_uart: UART1 # Uncomment on ESP8266 devices
+  #  hardware_uart: UART1 # Uncomment on ESP8266 devices
   level: INFO
   logs:
-    EVT_SETS : INFO
-    WIFI : INFO
-    MQTT : INFO
-    WRITE_SETTINGS : INFO
-    SETTINGS : INFO
-    STATUS : INFO
+    EVT_SETS: INFO
+    WIFI: INFO
+    MQTT: INFO
+    WRITE_SETTINGS: INFO
+    SETTINGS: INFO
+    STATUS: INFO
     CN105Climate: WARN
     CN105: INFO
     climate: WARN
     sensor: WARN
-    chkSum : INFO
-    WRITE : WARN
-    READ : WARN
+    chkSum: INFO
+    WRITE: WARN
+    READ: WARN
     Header: INFO
-    Decoder : INFO
+    Decoder: INFO
     CONTROL_WANTED_SETTINGS: INFO
 #  level: DEBUG
 #  logs:
@@ -608,8 +611,8 @@ sensor:
     state_class: measurement
     unit_of_measurement: "°C"
     filters:
-    # Uncomment the lambda line to convert F to C on incoming temperature
-    #  - lambda: return (x - 32) * (5.0/9.0);
+      # Uncomment the lambda line to convert F to C on incoming temperature
+      #  - lambda: return (x - 32) * (5.0/9.0);
       - clamp: # Limits values to range accepted by Mitsubishi units
           min_value: 1
           max_value: 40
@@ -620,8 +623,8 @@ sensor:
         - logger.log:
             level: INFO
             format: "Remote temperature received from HA: %.1f C"
-            args: [ 'x' ]
-        - lambda: 'id(hp).set_remote_temperature(x);'
+            args: ["x"]
+        - lambda: "id(hp).set_remote_temperature(x);"
 
 ota:
   platform: esphome # Required for ESPhome 2024.6.0 and greater
@@ -677,8 +680,9 @@ climate:
     fahrenheit_compatibility: "disabled"
     # Timeout and communication settings
     remote_temperature_timeout: 30min
+    remote_temperature_keepalive_interval: 20s # Auto re-send external temp (like Kumo)
     update_interval: 2s
-    debounce_delay : 100ms
+    debounce_delay: 100ms
     # Various optional sensors, not all sensors are supported by all heatpumps
     compressor_frequency_sensor:
       name: Compressor Frequency
@@ -725,6 +729,40 @@ climate:
 ## Methods for updating external temperature
 
 There are several methods for updating the unit with an remote temperature value. This replaces the heat pump's internal temperature measurement with an external temperature measurement as the Mitsubishi wireless thermostats do, allowing you to more precisely control room comfort and improve energy efficiency by increasing cycle length.
+
+### Automatic Keep-Alive and Configuration Options
+
+When using an external temperature sensor, the heat pump requires periodic updates to maintain the external temperature reference. Without regular updates, the unit may fall back to its internal sensor.
+
+This component includes a **built-in keep-alive mechanism** (similar to how Mitsubishi's Kumo Cloud module works) that automatically re-sends the external temperature at regular intervals. This eliminates the need for manual heartbeat automations in your YAML configuration.
+
+**Configuration options:**
+
+| Option                                  | Default | Description                                                                                 |
+| --------------------------------------- | ------- | ------------------------------------------------------------------------------------------- |
+| `remote_temperature_timeout`            | `never` | Time without updates before falling back to internal sensor. Recommended: `5min` to `30min` |
+| `remote_temperature_keepalive_interval` | `20s`   | Interval for automatic re-sending of temperature to the heat pump. Set to `0s` to disable   |
+
+**Example configuration:**
+
+```yaml
+climate:
+  - platform: cn105
+    id: hp
+    # ... other options ...
+    remote_temperature_timeout: 5min # Fallback to internal sensor after 5 min without HA updates
+    remote_temperature_keepalive_interval: 20s # Re-send temperature every 20s (like Kumo does)
+```
+
+**How it works:**
+
+1. When Home Assistant sends a temperature value via `set_remote_temperature()`, the value is sent to the heat pump immediately
+2. The keep-alive timer starts automatically and re-sends the same value every 20 seconds (configurable)
+3. A debounce mechanism prevents flooding the bus if you have existing automations that send updates too frequently
+4. If Home Assistant stops sending updates (sensor offline, network issue), the `remote_temperature_timeout` triggers a fallback to the internal sensor
+
+> [!NOTE]
+> If you have an existing heartbeat/interval automation in your YAML that periodically calls `set_remote_temperature()`, you can safely remove it - the built-in keep-alive handles this automatically. You may see a warning in the logs if conflicting heartbeat patterns are detected.
 
 ### Recommended - Get external temperature from a [HomeAssistant Sensor](https://esphome.io/components/sensor/homeassistant.html) through the HomeAssistant API
 
@@ -1042,7 +1080,6 @@ climate:
           options:
             1: "ON (Default)"
             2: "OFF"
-
 ```
 
 ## Other Implementations
