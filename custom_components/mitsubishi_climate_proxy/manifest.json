@@ -1,7 +1,7 @@
 {
     "domain": "mitsubishi_climate_proxy",
     "name": "Mitsubishi Climate Proxy",
-    "version": "1.6.7",
+    "version": "2026.2.0-beta.1",
     "documentation": "https://github.com/echavet/MitsubishiCN105ESPHome",
     "dependencies": [],
     "codeowners": [

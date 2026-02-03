@@ -1,9 +1,12 @@
 #pragma once
-#include <esphome/components/uptime/sensor/uptime_seconds_sensor.h>
-namespace esphome {
-    namespace uptime {
 
-        class HpUpTimeConnectionSensor : public UptimeSecondsSensor {
+#include "esphome/core/component.h"
+#include "esphome/components/sensor/sensor.h"
+
+namespace esphome {
+    namespace cn105 {
+
+        class HpUpTimeConnectionSensor : public sensor::Sensor, public PollingComponent {
         public:
             void update() override;
             std::string unique_id();
@@ -13,6 +16,10 @@ namespace esphome {
             void stop();            // connection lost
         protected:
             bool connected_{ false };
+            uint64_t uptime_accumulator_{ 0 };
+            uint64_t start_time_{ 0 };
+            
+            uint64_t get_uptime_ms_();
         };
-    }  // namespace uptime
+    }  // namespace cn105
 }  // namespace esphome

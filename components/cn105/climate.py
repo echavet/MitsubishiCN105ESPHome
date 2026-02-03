@@ -33,6 +33,8 @@ from esphome.const import (
     DEVICE_CLASS_DURATION,
     CONF_TX_PIN,
     CONF_RX_PIN,
+    CONF_PLATFORM,
+    CONF_INTERNAL,
 )
 from esphome.components.sensor import (
     CONF_UNIT_OF_MEASUREMENT as SENSOR_CONF_UNIT_OF_MEASUREMENT,
@@ -55,7 +57,7 @@ AUTO_LOAD = [
     "uptime",
     "number",
 ]
-DEPENDENCIES = ["uart", "uptime"]  # Garder uart ici aussi
+DEPENDENCIES = ["uart"]  # Garder uart ici aussi
 
 CONF_SUPPORTS = "supports"
 CONF_SUPPORTS_HORIZONTAL_VANE_MODE = "horizontal_vane_mode"
@@ -138,8 +140,8 @@ SubModSensor = cg.global_ns.class_("SubModSensor", text_sensor.TextSensor, cg.Co
 AutoSubModSensor = cg.global_ns.class_(
     "AutoSubModSensor", text_sensor.TextSensor, cg.Component
 )
-uptime_ns = cg.esphome_ns.namespace("esphome").namespace("uptime")
-HpUpTimeConnectionSensor = uptime_ns.class_(
+cn105_ns = cg.esphome_ns.namespace("cn105")
+HpUpTimeConnectionSensor = cn105_ns.class_(
     "HpUpTimeConnectionSensor", sensor.Sensor, cg.PollingComponent
 )
 FlowControlSensor = cg.global_ns.class_(
@@ -595,7 +597,6 @@ def to_code(config):
     if CONF_HP_UP_TIME_CONNECTION_SENSOR in config:
         conf = config[CONF_HP_UP_TIME_CONNECTION_SENSOR]
         hp_connection_sensor_ = yield sensor.new_sensor(conf)
-        yield cg.register_component(hp_connection_sensor_, conf)
         cg.add(var.set_hp_uptime_connection_sensor(hp_connection_sensor_))
 
     if CONF_HARDWARE_SETTINGS in config:
