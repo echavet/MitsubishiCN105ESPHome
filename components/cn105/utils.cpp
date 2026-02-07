@@ -59,6 +59,20 @@ float CN105Climate::calculateTemperatureSetting(float setting) {
  */
 
 void CN105Climate::updateTargetTemperaturesFromSettings(float temperature) {
+    // Input validation: reject NaN, Infinity, and out-of-range temperatures
+    // Valid HVAC temperature range is typically 10-31°C to prevent equipment damage
+    if (std::isnan(temperature) || std::isinf(temperature)) {
+        ESP_LOGW(TAG, "Invalid temperature value received (NaN or Infinity), ignoring update");
+        return;
+    }
+    
+    // Validate temperature is within safe operating range (10-31°C)
+    // This prevents potential HVAC equipment damage from extreme values
+    if (temperature < 10.0f || temperature > 31.0f) {
+        ESP_LOGW(TAG, "Temperature value %.1f°C is out of safe range (10-31°C), ignoring update", temperature);
+        return;
+    }
+    
     if (this->traits().has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
 
         if (this->mode == climate::CLIMATE_MODE_HEAT) {
