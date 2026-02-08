@@ -37,3 +37,4 @@ examples/users/*
 .cursor/*
 **/*.diff
 analyze_packets.py
+act*.log

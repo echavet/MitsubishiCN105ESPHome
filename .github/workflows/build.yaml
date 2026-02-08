@@ -16,7 +16,13 @@ jobs:
       max-parallel: 2
       matrix:
         version: [stable]
-        variant: [examples/root-configs/esp32-test, examples/root-configs/hp-debug]
+        variant: 
+          - examples/root-configs/esp32-test
+          - examples/root-configs/hp-debug
+          - examples/root-configs/hp-sejour
+          - examples/m5stack-atoms3/atom-m5
+          - examples/xiao-esp32s3/heatpump-xiaoESP32S3
+          - examples/modular-hvac/hvac-sample
     container:
       image: ghcr.io/esphome/esphome:${{ matrix.version }}
     env:
@@ -28,17 +34,31 @@ jobs:
       env:
         keys: >-
           mqtt_password ota_pwd
-          wifi_ssid wifi_password wifi_ssid3 wifi_password3
-        enc_keys: encryption_key_sejour encryption_key
+          wifi_ssid wifi_password
+          wifi_ssid2 wifi_password2
+          wifi_ssid3 wifi_password3
+          wifi_ssid4 wifi_password4
+          iot_ssid iot_password iot_domain fallback_password
+          broker m5_login m5_password hvac_ota
+        enc_keys: encryption_key_sejour encryption_key api_key hvac_api
       run: |
         for key in $keys ; do
-          value=`head -c 100 /dev/urandom | base64 | cut -c 1-24 | head -n1`
+          if [ "$key" = "iot_domain" ]; then
+            value=".local"
+          else
+            value=`head -c 100 /dev/urandom | base64 | cut -c 1-24 | head -n1`
+          fi
           echo "${key}: ${value}" >> secrets.yaml
         done
         for key in $enc_keys ; do
           value=`head -c 32 /dev/urandom | base64`
           echo "${key}: ${value}" >> secrets.yaml
         done
-        # Copy secrets to example directory
+        # Copy secrets to example directories
         cp secrets.yaml examples/root-configs/
+        cp secrets.yaml examples/m5stack-atoms3/
+        cp secrets.yaml examples/m5stack-atoms3/includes/
+        cp secrets.yaml examples/xiao-esp32s3/
+        cp secrets.yaml examples/xiao-esp32s3/common/
+        cp secrets.yaml examples/modular-hvac/
     - run: esphome compile ${{ matrix.variant }}.yaml
