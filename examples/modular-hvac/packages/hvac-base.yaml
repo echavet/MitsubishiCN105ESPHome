@@ -6,7 +6,7 @@ esphome:
 external_components:
   - source:
       type: local
-      path: ../../../components
+      path: ../../components
 
 # Enable Home Assistant API
 api:

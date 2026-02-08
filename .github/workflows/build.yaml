@@ -33,17 +33,21 @@ jobs:
     - name: Generate random secret
       env:
         keys: >-
-        keys: >-
           mqtt_password ota_pwd
           wifi_ssid wifi_password
           wifi_ssid2 wifi_password2
           wifi_ssid3 wifi_password3
-          iot_ssid iot_password iot_domain fallback_password api_key
-          broker m5_login m5_password
-        enc_keys: encryption_key_sejour encryption_key
+          wifi_ssid4 wifi_password4
+          iot_ssid iot_password iot_domain fallback_password
+          broker m5_login m5_password hvac_ota
+        enc_keys: encryption_key_sejour encryption_key api_key hvac_api
       run: |
         for key in $keys ; do
-          value=`head -c 100 /dev/urandom | base64 | cut -c 1-24 | head -n1`
+          if [ "$key" = "iot_domain" ]; then
+            value=".local"
+          else
+            value=`head -c 100 /dev/urandom | base64 | cut -c 1-24 | head -n1`
+          fi
           echo "${key}: ${value}" >> secrets.yaml
         done
         for key in $enc_keys ; do

@@ -4,7 +4,7 @@
 external_components:
   - source:
       type: local
-      path: ../../../components
+      path: ../../components
 
 # Add remote temperature action (previously service) to the API
 api:
