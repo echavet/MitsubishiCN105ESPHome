@@ -33,10 +33,13 @@ jobs:
     - name: Generate random secret
       env:
         keys: >-
+        keys: >-
           mqtt_password ota_pwd
           wifi_ssid wifi_password
           wifi_ssid2 wifi_password2
           wifi_ssid3 wifi_password3
+          iot_ssid iot_password iot_domain fallback_password api_key
+          broker m5_login m5_password
         enc_keys: encryption_key_sejour encryption_key
       run: |
         for key in $keys ; do
