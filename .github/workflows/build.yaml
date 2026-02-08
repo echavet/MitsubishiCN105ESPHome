@@ -15,8 +15,17 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        version: [2025.11.0]
-        variant: [examples/root-configs/esp32-test, examples/root-configs/hp-debug]
+        version: [stable]
+        variant: 
+          - examples/root-configs/esp32-test
+          - examples/root-configs/hp-debug
+          - examples/root-configs/hp-sejour
+          - examples/root-configs/hp-esp32-c6-esp-idf
+          - examples/root-configs/hp-esp32-s2-saola-arduino
+          - examples/m5stack-atoms3/atom-m5
+          - examples/xiao-esp32s3/heatpump-xiaoESP32S3
+          - examples/modular-hvac/hvac-sample
+          - examples/dual-setpoint/living-room-split-unit
     container:
       image: ghcr.io/esphome/esphome:${{ matrix.version }}
     env:
