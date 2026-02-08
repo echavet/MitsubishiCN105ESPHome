@@ -83,19 +83,25 @@ Generally, indoor units with a `CN105` header are compatible. Refer to the [Heat
 
 Units tested by project contributors include:
 
-- `MSZ-SF50VE3`
-- `MSZ-SF35VE3`
-- `MSZ-GLxxNA`
-- `MSZ-AP20VGK` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/83)
-- `MSZ-AP42VGK`
-- `MSZ-AP35VGD2` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/254)
-- `MSZ-AY35VGKP`
-- `MSZ-FSxxNA`
-- `MSZ-FHxxNA`
-- `MSZ-EF42VE`
+- `MFZ-KA09NA`
+- `MLZ-KP12NA`
 - `MSXY-FN10VE` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/368)
-- `MSZ-AP20VGK`
+- `MSZ-AP20VGK`, `MSZ-AP25VGK`, `MSZ-AP35VGK`, `MSZ-AP42VGK`, `MSZ-AP50VGK`
+- `MSZ-AP35VGD2` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/254)
+- `MSZ-AY` series (e.g. `MSZ-AY20`, `MSZ-AY25`, `MSZ-AY35`, `MSZ-AY42`, `MSZ-AY50`)
+- `MSZ-EF` series (e.g. `MSZ-EF09NA`, `MSZ-EF15NA`, `MSZ-EF42VE`, `MSZ-EF50VE`)
+- `MSZ-FHxxNA`
+- `MSZ-FSxxNA`
 - `MSZ-FT50VG2`
+- `MSZ-GE24NA`
+- `MSZ-GL` series (e.g. `MSZ-GL06NA`, `MSZ-GL09NA`, `MSZ-GL12NA`, `MSZ-GL15NA`, `MSZ-GL18NA`, `MSZ-GL24NA`)
+- `MSZ-GS12NA`
+- `MSZ-HR` series (e.g. `MSZ-HR25VF`, `MSZ-HR35VF`, `MSZ-HR45VF`, `MSZ-HR50VF`)
+- `MSZ-LN35VGW`
+- `MSZ-SF35VE3`, `MSZ-SF50VE3`
+- `PEFY-P32VMA-E2`
+- `SEZ-KD25VAQ`
+- `SEZ-M50DAL`
 
 ## Usage
 
