@@ -114,7 +114,7 @@ void CN105Climate::registerInfoRequests() {
 
     // Placeholders
     InfoRequest r_unknown("unknown", "Unknown", 0x04, 1, 0);
-    r_unknown.disabled = true;
+    //r_unknown.disabled = true;
     scheduler_.register_request(r_unknown);
 
     InfoRequest r_timers("timers", "Timers", 0x05, 1, 0);
@@ -240,6 +240,16 @@ void CN105Climate::set_remote_temp_keepalive_interval(uint32_t interval_ms) {
     }
 }
 
+void CN105Climate::set_remote_temperature_control_sensor(esphome::binary_sensor::BinarySensor* sensor) {
+    this->remote_temp_sensor_ = sensor;
+    ESP_LOGI(LOG_REMOTE_TEMP, "Remote temperature control sensor configured.");
+}
+
+void CN105Climate::set_remote_temperature_margin(float margin) {
+    this->remote_temp_margin_ = margin;
+    ESP_LOGI(LOG_REMOTE_TEMP, "Remote temperature margin set to %.1f", margin);
+}
+
 void CN105Climate::startRemoteTempKeepAlive() {
     // Don't start if keep-alive is disabled or already active
     if (this->remote_temp_keepalive_interval_ms_ == 0) {
@@ -261,8 +271,11 @@ void CN105Climate::startRemoteTempKeepAlive() {
             // (watchdog is only reset when HA sends a new value via set_remote_temperature)
             this->sendRemoteTemperaturePacket();
         } else {
-            ESP_LOGV(LOG_REMOTE_TEMP, "Keep-alive skipped: remoteTemp=%.1f, connected=%d",
-                this->remoteTemperature_, this->isHeatpumpConnected_);
+            if (!this->isHeatpumpConnected_) {
+                ESP_LOGW(LOG_REMOTE_TEMP, "Keep-alive skipped: Heatpump not connected!");
+            } else {
+                ESP_LOGD(LOG_REMOTE_TEMP, "Keep-alive skipped: remoteTemp %.1f <= 0", this->remoteTemperature_);
+            }
         }
         });
 }

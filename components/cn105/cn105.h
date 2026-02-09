@@ -45,6 +45,12 @@ namespace esphome {
 
         CN105Climate(uart::UARTComponent* hw_serial);
 
+        enum class VaneType {
+            STANDARD = 0,
+            SPLIT_HORIZONTAL = 1,
+            SPLIT_VERTICAL = 2
+        };
+
         void set_vertical_vane_select(VaneOrientationSelect* vertical_vane_select);
         void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select, const std::vector<std::string>& options = {});
         void set_airflow_control_select(VaneOrientationSelect* airflow_control_select);
@@ -63,7 +69,14 @@ namespace esphome {
 
         void add_hardware_setting(HardwareSettingSelect* setting);
         void set_hardware_settings_interval(uint32_t interval_ms) { this->hardware_settings_interval_ms_ = interval_ms; }
-        void set_horizontal_vanes(int horizontal_vanes) { this->horizontal_vanes_ = horizontal_vanes; }
+        
+        // Deprecated: kept for backward compatibility, will map to VaneType::SPLIT_HORIZONTAL
+        void set_horizontal_vanes(int horizontal_vanes) { 
+            if (horizontal_vanes > 1) {
+                this->vane_type_ = VaneType::SPLIT_HORIZONTAL;
+            }
+        }
+        void set_vane_type(VaneType type) { this->vane_type_ = type; }
 
         void set_functions_sensor(esphome::text_sensor::TextSensor* Functions_sensor);
         void set_functions_get_button(FunctionsButton* Button);
@@ -74,9 +87,14 @@ namespace esphome {
         void set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor);
         void set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor);
         void set_hp_uptime_connection_sensor(cn105::HpUpTimeConnectionSensor* hp_up_connection_sensor);
+        
+        void set_remote_temperature_control_sensor(esphome::binary_sensor::BinarySensor* sensor);
+        void set_remote_temperature_margin(float margin);
 
         //sensor::Sensor* compressor_frequency_sensor;
         binary_sensor::BinarySensor* iSee_sensor_ = nullptr;
+        binary_sensor::BinarySensor* remote_temp_sensor_ = nullptr;
+        float remote_temp_margin_ = 0.4f;
         text_sensor::TextSensor* stage_sensor_{ nullptr }; // to save ref if needed
         bool use_stage_for_operating_status_{ false };
         FahrenheitSupport fahrenheitSupport_;
@@ -477,6 +495,7 @@ namespace esphome {
         bool installer_mode_effective_{ false };
         bool installer_mode_fallback_done_{ false };
         bool supports_dual_setpoint_ = false;
-        int horizontal_vanes_{ 1 };
+        int horizontal_vanes_{ 1 }; // Kept for legacy logging if needed, or can be removed if unused.
+        VaneType vane_type_{ VaneType::STANDARD };
     };
 }

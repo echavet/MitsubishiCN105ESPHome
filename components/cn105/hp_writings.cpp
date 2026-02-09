@@ -264,11 +264,24 @@ void CN105Climate::createPacket(uint8_t* packet) {
             packet[18] = WIDEVANE[idx] | (this->wideVaneAdj ? 0x80 : 0x00);
             packet[7] += CONTROL_PACKET_2[0];
 
-            // Experimental: Left Horizontal Vane support for dual vane units
-            // Byte 16 is used in IR protocol for Left Vane (which corresponds to Horizontal/Wide Vane on these units)
-            if (this->horizontal_vanes_ > 1) {
-                // Copy the base WIDEVANE value (without adjustment bit) to Byte 16
-                packet[16] = WIDEVANE[idx];
+
+            switch (this->vane_type_) {
+                case VaneType::SPLIT_HORIZONTAL:
+                    // Experimental: Left Horizontal Vane support for dual vane units (Type A)
+                    // Byte 16 is used in IR protocol for Left Vane (which corresponds to Horizontal/Wide Vane on these units)
+                    // Copy the base WIDEVANE value (without adjustment bit) to Byte 16
+                    packet[16] = WIDEVANE[idx];
+                    break;
+                case VaneType::SPLIT_VERTICAL:
+                    // Experimental: Split Vertical Vane support (Type B)
+                    // TODO: Reverse engineering required for Byte 12 or other control bytes.
+                    // For now, logging to help debugging.
+                    ESP_LOGD(TAG, "Split Vertical Vane: WideVane set to %s (Index %d). Packet[12] (Vertical) is %02X", getWideVaneSetting(), idx, packet[12]);
+                    break;
+                case VaneType::STANDARD:
+                default:
+                    // No special handling
+                    break;
             }
         } else { ESP_LOGW(TAG, "Ignoring invalid wideVane setting while building packet"); }
     }
@@ -500,7 +513,7 @@ void CN105Climate::sendRemoteTemperaturePacket() {
                 this->remoteTemperature_, (unsigned long)this->remote_temp_keepalive_interval_ms_);
         }
 
-        ESP_LOGV(LOG_REMOTE_TEMP, "Debounce: skipping remote temp send (same value %.1f, %lu ms since last send, min interval %lu ms, skip #%d)",
+        ESP_LOGD(LOG_REMOTE_TEMP, "Debounce: skipping remote temp send (same value %.1f, %lu ms since last send, min interval %lu ms, skip #%d)",
             this->remoteTemperature_, (unsigned long)elapsed, (unsigned long)min_interval, this->remote_temp_debounce_skip_count_);
         return;
     }

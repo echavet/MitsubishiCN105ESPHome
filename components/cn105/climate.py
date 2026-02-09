@@ -62,6 +62,13 @@ DEPENDENCIES = ["uart"]  # Garder uart ici aussi
 CONF_SUPPORTS = "supports"
 CONF_SUPPORTS_HORIZONTAL_VANE_MODE = "horizontal_vane_mode"
 CONF_HORIZONTAL_VANES = "horizontal_vanes"
+CONF_VANE_TYPE = "vane_type"
+
+VANE_TYPES = {
+    "standard": 0,
+    "split_horizontal": 1,
+    "split_vertical": 2,
+}
 CONF_HORIZONTAL_SWING_SELECT = "horizontal_vane_select"
 CONF_VERTICAL_SWING_SELECT = "vertical_vane_select"
 CONF_COMPRESSOR_FREQUENCY_SENSOR = "compressor_frequency_sensor"
@@ -88,6 +95,9 @@ CONF_CIRCULATOR_SWITCH = "circulator_switch"
 CONF_HARDWARE_SETTINGS = "hardware_settings"
 CONF_CODE = "code"
 CONF_OPTIONS = "options"
+CONF_REMOTE_TEMPERATURE_CONTROL_SENSOR = "remote_temperature_control_sensor"
+#CONF_REMOTE_TEMPERATURE_MARGIN = "remote_temperature_margin"
+CONF_TEMPERATURE_MARGIN = "temperature_margin"
 
 # Support explicite du DUAL setpoint via YAML
 CONF_DUAL_SETPOINT = "dual_setpoint"
@@ -235,6 +245,18 @@ AUTO_SUB_MODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(AutoSubModSensor).e
     {cv.GenerateID(CONF_ID): cv.declare_id(AutoSubModSensor)}
 )
 
+REMOTE_TEMPERATURE_CONTROL_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
+    binary_sensor.BinarySensor,
+    device_class="connectivity",
+    entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
+    icon="mdi:thermometer-check",
+).extend(
+    {
+        cv.GenerateID(CONF_ID): cv.declare_id(binary_sensor.BinarySensor),
+        cv.Optional(CONF_TEMPERATURE_MARGIN, default=0.4): cv.positive_float,
+    }
+)
+
 # Schéma pour STAGE_SENSOR (qui est un text_sensor) AVEC la nouvelle sous-option
 STAGE_SENSOR_CONFIG_SCHEMA = text_sensor.text_sensor_schema(StageSensor).extend(
     {
@@ -338,6 +360,10 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_NIGHT_MODE_SWITCH): HVAC_OPTION_SWITCH_SCHEMA,
             cv.Optional(CONF_CIRCULATOR_SWITCH): HVAC_OPTION_SWITCH_SCHEMA,
             cv.Optional(CONF_HARDWARE_SETTINGS): HARDWARE_SETTING_SCHEMA,
+            cv.Optional(
+                CONF_REMOTE_TEMPERATURE_CONTROL_SENSOR
+            ): REMOTE_TEMPERATURE_CONTROL_SENSOR_SCHEMA,
+            #cv.Optional(CONF_REMOTE_TEMPERATURE_MARGIN, default=0.4): cv.positive_float,
             cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
                 {
                     cv.Optional(
@@ -355,6 +381,9 @@ CONFIG_SCHEMA = (
                     ),
                     cv.Optional(CONF_HORIZONTAL_VANES, default=1): cv.int_range(
                         min=1, max=2
+                    ),
+                    cv.Optional(CONF_VANE_TYPE, default="standard"): cv.enum(
+                        VANE_TYPES, lower=True
                     ),
                 }
             ),
@@ -403,8 +432,16 @@ def to_code(config):
         # Configure the horizontal vane options
         horizontal_vane_options = supports.get(CONF_SUPPORTS_HORIZONTAL_VANE_MODE, [])
 
-        # Set the number of horizontal vanes
+        # Set the number of horizontal vanes (Legacy)
         cg.add(var.set_horizontal_vanes(supports.get(CONF_HORIZONTAL_VANES, 1)))
+        
+        # Set vane type (New)
+        vane_type_conf = supports.get(CONF_VANE_TYPE, "standard")
+        vane_type_val = VANE_TYPES.get(vane_type_conf, 0)
+        vane_type_enum = cg.RawExpression(
+            f"static_cast<esphome::CN105Climate::VaneType>({vane_type_val})"
+        )
+        cg.add(var.set_vane_type(vane_type_enum))
 
         # Set dual setpoint support via YAML (default: False if missing)
         # Note: this enables global dual setpoint support in HA.
@@ -583,6 +620,16 @@ def to_code(config):
         if conf_stage_dict.get(CONF_USE_AS_OPERATING_FALLBACK, False):
             cg.add(var.set_use_stage_for_operating_status(True))
     # --- FIN DU TRAITEMENT POUR STAGE_SENSOR ---
+
+    if CONF_REMOTE_TEMPERATURE_CONTROL_SENSOR in config:
+        conf = config[CONF_REMOTE_TEMPERATURE_CONTROL_SENSOR]
+        sensor_var = yield binary_sensor.new_binary_sensor(conf)
+        cg.add(var.set_remote_temperature_control_sensor(sensor_var))
+        if CONF_TEMPERATURE_MARGIN in conf:
+            cg.add(var.set_remote_temperature_margin(conf[CONF_TEMPERATURE_MARGIN]))
+
+    #if CONF_REMOTE_TEMPERATURE_MARGIN in config:
+    #    cg.add(var.set_remote_temperature_margin(config[CONF_REMOTE_TEMPERATURE_MARGIN]))
 
     if CONF_SUB_MODE_SENSOR in config:
         tsensor_var = yield text_sensor.new_text_sensor(config[CONF_SUB_MODE_SENSOR])

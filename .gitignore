@@ -38,3 +38,11 @@ examples/users/*
 **/*.diff
 analyze_packets.py
 act*.log
+issues/*
+add_headers.py
+.gitignore
+append_comments.py
+.gitignore
+fetch_comments.py
+fix_specific_headers.py
+issues_comments.json
