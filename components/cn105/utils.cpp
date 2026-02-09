@@ -327,7 +327,7 @@ void CN105Climate::debugSettingsAndStatus(const char* settingName, heatpumpSetti
 
 
 
-void CN105Climate::hpPacketDebug(uint8_t* packet, unsigned int length, const char* packetDirection) {
+void CN105Climate::hpPacketDebug(uint8_t* packet, unsigned int length, const char* packetDirection, const char* log_prefix) {
     if (length < 5) {
         // Fallback for too short packets
         std::string output;
@@ -409,10 +409,9 @@ void CN105Climate::hpPacketDebug(uint8_t* packet, unsigned int length, const cha
     snprintf(byteBuf, sizeof(byteBuf), "%02X", packet[length - 1]);
     csStr = byteBuf;
 
-    // Linear Log with brackets and separator
-    // Output format: [LABEL:SubLabel ] HEADER -> [ PAYLOAD ] CS
-    ESP_LOGD(packetDirection, "[%-15s] %s-> [%s] %s", 
-        fullLabel, headerStr.c_str(), dataStr.c_str(), csStr.c_str());
+// Output format: [LABEL:SubLabel ] HEADER -> [ PAYLOAD ] CS
+    ESP_LOGD(packetDirection, "%s|%s|->[%s](%s) <%s>", 
+        log_prefix, headerStr.c_str(), dataStr.c_str(), csStr.c_str(), fullLabel);
 }
 
 void CN105Climate::hpFunctionsDebug(uint8_t* packet, unsigned int length) {
