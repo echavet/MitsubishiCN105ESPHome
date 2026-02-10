@@ -338,11 +338,16 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
     ESP_LOGD("Decoder", "[0x06 is status]");
     //this->last_received_packet_sensor->publish_state("0x62-> 0x06: Data -> Heatpump Status");
 
+    // We need a factor to convert BTU/h to Watts
+    // The definition is as follows 1000 BTU/h = (1 055 055.582 62 J/3600s) ~= 293W 
+    // The factor BTU/h -> W is approx. 3.412
+    static constexpr float conv_factor = (1000*3600)/1055055.58262;
+
     // reset counter (because a reply indicates it is connected)
     this->nonResponseCounter = 0;
     receivedStatus.operating = data[4];
     receivedStatus.compressorFrequency = data[3];
-    receivedStatus.inputPower = (data[5] << 8) | data[6];
+    receivedStatus.inputPower = float((data[5] << 8) | data[6]) * conv_factor;
     receivedStatus.kWh = float((data[7] << 8) | data[8]) / 10;
 
     // no change with this packet to roomTemperature
