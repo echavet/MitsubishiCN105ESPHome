@@ -121,6 +121,8 @@ namespace esphome {
         // sensor to monitor heatpump connection time
         cn105::HpUpTimeConnectionSensor* hp_uptime_connection_sensor_ = nullptr;
 
+        float convert_input_power_to_W(float raw_input_power);
+        float convert_energy_usage_to_kWh(float raw_energy_usage);
         float get_compressor_frequency();
         float get_input_power();
         float get_kwh();
