@@ -86,6 +86,7 @@ Units tested by project contributors include:
 - `MFZ-KA09NA`
 - `MLZ-KP12NA`
 - `MSXY-FN10VE` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/368)
+- 'MSXY-FN10VE R2', 'MSXY-FN13VE R2','MSXY-FN24VE R2'
 - `MSZ-AP20VGK`, `MSZ-AP25VGK`, `MSZ-AP35VGK`, `MSZ-AP42VGK`, `MSZ-AP50VGK`
 - `MSZ-AP35VGD2` (https://github.com/echavet/MitsubishiCN105ESPHome/discussions/254)
 - `MSZ-AY` series (e.g. `MSZ-AY20`, `MSZ-AY25`, `MSZ-AY35`, `MSZ-AY42`, `MSZ-AY50`)

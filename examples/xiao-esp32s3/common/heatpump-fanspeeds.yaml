@@ -107,5 +107,29 @@ text:
           "MEDIUM": 237,
           "MODERATE": 546,
           "HIGH": 774
+      },
+      "MSXY-FN10VE-R2": {
+          "IDLE": 0,
+          "QUIET": 246,
+          "LOW": 306,
+          "MEDIUM": 378,
+          "MODERATE": 546,
+          "HIGH": 774
+      },
+      "MSXY-FN13VE-R2": {
+          "IDLE": 0,
+          "QUIET": 246,
+          "LOW": 306,
+          "MEDIUM": 378,
+          "MODERATE": 564,
+          "HIGH": 846
+      },
+      "MSXY-FN24VE-R2": {
+          "IDLE": 0,
+          "QUIET": 546,
+          "LOW": 648,
+          "MEDIUM": 810,
+          "MODERATE": 960,
+          "HIGH": 1194
       }
       }
