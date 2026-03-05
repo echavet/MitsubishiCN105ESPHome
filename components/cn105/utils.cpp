@@ -53,6 +53,29 @@ float CN105Climate::calculateTemperatureSetting(float setting) {
 }
 
 /**
+ * Convert raw input power value to Watts
+ * It seems that the value is provided by the unit in BTU/s
+ * 
+ * The Conversion is based on the definitions:
+ * 1 BTU = 1055.05585262 J
+ * 1 W = 1 J / s
+ */
+
+float CN105Climate::convert_input_power_to_W(float raw_input_power) {
+    static constexpr float conv_factor = 3600.0f / 1055.05558262f;
+    return raw_input_power * conv_factor;
+}
+
+/**
+ * Convert the raw energy usage value to kWh
+ * It seems that the value is provided by the unit in kBTU
+ */
+float CN105Climate::convert_energy_usage_to_kWh(float raw_energy_usage) {
+    static constexpr float conv_factor = 1055.05585262f/3600000.0f;
+    return 1000.0f * raw_energy_usage * conv_factor;
+}
+
+/**
  * This function updates the target temperatures from the settings.
  * It also calculates the temperature setting based on the mode and the temperature points.
  * It returns the temperature setting.
