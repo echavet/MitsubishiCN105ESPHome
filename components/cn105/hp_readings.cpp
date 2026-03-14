@@ -342,8 +342,8 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
     this->nonResponseCounter = 0;
     receivedStatus.operating = data[4];
     receivedStatus.compressorFrequency = data[3];
-    receivedStatus.inputPower = (data[5] << 8) | data[6];
-    receivedStatus.kWh = float((data[7] << 8) | data[8]) / 10;
+    receivedStatus.inputPower = convert_input_power_to_W(float((data[5] << 8) | data[6]));
+    receivedStatus.kWh = convert_energy_usage_to_kWh(float((data[7] << 8) | data[8]));
 
     // no change with this packet to roomTemperature
     receivedStatus.roomTemperature = currentStatus.roomTemperature;
