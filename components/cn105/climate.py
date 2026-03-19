@@ -216,7 +216,7 @@ COMPRESSOR_FREQUENCY_SENSOR_SCHEMA = sensor.sensor_schema(
     unit_of_measurement=UNIT_HERTZ,
     device_class=DEVICE_CLASS_FREQUENCY,
     state_class=STATE_CLASS_MEASUREMENT,
-    accuracy_decimals=0,
+    accuracy_decimals=1,
 ).extend({cv.GenerateID(CONF_ID): cv.declare_id(CompressorFrequencySensor)})
 INPUT_POWER_SENSOR_SCHEMA = sensor.sensor_schema(
     InputPowerSensor,
@@ -230,13 +230,13 @@ KWH_SENSOR_SCHEMA = sensor.sensor_schema(
     unit_of_measurement=UNIT_KILOWATT_HOURS,
     device_class=DEVICE_CLASS_ENERGY,
     state_class=STATE_CLASS_TOTAL_INCREASING,
-    accuracy_decimals=2,
+    accuracy_decimals=1,
 ).extend({cv.GenerateID(CONF_ID): cv.declare_id(kWhSensor)})
 RUNTIME_HOURS_SENSOR_SCHEMA = sensor.sensor_schema(
     RuntimeHoursSensor,
     unit_of_measurement=UNIT_HOUR,
     device_class=DEVICE_CLASS_DURATION,
-    accuracy_decimals=0,
+    accuracy_decimals=2,
 ).extend({cv.GenerateID(CONF_ID): cv.declare_id(RuntimeHoursSensor)})
 OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA = sensor.sensor_schema(
     OutsideAirTemperatureSensor,
