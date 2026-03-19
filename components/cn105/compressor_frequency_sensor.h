@@ -8,10 +8,7 @@ namespace esphome {
 
     class CompressorFrequencySensor : public sensor::Sensor, public Component {
     public:
-        CompressorFrequencySensor() {
-            this->set_state_class(sensor::StateClass::STATE_CLASS_MEASUREMENT);
-            this->set_accuracy_decimals(1);
-        }
+        CompressorFrequencySensor() = default;
     };
 
 }
