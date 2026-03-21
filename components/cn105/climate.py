@@ -236,6 +236,7 @@ RUNTIME_HOURS_SENSOR_SCHEMA = sensor.sensor_schema(
     RuntimeHoursSensor,
     unit_of_measurement=UNIT_HOUR,
     device_class=DEVICE_CLASS_DURATION,
+    state_class=STATE_CLASS_TOTAL_INCREASING,
     accuracy_decimals=2,
 ).extend({cv.GenerateID(CONF_ID): cv.declare_id(RuntimeHoursSensor)})
 OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA = sensor.sensor_schema(
