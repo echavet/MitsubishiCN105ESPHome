@@ -177,7 +177,7 @@ void CN105Climate::getPowerFromResponsePacket() {
 
     heatpumpSettings receivedSettings{};
     receivedSettings.stage = lookupByteMapValue(STAGE_MAP, STAGE, 7, data[4], "current stage for delivery");
-    receivedSettings.sub_mode = lookupByteMapValue(SUB_MODE_MAP, SUB_MODE, 4, data[3], "submode");
+    receivedSettings.sub_mode = lookupByteMapValue(SUB_MODE_MAP, SUB_MODE, 5, data[3], "submode");
     receivedSettings.auto_sub_mode = lookupByteMapValue(AUTO_SUB_MODE_MAP, AUTO_SUB_MODE, 4, data[5], "auto mode sub mode");
 
     ESP_LOGD("Decoder", "[Stage : %s]", receivedSettings.stage);
@@ -307,6 +307,18 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
     } else {
         receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
         ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[3] map --> [Room °C : %f]", receivedStatus.roomTemperature);
+    }
+
+    // Update the remote temperature control sensor (Issue 290)
+    if (this->remote_temp_sensor_ != nullptr) {
+        bool is_remote = false;
+        if (this->remote_temp_keepalive_active_ && this->remoteTemperature_ > 0) {
+            float diff = abs(receivedStatus.roomTemperature - this->remoteTemperature_);
+            if (diff <= this->remote_temp_margin_) {
+                is_remote = true;
+            }
+        }
+        this->remote_temp_sensor_->publish_state(is_remote);
     }
 
     receivedStatus.runtimeHours = float((data[11] << 16) | (data[12] << 8) | data[13]) / 60;

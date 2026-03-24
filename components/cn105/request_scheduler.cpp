@@ -115,7 +115,7 @@ void RequestScheduler::mark_response_seen(uint8_t code, CN105Climate* context) {
         if (req.code == code) {
             req.awaiting = false;
             req.failures = 0;
-            ESP_LOGD(LOG_CYCLE_TAG, "Receiving %s (0x%02X)", req.description, req.code);
+            ESP_LOGD(LOG_CYCLE_TAG, "Received %s <0x%02X>", req.description, req.code);
 
             // Appeler le callback onResponse si présent et si le contexte est disponible
             if (req.onResponse && context) {
