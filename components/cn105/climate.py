@@ -35,6 +35,16 @@ from esphome.const import (
     CONF_RX_PIN,
     CONF_PLATFORM,
     CONF_INTERNAL,
+    DEVICE_CLASS_FREQUENCY,
+    DEVICE_CLASS_POWER,
+    DEVICE_CLASS_ENERGY,
+    DEVICE_CLASS_TEMPERATURE,
+    UNIT_HERTZ,
+    UNIT_WATT,
+    UNIT_KILOWATT_HOURS,
+    UNIT_CELSIUS,
+    UNIT_HOUR,
+    STATE_CLASS_MEASUREMENT,
 )
 from esphome.components.sensor import (
     CONF_UNIT_OF_MEASUREMENT as SENSOR_CONF_UNIT_OF_MEASUREMENT,
@@ -212,19 +222,39 @@ SELECT_SCHEMA = select.select_schema(VaneOrientationSelect).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(VaneOrientationSelect)}
 )
 COMPRESSOR_FREQUENCY_SENSOR_SCHEMA = sensor.sensor_schema(
-    CompressorFrequencySensor
+    CompressorFrequencySensor,
+    unit_of_measurement=UNIT_HERTZ,
+    device_class=DEVICE_CLASS_FREQUENCY,
+    state_class=STATE_CLASS_MEASUREMENT,
+    accuracy_decimals=1,
 ).extend({cv.GenerateID(CONF_ID): cv.declare_id(CompressorFrequencySensor)})
-INPUT_POWER_SENSOR_SCHEMA = sensor.sensor_schema(InputPowerSensor).extend(
-    {cv.GenerateID(CONF_ID): cv.declare_id(InputPowerSensor)}
-)
-KWH_SENSOR_SCHEMA = sensor.sensor_schema(kWhSensor).extend(
-    {cv.GenerateID(CONF_ID): cv.declare_id(kWhSensor)}
-)
-RUNTIME_HOURS_SENSOR_SCHEMA = sensor.sensor_schema(RuntimeHoursSensor).extend(
-    {cv.GenerateID(CONF_ID): cv.declare_id(RuntimeHoursSensor)}
-)
+INPUT_POWER_SENSOR_SCHEMA = sensor.sensor_schema(
+    InputPowerSensor,
+    unit_of_measurement=UNIT_WATT,
+    device_class=DEVICE_CLASS_POWER,
+    state_class=STATE_CLASS_MEASUREMENT,
+    accuracy_decimals=0,
+).extend({cv.GenerateID(CONF_ID): cv.declare_id(InputPowerSensor)})
+KWH_SENSOR_SCHEMA = sensor.sensor_schema(
+    kWhSensor,
+    unit_of_measurement=UNIT_KILOWATT_HOURS,
+    device_class=DEVICE_CLASS_ENERGY,
+    state_class=STATE_CLASS_TOTAL_INCREASING,
+    accuracy_decimals=1,
+).extend({cv.GenerateID(CONF_ID): cv.declare_id(kWhSensor)})
+RUNTIME_HOURS_SENSOR_SCHEMA = sensor.sensor_schema(
+    RuntimeHoursSensor,
+    unit_of_measurement=UNIT_HOUR,
+    device_class=DEVICE_CLASS_DURATION,
+    state_class=STATE_CLASS_TOTAL_INCREASING,
+    accuracy_decimals=2,
+).extend({cv.GenerateID(CONF_ID): cv.declare_id(RuntimeHoursSensor)})
 OUTSIDE_AIR_TEMPERATURE_SENSOR_SCHEMA = sensor.sensor_schema(
-    OutsideAirTemperatureSensor
+    OutsideAirTemperatureSensor,
+    unit_of_measurement=UNIT_CELSIUS,
+    device_class=DEVICE_CLASS_TEMPERATURE,
+    state_class=STATE_CLASS_MEASUREMENT,
+    accuracy_decimals=1,
 ).extend({cv.GenerateID(CONF_ID): cv.declare_id(OutsideAirTemperatureSensor)})
 ISEE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(ISeeSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(ISeeSensor)}
