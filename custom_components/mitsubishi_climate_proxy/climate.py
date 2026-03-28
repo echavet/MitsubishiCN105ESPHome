@@ -157,62 +157,106 @@ class MitsubishiHybridClimate(ClimateEntity):
         return ClimateEntityFeature(features)
 
     @property
-    def temperature_unit(self) -> str:
-        """Return the unit of measurement."""
+    def _source_unit(self) -> str:
+        """Return the temperature unit advertised by the source entity."""
         if self._source_state:
             return self._source_state.attributes.get(
                 "unit_of_measurement", UnitOfTemperature.CELSIUS
             )
         return UnitOfTemperature.CELSIUS
 
+    def _normalize_temp(self, val: Optional[float]) -> Optional[float]:
+        """Convert a source temperature to °C if the source advertises °F.
+
+        When fahrenheit_compatibility is active on the ESPHome side, the source
+        climate entity already exposes values in Fahrenheit.  If we forward that
+        unit to HA unchanged, HA applies a *second* F→display conversion,
+        resulting in values ~2.26× too high (e.g. 69 °F → 156 °F).
+        By normalising everything to Celsius here we break that double-
+        conversion loop without affecting Celsius-only setups.
+        """
+        if val is None:
+            return None
+        if self._source_unit == UnitOfTemperature.FAHRENHEIT:
+            return (val - 32.0) * 5.0 / 9.0
+        return val
+
+    def _denormalize_temp(self, val: Optional[float]) -> Optional[float]:
+        """Convert a Celsius setpoint back to °F before forwarding to the source.
+
+        HA sends setpoints in the unit declared by temperature_unit (always °C
+        for this proxy).  When the source entity expects °F we must convert back.
+        """
+        if val is None:
+            return None
+        if self._source_unit == UnitOfTemperature.FAHRENHEIT:
+            return val * 9.0 / 5.0 + 32.0
+        return val
+
+    @property
+    def temperature_unit(self) -> str:
+        """Always report Celsius to prevent HA from applying a second conversion.
+
+        The proxy normalises all temperatures to °C internally via
+        _normalize_temp / _denormalize_temp, so HA must be told the unit is
+        always °C regardless of what the source entity advertises.
+        """
+        return UnitOfTemperature.CELSIUS
+
     @property
     def current_temperature(self) -> Optional[float]:
-        """Return the current temperature."""
+        """Return the current temperature normalised to °C."""
         if self._source_state:
-            return self._source_state.attributes.get("current_temperature")
+            return self._normalize_temp(
+                self._source_state.attributes.get("current_temperature")
+            )
         return None
 
     @property
     def target_temperature(self) -> Optional[float]:
-        """Return the temperature we try to reach."""
+        """Return the temperature we try to reach, normalised to °C."""
         if not self._source_state:
             return None
 
         # Try to get direct attribute first
         val = self._source_state.attributes.get("temperature")
         if val is not None:
-            return val
+            return self._normalize_temp(val)
 
         # Fallback to derived values if source is in dual mode but we are presenting single
         low = self._source_state.attributes.get("target_temp_low")
         high = self._source_state.attributes.get("target_temp_high")
 
         if self.hvac_mode == HVACMode.HEAT:
-            return low if low is not None else high
+            return self._normalize_temp(low if low is not None else high)
         elif self.hvac_mode == HVACMode.COOL:
-            return high if high is not None else low
+            return self._normalize_temp(high if high is not None else low)
         elif self.hvac_mode == HVACMode.DRY:
             # Mode DRY uses cooling logic (high setpoint or single)
-            return high if high is not None else low
+            return self._normalize_temp(high if high is not None else low)
         elif self.hvac_mode == HVACMode.AUTO:
             if low is not None and high is not None:
-                return (low + high) / 2.0
-            return low if low is not None else high
+                return self._normalize_temp((low + high) / 2.0)
+            return self._normalize_temp(low if low is not None else high)
 
         return None
 
     @property
     def target_temperature_high(self) -> Optional[float]:
-        """Return the highbound target temperature we try to reach."""
+        """Return the highbound target temperature, normalised to °C."""
         if self._source_state:
-            return self._source_state.attributes.get("target_temp_high")
+            return self._normalize_temp(
+                self._source_state.attributes.get("target_temp_high")
+            )
         return None
 
     @property
     def target_temperature_low(self) -> Optional[float]:
-        """Return the lowbound target temperature we try to reach."""
+        """Return the lowbound target temperature, normalised to °C."""
         if self._source_state:
-            return self._source_state.attributes.get("target_temp_low")
+            return self._normalize_temp(
+                self._source_state.attributes.get("target_temp_low")
+            )
         return None
 
     @property
@@ -293,13 +337,23 @@ class MitsubishiHybridClimate(ClimateEntity):
         mode = kwargs.get("hvac_mode", self.hvac_mode)
 
         if "target_temp_low" in kwargs or "target_temp_high" in kwargs:
-            # Direct dual control
+            # Direct dual control — HA sends values in °C (our declared unit),
+            # convert back to source unit before forwarding.
             if "target_temp_low" in kwargs:
-                service_data["target_temp_low"] = kwargs["target_temp_low"]
+                service_data["target_temp_low"] = self._denormalize_temp(
+                    kwargs["target_temp_low"]
+                )
             if "target_temp_high" in kwargs:
-                service_data["target_temp_high"] = kwargs["target_temp_high"]
+                service_data["target_temp_high"] = self._denormalize_temp(
+                    kwargs["target_temp_high"]
+                )
         elif "temperature" in kwargs:
-            t = kwargs["temperature"]
+            # HA sends the setpoint in °C (our declared unit); convert to source unit.
+            t = self._denormalize_temp(kwargs["temperature"])
+            # curr_high / curr_low are already in source unit (raw attributes),
+            # so comparisons are safe in the same unit.
+            raw_high = self._source_state.attributes.get("target_temp_high") if self._source_state else None
+            raw_low = self._source_state.attributes.get("target_temp_low") if self._source_state else None
 
             # If source is NOT dual (single setpoint), just send temperature directly
             if not source_is_dual:
@@ -307,10 +361,10 @@ class MitsubishiHybridClimate(ClimateEntity):
             elif mode == HVACMode.HEAT:
                 service_data["target_temp_low"] = t
                 # Get current high to ensure we send a complete pair
-                curr_high = self.target_temperature_high
+                curr_high = raw_high
                 if curr_high is None:
                     # Fallback if unknown, usually safe to assume a delta or max
-                    curr_high = self.max_temp
+                    curr_high = self._denormalize_temp(self.max_temp)
 
                 # Ensure high >= low
                 if t > curr_high:
@@ -321,9 +375,9 @@ class MitsubishiHybridClimate(ClimateEntity):
             elif mode == HVACMode.COOL:
                 service_data["target_temp_high"] = t
                 # Get current low to ensure we send a complete pair
-                curr_low = self.target_temperature_low
+                curr_low = raw_low
                 if curr_low is None:
-                    curr_low = self.min_temp
+                    curr_low = self._denormalize_temp(self.min_temp)
 
                 # Ensure low <= high
                 if t < curr_low:
@@ -335,9 +389,9 @@ class MitsubishiHybridClimate(ClimateEntity):
                 # Mode DRY treats target as a cooling setpoint
                 service_data["target_temp_high"] = t
                 # Get current low to ensure we send a complete pair
-                curr_low = self.target_temperature_low
+                curr_low = raw_low
                 if curr_low is None:
-                    curr_low = self.min_temp
+                    curr_low = self._denormalize_temp(self.min_temp)
 
                 # Ensure low <= high to keep consistency
                 if t < curr_low:
@@ -346,11 +400,11 @@ class MitsubishiHybridClimate(ClimateEntity):
                     service_data["target_temp_low"] = curr_low
 
             elif mode == HVACMode.AUTO:
-                # Move range, keeping spread
-                curr_low = self.target_temperature_low
-                curr_high = self.target_temperature_high
+                # Move range, keeping spread — work in source unit (raw)
+                curr_low = raw_low
+                curr_high = raw_high
 
-                # Default spread if unknown
+                # Default spread if unknown (2° in source unit)
                 if curr_low is None:
                     curr_low = t - 2
                 if curr_high is None:
@@ -448,14 +502,18 @@ class MitsubishiHybridClimate(ClimateEntity):
 
     @property
     def min_temp(self) -> float:
-        """Return the minimum temperature."""
+        """Return the minimum temperature, normalised to °C."""
         if self._source_state:
-            return self._source_state.attributes.get("min_temp", 7)
+            return self._normalize_temp(
+                self._source_state.attributes.get("min_temp", 7)
+            )
         return 7
 
     @property
     def max_temp(self) -> float:
-        """Return the maximum temperature."""
+        """Return the maximum temperature, normalised to °C."""
         if self._source_state:
-            return self._source_state.attributes.get("max_temp", 35)
+            return self._normalize_temp(
+                self._source_state.attributes.get("max_temp", 35)
+            )
         return 35

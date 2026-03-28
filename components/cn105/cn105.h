@@ -246,6 +246,9 @@ namespace esphome {
             this->installer_mode_fallback_done_ = false;
         }
 
+        // Unité de puissance brute envoyée par la PAC: false = Watts (défaut), true = BTU/s
+        void set_power_unit_is_btu(bool v) { this->power_unit_is_btu_ = v; }
+
         // Configure the climate object with traits that we support.
 
 
@@ -496,6 +499,7 @@ namespace esphome {
         bool installer_mode_{ false };
         bool installer_mode_effective_{ false };
         bool installer_mode_fallback_done_{ false };
+        bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (nécessite conversion ×3.412)
         bool supports_dual_setpoint_ = false;
         int horizontal_vanes_{ 1 }; // Kept for legacy logging if needed, or can be removed if unused.
         VaneType vane_type_{ VaneType::STANDARD };

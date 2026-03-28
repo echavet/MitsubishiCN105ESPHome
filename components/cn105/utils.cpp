@@ -53,26 +53,39 @@ float CN105Climate::calculateTemperatureSetting(float setting) {
 }
 
 /**
- * Convert raw input power value to Watts
- * It seems that the value is provided by the unit in BTU/s
- * 
- * The Conversion is based on the definitions:
- * 1 BTU = 1055.05585262 J
- * 1 W = 1 J / s
+ * Convert raw input power value to Watts.
+ *
+ * By default (power_unit_is_btu_ = false) the CN105 protocol already sends
+ * the value in native Watts, so no conversion is needed (identity).
+ *
+ * Set `power_unit_is_btu: true` in YAML for units (e.g. some MSZ-LN models)
+ * whose firmware encodes the value in BTU/s instead. In that case the
+ * conversion factor is: 1 W = 1 J/s, 1 BTU = 1055.056 J
+ *   => raw [BTU/s] * (3600 / 1055.056) = Watts
  */
-
 float CN105Climate::convert_input_power_to_W(float raw_input_power) {
-    static constexpr float conv_factor = 3600.0f / 1055.05558262f;
-    return raw_input_power * conv_factor;
+    if (power_unit_is_btu_) {
+        static constexpr float conv_factor = 3600.0f / 1055.05558262f;
+        return raw_input_power * conv_factor;
+    }
+    return raw_input_power;  // already in Watts
 }
 
 /**
- * Convert the raw energy usage value to kWh
- * It seems that the value is provided by the unit in kBTU
+ * Convert the raw energy usage value to kWh.
+ *
+ * By default (power_unit_is_btu_ = false) the protocol encodes energy as
+ * kWh * 10, so we simply divide by 10.
+ *
+ * Set `power_unit_is_btu: true` for units that encode in kBTU instead:
+ *   => raw [kBTU] * (1055.056 / 3 600 000) * 1000 = kWh
  */
 float CN105Climate::convert_energy_usage_to_kWh(float raw_energy_usage) {
-    static constexpr float conv_factor = 1055.05585262f/3600000.0f;
-    return 1000.0f * raw_energy_usage * conv_factor;
+    if (power_unit_is_btu_) {
+        static constexpr float conv_factor = 1055.05585262f / 3600000.0f;
+        return 1000.0f * raw_energy_usage * conv_factor;
+    }
+    return raw_energy_usage / 10.0f;  // already in kWh/10
 }
 
 /**

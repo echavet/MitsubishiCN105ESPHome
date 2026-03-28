@@ -87,6 +87,16 @@ This component uses the **Proxy Pattern**. It mirrors the state of your real ESP
 *   **When in `HEAT` or `AUTO` mode:** The component masks the "Dual Setpoint" capability. Home Assistant believes the device only supports a single target and renders **one slider**.
 *   **When in `HEAT_COOL` mode:** The component reveals the "Dual Setpoint" capability. Home Assistant renders **two sliders**.
 
+### Fahrenheit Compatibility
+
+If you use `fahrenheit_compatibility: "standard"` in your ESPHome YAML, the source climate entity
+already exposes all temperatures in **°F**. Without correction, Home Assistant would apply a
+*second* °F conversion on top, resulting in values ~2.26× too high (e.g. 69 °F → 156 °F).
+
+The proxy automatically detects the source unit and normalises all values to **°C** internally,
+so Home Assistant always receives and sends Celsius regardless of the source's unit setting.
+**No extra configuration is required** — the fix is transparent.
+
 ### Maintenance & Stability
 This component is designed as a **"Thin Wrapper"**.
 *   It contains **no network code**. It does not talk to the device directly.
