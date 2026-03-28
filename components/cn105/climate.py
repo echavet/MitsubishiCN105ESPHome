@@ -108,6 +108,7 @@ CONF_OPTIONS = "options"
 CONF_REMOTE_TEMPERATURE_CONTROL_SENSOR = "remote_temperature_control_sensor"
 #CONF_REMOTE_TEMPERATURE_MARGIN = "remote_temperature_margin"
 CONF_TEMPERATURE_MARGIN = "temperature_margin"
+CONF_POWER_UNIT_IS_BTU = "power_unit_is_btu"
 
 # Support explicite du DUAL setpoint via YAML
 CONF_DUAL_SETPOINT = "dual_setpoint"
@@ -394,6 +395,7 @@ CONFIG_SCHEMA = (
                 CONF_REMOTE_TEMPERATURE_CONTROL_SENSOR
             ): REMOTE_TEMPERATURE_CONTROL_SENSOR_SCHEMA,
             #cv.Optional(CONF_REMOTE_TEMPERATURE_MARGIN, default=0.4): cv.positive_float,
+            cv.Optional(CONF_POWER_UNIT_IS_BTU, default=False): cv.boolean,
             cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
                 {
                     cv.Optional(
@@ -430,6 +432,7 @@ def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID], uart_var)
 
     cg.add(var.set_installer_mode(config[CONF_INSTALLER_MODE]))
+    cg.add(var.set_power_unit_is_btu(config[CONF_POWER_UNIT_IS_BTU]))
 
     cg.add(uart_var.set_data_bits(8))
     cg.add(uart_var.set_parity(UARTParityOptions.UART_CONFIG_PARITY_EVEN))
