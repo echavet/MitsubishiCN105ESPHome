@@ -11,7 +11,7 @@ void esphome::log_info_uint32(const char* tag, const char* msg, uint32_t value, 
 #else
     ESP_LOGI(tag, "%s %u %s", msg, (unsigned int)value, suffix);
 #endif
-}
+
 void esphome::log_debug_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix) {
 #if __GNUC__ >= 11
     ESP_LOGD(tag, "%s %lu %s", msg, (unsigned long)value, suffix);
@@ -238,7 +238,12 @@ void CN105Climate::setTargetTemperatureHigh(float temperature) {
 }
 
 void CN105Climate::setCurrentTemperature(float temperature) {
-    this->current_temperature = this->fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(temperature);
+    // If a remote temperature sensor is active, display that value in HA instead of the HP internal sensor
+    if (this->remoteTemperature_ > 0) {
+        this->current_temperature = this->fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(this->remoteTemperature_);
+    } else {
+        this->current_temperature = this->fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(temperature);
+    }
 }
 
 void CN105Climate::sanitizeDualSetpoints() {
