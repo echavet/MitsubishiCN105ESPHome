@@ -160,9 +160,6 @@ const char* CN105Climate::getVaneSetting() {
 
 const char* CN105Climate::getWideVaneSetting() {
     if (this->wantedSettings.wideVane) {
-        if (strcmp(this->wantedSettings.wideVane, lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 8, 0x80 & 0x0F)) == 0 && !this->currentSettings.iSee) {
-            this->wantedSettings.wideVane = this->currentSettings.wideVane;
-        }
         return this->wantedSettings.wideVane;
     } else {
         return this->currentSettings.wideVane;
