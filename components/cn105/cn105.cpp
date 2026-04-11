@@ -114,7 +114,7 @@ void CN105Climate::registerInfoRequests() {
 
     // Placeholders
     InfoRequest r_error_info("error_info", "Error Info", 0x04, 3, 0);
-    //r_error_info.disabled = true;
+    r_error_info.onResponse = [this](CN105Climate& self) { (void)self; this->getErrorInfoFromResponsePacket(); };
     scheduler_.register_request(r_error_info);
 
     InfoRequest r_timers("timers", "Timers", 0x05, 1, 0);
