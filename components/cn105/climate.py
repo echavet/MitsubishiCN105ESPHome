@@ -54,7 +54,7 @@ from esphome.components.sensor import (
 )
 from esphome.core import CORE, coroutine
 
-# ... (AUTO_LOAD, DEPENDENCIES, toutes les constantes CONF_XXX_SENSOR, DEFAULT_MODES - identiques Ã  votre version) ...
+# ... (AUTO_LOAD, DEPENDENCIES, toutes les constantes CONF_XXX_SENSOR, DEFAULT_MODES - identiques ÃÂ  votre version) ...
 AUTO_LOAD = [
     "climate",
     "sensor",
@@ -139,7 +139,7 @@ CONF_DEBOUNCE_DELAY = "debounce_delay"
 CONF_CONNECTION_BOOTSTRAP_DELAY = "connection_bootstrap_delay"
 CONF_INSTALLER_MODE = "installer_mode"
 
-# DÃ©finitions des classes C++ (identiques Ã  votre version)
+# DÃÂ©finitions des classes C++ (identiques ÃÂ  votre version)
 VaneOrientationSelect = cg.global_ns.class_(
     "VaneOrientationSelect", select.Select, cg.Component
 )
@@ -184,7 +184,7 @@ HardwareSettingSelect = cg.global_ns.class_(
 )
 
 
-# --- Fonction d'aide pour rÃ©cupÃ©rer les pins TX/RX (identique Ã  votre version corrigÃ©e) ---
+# --- Fonction d'aide pour rÃÂ©cupÃÂ©rer les pins TX/RX (identique ÃÂ  votre version corrigÃÂ©e) ---
 def get_uart_pins_from_config(core_config, target_uart_id_str):
     tx_pin_num = -1
     rx_pin_num = -1
@@ -210,9 +210,9 @@ def get_uart_pins_from_config(core_config, target_uart_id_str):
 
 
 def get_uart_port_index(core_config, target_uart_id_str):
-    # ESPHome ne fournit pas directement l'index de contrÃ´leur; on l'infÃ¨re
-    # via l'ordre de dÃ©claration ou restons Ã  0 par dÃ©faut.
-    # On tente d'associer l'objet id() Ã  sa position.
+    # ESPHome ne fournit pas directement l'index de contrÃÂ´leur; on l'infÃÂ¨re
+    # via l'ordre de dÃÂ©claration ou restons ÃÂ  0 par dÃÂ©faut.
+    # On tente d'associer l'objet id() ÃÂ  sa position.
     idx = 0
     for i, uart_conf_item in enumerate(core_config.get("uart", [])):
         if str(uart_conf_item[CONF_ID]) == target_uart_id_str:
@@ -228,7 +228,7 @@ def get_uart_port_index(core_config, target_uart_id_str):
 
 # --- FIN de la fonction d'aide ---
 
-# SchÃ©mas pour les entitÃ©s optionnelles (identiques Ã  votre version)
+# SchÃÂ©mas pour les entitÃÂ©s optionnelles (identiques ÃÂ  votre version)
 SELECT_SCHEMA = select.select_schema(VaneOrientationSelect).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(VaneOrientationSelect)}
 )
@@ -286,6 +286,19 @@ AUTO_SUB_MODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(AutoSubModSensor).e
     {cv.GenerateID(CONF_ID): cv.declare_id(AutoSubModSensor)}
 )
 
+ERROR_CODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(ErrorCodeSensor).extend(
+    {cv.GenerateID(CONF_ID): cv.declare_id(ErrorCodeSensor)}
+)
+
+REMOTE_TEMP_SOURCE_SCHEMA = cv.Schema(
+    {
+        cv.Required(CONF_REMOTE_TEMP_SOURCE_SENSOR_ID): cv.use_id(sensor.Sensor),
+        cv.Optional(CONF_REMOTE_TEMP_SOURCE_INFO): text_sensor.text_sensor_schema(RemoteTempSourceInfo).extend(
+            {cv.GenerateID(CONF_ID): cv.declare_id(RemoteTempSourceInfo)}
+        ),
+    }
+)
+
 REMOTE_TEMPERATURE_CONTROL_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
     binary_sensor.BinarySensor,
     device_class="connectivity",
@@ -298,15 +311,15 @@ REMOTE_TEMPERATURE_CONTROL_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
     }
 )
 
-# SchÃ©ma pour STAGE_SENSOR (qui est un text_sensor) AVEC la nouvelle sous-option
+# SchÃÂ©ma pour STAGE_SENSOR (qui est un text_sensor) AVEC la nouvelle sous-option
 STAGE_SENSOR_CONFIG_SCHEMA = text_sensor.text_sensor_schema(StageSensor).extend(
     {
-        # L'ID pour l'objet StageSensor C++ est gÃ©rÃ© par text_sensor.TEXT_SENSOR_SCHEMA (via CONF_ID)
+        # L'ID pour l'objet StageSensor C++ est gÃÂ©rÃÂ© par text_sensor.TEXT_SENSOR_SCHEMA (via CONF_ID)
         cv.Optional(CONF_USE_AS_OPERATING_FALLBACK, default=False): cv.boolean,
     }
 )
 
-# SchÃ©ma pour HP_UP_TIME_CONNECTION_SENSOR (identique Ã  votre version)
+# SchÃÂ©ma pour HP_UP_TIME_CONNECTION_SENSOR (identique ÃÂ  votre version)
 HP_UP_TIME_CONNECTION_SENSOR_SCHEMA = sensor.sensor_schema(
     HpUpTimeConnectionSensor,
     unit_of_measurement=UNIT_SECOND,
@@ -375,7 +388,7 @@ CONFIG_SCHEMA = (
             ),
             cv.Optional(
                 CONF_STAGE_SENSOR
-            ): STAGE_SENSOR_CONFIG_SCHEMA,  # ModifiÃ© pour le nouveau schÃ©ma
+            ): STAGE_SENSOR_CONFIG_SCHEMA,  # ModifiÃÂ© pour le nouveau schÃÂ©ma
             cv.Optional(CONF_SUB_MODE_SENSOR): SUB_MODE_SENSOR_SCHEMA,
             cv.Optional(CONF_AUTO_SUB_MODE_SENSOR): AUTO_SUB_MODE_SENSOR_SCHEMA,
             cv.Optional(CONF_ERROR_CODE_SENSOR): ERROR_CODE_SENSOR_SCHEMA,
@@ -463,7 +476,7 @@ def to_code(config):
         supports = config[CONF_SUPPORTS]
         traits = var.config_traits()
 
-        # Configurer les modes supportÃ©s
+        # Configurer les modes supportÃÂ©s
         supported_modes = supports.get(CONF_MODE, DEFAULT_CLIMATE_MODES)
         for mode_str in supported_modes:
             if mode_str == "OFF":
@@ -532,7 +545,7 @@ def to_code(config):
         )
     )
 
-    # --- Configuration des entitÃ©s optionnelles (style original) ---
+    # --- Configuration des entitÃÂ©s optionnelles (style original) ---
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf_item = config[CONF_HORIZONTAL_SWING_SELECT]
         # new_select s'occupe de l'enregistrement. options=[] est important.
@@ -557,15 +570,15 @@ def to_code(config):
         control_select_var = yield select.new_select(conf_item, options=[])
         cg.add(var.set_airflow_control_select(control_select_var))
 
-    # Pour les capteurs, text_sensors, etc., utiliser la mÃ©thode .new_... standard
+    # Pour les capteurs, text_sensors, etc., utiliser la mÃÂ©thode .new_... standard
     # Ces fonctions s'occupent de l'enregistrement du composant.
     if CONF_COMPRESSOR_FREQUENCY_SENSOR in config:
-        # conf = config[CONF_COMPRESSOR_FREQUENCY_SENSOR] # 'conf' est dÃ©jÃ  utilisÃ© comme argument de to_code
-        # conf["force_update"] = False # Ceci Ã©tait dans votre code original, le garder si pertinent
+        # conf = config[CONF_COMPRESSOR_FREQUENCY_SENSOR] # 'conf' est dÃÂ©jÃÂ  utilisÃÂ© comme argument de to_code
+        # conf["force_update"] = False # Ceci ÃÂ©tait dans votre code original, le garder si pertinent
         conf_item = config[CONF_COMPRESSOR_FREQUENCY_SENSOR]
         if (
             "force_update" not in conf_item
-        ):  # S'assurer de ne pas l'Ã©craser si l'user l'a mis
+        ):  # S'assurer de ne pas l'ÃÂ©craser si l'user l'a mis
             conf_item["force_update"] = False
         sensor_var = yield sensor.new_sensor(conf_item)
         cg.add(var.set_compressor_frequency_sensor(sensor_var))
@@ -657,7 +670,7 @@ def to_code(config):
     # --- TRAITEMENT POUR STAGE_SENSOR AVEC LA NOUVELLE OPTION ---
     if CONF_STAGE_SENSOR in config:
         conf_stage_dict = config[CONF_STAGE_SENSOR]
-        # new_text_sensor gÃ¨re la crÃ©ation et l'enregistrement de base du text_sensor
+        # new_text_sensor gÃÂ¨re la crÃÂ©ation et l'enregistrement de base du text_sensor
         stage_ts_var = yield text_sensor.new_text_sensor(conf_stage_dict)
         cg.add(var.set_stage_sensor(stage_ts_var))
 
