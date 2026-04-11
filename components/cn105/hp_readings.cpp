@@ -137,8 +137,8 @@ void CN105Climate::processDataPacket() {
 
     this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "READ");
 
-    // Pendant le handshake (tant que non connecté), logguer toute trame RX sous CN105_CONN en DEBUG
-    // afin de faciliter le diagnostic (0x7A/0x7B attendus, ou autre réponse inattendue).
+    // Pendant le handshake (tant que non connectÃÂ©), logguer toute trame RX sous CN105_CONN en DEBUG
+    // afin de faciliter le diagnostic (0x7A/0x7B attendus, ou autre rÃÂ©ponse inattendue).
     if (!this->isHeatpumpConnected_) {
         ESP_LOGD(LOG_CONN_TAG, "RX during handshake (cmd=0x%02X len=%d)", this->command, this->dataLength);
         this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, LOG_CONN_TAG);
@@ -231,7 +231,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
     }
 
-    ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
+    ESP_LOGD("Decoder", "[Temp ÃÂ°C: %f]", receivedSettings.temperature);
 
     receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6], "fan reading");
     ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
@@ -303,10 +303,10 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
         int temp = data[6];
         temp -= 128;
         receivedStatus.roomTemperature = temp / 2.0f;
-        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[6]  --> [Room °C: %f]", receivedStatus.roomTemperature);
+        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[6]  --> [Room ÃÂ°C: %f]", receivedStatus.roomTemperature);
     } else {
         receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
-        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[3] map --> [Room °C : %f]", receivedStatus.roomTemperature);
+        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[3] map --> [Room ÃÂ°C : %f]", receivedStatus.roomTemperature);
     }
 
     // Update the remote temperature control sensor (Issue 290)
@@ -323,8 +323,8 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
     receivedStatus.runtimeHours = float((data[11] << 16) | (data[12] << 8) | data[13]) / 60;
 
-    ESP_LOGD("Decoder", "[Room °C: %f]", receivedStatus.roomTemperature);
-    ESP_LOGD("Decoder", "[OAT  °C: %f]", receivedStatus.outsideAirTemperature);
+    ESP_LOGD("Decoder", "[Room ÃÂ°C: %f]", receivedStatus.roomTemperature);
+    ESP_LOGD("Decoder", "[OAT  ÃÂ°C: %f]", receivedStatus.outsideAirTemperature);
 
     // no change with this packet to currentStatus for operating and compressorFrequency
     receivedStatus.operating = currentStatus.operating;
@@ -418,6 +418,21 @@ void CN105Climate::terminateCycle() {
 
     this->nbCompleteCycles_++;
 }
+void CN105Climate::getErrorInfoFromResponsePacket() {
+    ESP_LOGD("Decoder", "0x04 error info");
+    if (this->error_code_sensor_ != nullptr) {
+        uint8_t error_raw = this->data[4];
+        uint8_t error_sub = this->data[5];
+        if (error_raw == 0x00 && error_sub == 0x00) {
+            this->error_code_sensor_->publish_state("No Error");
+        } else {
+            char buf[32];
+            snprintf(buf, sizeof(buf), "Error 0x%02X sub 0x%02X", error_raw, error_sub);
+            this->error_code_sensor_->publish_state(buf);
+        }
+    }
+}
+
 void CN105Climate::getDataFromResponsePacket() {
 
     // D'abord, laissons l'orchestrateur traiter les codes connus
@@ -425,14 +440,14 @@ void CN105Climate::getDataFromResponsePacket() {
     if (this->scheduler_.process_response(code)) {
         return;
     }
-    // Sinon, switch pour les cas non gérés par l'orchestrateur
+    // Sinon, switch pour les cas non gÃÂ©rÃÂ©s par l'orchestrateur
     switch (code) {
 
-    case 0x04:
-        /* unknown */
-        ESP_LOGI("Decoder", "[0x04 is unknown : not implemented]");
-        //this->last_received_packet_sensor->publish_state("0x62-> 0x04: Data -> Unknown");
-        break;
+    case 0x04: {
+            // Error info - handled by getErrorInfoFromResponsePacket
+            this->getErrorInfoFromResponsePacket();
+            break;
+    }
 
     case 0x05:
         /* timer packet */
@@ -492,12 +507,12 @@ void CN105Climate::processCommand() {
         this->updateSuccess();
         break;
 
-    case 0x62:  /* packet contains data (room °C, settings, timer, status, or functions...)*/
+    case 0x62:  /* packet contains data (room ÃÂ°C, settings, timer, status, or functions...)*/
         this->getDataFromResponsePacket();
         break;
     case 0x7a:  // Connection success (User / standard)
     case 0x7b:  // Connection success (Installer / extended)
-        // Log en INFO sur le tag dédié, détails en DEBUG via hpPacketDebug
+        // Log en INFO sur le tag dÃÂ©diÃÂ©, dÃÂ©tails en DEBUG via hpPacketDebug
         ESP_LOGI(LOG_CONN_TAG, "--> Heatpump did reply: connection success (%s, 0x%02X)! <--",
             (this->command == 0x7b) ? "Installer" : "User",
             this->command);
