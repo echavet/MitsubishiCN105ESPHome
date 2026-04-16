@@ -6,7 +6,7 @@ using namespace esphome;
 
 void cycleManagement::checkTimeout(unsigned int update_interval) {
     if (doesCycleTimeOut(update_interval)) {                          // does it last too long ?                    
-        ESP_LOGW(TAG, "Cycle timeout, reseting cycle...");
+        ESP_LOGW(TAG, "Cycle timeout, resetting cycle...");
         cycleEnded(true);
     }
 }

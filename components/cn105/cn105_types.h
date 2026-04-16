@@ -93,10 +93,35 @@ static const char* AIRFLOW_CONTROL_MAP[3] = { "EVEN", "INDIRECT", "DIRECT" };
 static const uint8_t STAGE[7] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
 static const char* STAGE_MAP[7] = { "IDLE", "LOW", "GENTLE", "MEDIUM", "MODERATE", "HIGH", "DIFFUSE" };
 
-static const uint8_t SUB_MODE[5] = { 0x00, 0x01, 0x02, 0x04, 0x08 };
-static const char* SUB_MODE_MAP[5] = { "NORMAL", "WARMUP", "DEFROST", "PREHEAT", "STANDBY" };
-static const uint8_t AUTO_SUB_MODE[4] = { 0x00, 0x01, 0x02, 0x03 };
-static const char* AUTO_SUB_MODE_MAP[4] = { "AUTO_OFF","AUTO_COOL", "AUTO_HEAT", "AUTO_LEADER" };
+// 0x10 = OFF state, observed on MFZ-KX09NL / MFZ-KJ18NA when the unit is
+// powered off (data[3] of the 0x09 packet). Confirmed by correlation with
+// 0x02 data[3] (power) = 0x00 across every powered-off cycle.
+static const uint8_t SUB_MODE[6] = { 0x00, 0x01, 0x02, 0x04, 0x08, 0x10 };
+static const char* SUB_MODE_MAP[6] = { "NORMAL", "WARMUP", "DEFROST", "PREHEAT", "STANDBY", "OFF" };
+
+// 0x40 / 0x41 / 0x43 added for newer MFZ units, where data[5] of the 0x09
+// packet is a bitfield rather than the older 0x00..0x03 enum:
+//   bit 0 (0x01) is set when AUTO climate mode is selected
+//   bit 1 (0x02) is set once the compressor has engaged in this AUTO
+//                session (i.e. the unit has identified the room needs
+//                active heating or cooling and acted on it). Sticky:
+//                stays set after the compressor cycles back off.
+//   bit 6 (0x40) is constantly set (purpose unknown, observed in every state
+//                including OFF, HEAT, COOL, DRY, FAN, AUTO across many cycles)
+//   bits 2..5  : unprobed
+// Observed states:
+//   0x40 AUTO_INACTIVE — AUTO mode not selected
+//   0x41 AUTO_IDLE     — AUTO selected, compressor not engaged
+//                        (e.g. room already at setpoint, no action needed)
+//   0x43 AUTO_ACTIVE   — AUTO selected, compressor has engaged at least
+//                        once in this session (sticky)
+// Note that 0x43 does NOT distinguish current cool-vs-heat direction; on these
+// units that has to be inferred from setpoint vs room temperature in 0x02.
+// These labels are distinct from the older AUTO_COOL/AUTO_HEAT/AUTO_LEADER
+// labels which appear to belong to a different protocol revision (older units
+// where this byte was a 4-state enum rather than a bitfield).
+static const uint8_t AUTO_SUB_MODE[7] = { 0x00, 0x01, 0x02, 0x03, 0x40, 0x41, 0x43 };
+static const char* AUTO_SUB_MODE_MAP[7] = { "AUTO_OFF", "AUTO_COOL", "AUTO_HEAT", "AUTO_LEADER", "AUTO_INACTIVE", "AUTO_IDLE", "AUTO_ACTIVE" };
 
 static const int TIMER_INCREMENT_MINUTES = 10;
 
