@@ -334,11 +334,11 @@ void CN105Climate::setupUART() {
     if (this->parent_->get_data_bits() == 8 &&
         this->parent_->get_parity() == uart::UART_CONFIG_PARITY_EVEN &&
         this->parent_->get_stop_bits() == 1) {
-        ESP_LOGI(LOG_CONN_TAG, "UART configuré en SERIAL_8E1");
+        ESP_LOGI(LOG_CONN_TAG, "UART configured as SERIAL_8E1");
         this->isUARTConnected_ = true;
         this->initBytePointer();
     } else {
-        ESP_LOGW(LOG_CONN_TAG, "UART n'est pas configuré en SERIAL_8E1");
+        ESP_LOGW(LOG_CONN_TAG, "UART is not configured as SERIAL_8E1");
     }
 
 }
