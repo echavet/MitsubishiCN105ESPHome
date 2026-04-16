@@ -947,6 +947,17 @@ sensor:
 
 This advanced feature allows you to read and modify the internal "Function Settings" (ISU) of your Mitsubishi unit directly from Home Assistant. These settings control hardware behaviors like auto-restart, temperature sensing location, or static pressure.
 
+### Reference Documentation
+
+These Mitsubishi resources document the function setting codes for various equipment:
+
+- [Function Settings List (PDF)](https://www.mitsubishitechinfo.ca/sites/default/files/Function%20Settings%20List.pdf) - covers a wide range of Mitsubishi equipment models
+- [MHK2 Installation Manual (PDF)](https://mylinkdrive.com/viewPdf?srcUrl=http://s3.amazonaws.com/enter.mehvac.com/DAMRoot/Original/10007%5CMHK2_Installation_Manual_2025_Update.pdf) - detailed function code reference
+- [MyLinkDrive](https://www.mylinkdrive.com/usa) - Mitsubishi's portal for additional reference materials and documentation
+
+> [!TIP]
+> The setting descriptions in the code examples below are based on general documentation. Your specific unit's function setting behavior may differ from what's listed here. Cross-reference with the documentation above for your model.
+
 > [!NOTE]
 > This feature depends on your unit's compatibility. If your unit returns only zeros, it likely does not support reading/writing function settings via CN105, or it may require installer/service privileges. Try setting `installer_mode: true` if your unit supports Function Settings but reports `0` values (seen on some SEZ units). The component will automatically detect fully-zero responses and disable the polling to save resources.
 > Note that the firmware autor's units do not support theses functions settings. So implementation might not be reliable.
