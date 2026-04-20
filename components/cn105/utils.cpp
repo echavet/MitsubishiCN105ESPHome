@@ -1,6 +1,7 @@
 #include "cn105.h"
 #include "Globals.h"
 #include <math.h>
+#include <memory>
 
 using namespace esphome;
 
@@ -527,50 +528,64 @@ int CN105Climate::lookupByteMapValue(const int valuesMap[], const uint8_t byteMa
  *
 */
 void CN105Climate::emulateMutex(const char* retryName, std::function<void()>&& f) {
-    this->set_retry(retryName, 100, 10, [this, f, retryName](uint8_t retry_count) {
+    auto callback = std::make_shared<std::function<void()>>(std::move(f));
+    auto retry = std::make_shared<std::function<void(uint8_t, uint32_t)>>();
+    *retry = [this, retryName, retry, callback](uint8_t retry_count, uint32_t delay_ms) {
         if (this->wantedSettingsMutex) {
-            if (retry_count < 1) {
+            if (retry_count >= 10) {
                 ESP_LOGW(retryName, "10 retry calls failed because mutex was locked, forcing unlock...");
                 this->wantedSettingsMutex = true;
-                f();
+                (*callback)();
                 this->wantedSettingsMutex = false;
-                return RetryResult::DONE;
+                return;
             }
             ESP_LOGI(retryName, "wantedSettingsMutex is already locked, defferring...");
-            return RetryResult::RETRY;
+            const uint32_t next_delay_ms = static_cast<uint32_t>(delay_ms * 1.2f);
+            this->set_timeout(retryName, delay_ms, [retry, retry_count, next_delay_ms]() {
+                (*retry)(retry_count + 1, next_delay_ms);
+            });
+            return;
         } else {
             this->wantedSettingsMutex = true;
             ESP_LOGD(retryName, "emulateMutex normal behaviour, locking...");
-            f();
+            (*callback)();
             ESP_LOGD(retryName, "emulateMutex unlocking...");
             this->wantedSettingsMutex = false;
-            return RetryResult::DONE;
+            return;
         }
-        }, 1.2f);
+    };
+    (*retry)(0, 100);
 }
 #ifdef TEST_MODE
 
 void CN105Climate::testEmulateMutex(const char* retryName, std::function<void()>&& f) {
-    this->set_retry(retryName, 100, 10, [this, f, retryName](uint8_t retry_count) {
+    auto callback = std::make_shared<std::function<void()>>(std::move(f));
+    auto retry = std::make_shared<std::function<void(uint8_t, uint32_t)>>();
+    *retry = [this, retryName, retry, callback](uint8_t retry_count, uint32_t delay_ms) {
         if (this->esp8266Mutex) {
-            if (retry_count < 1) {
+            if (retry_count >= 10) {
                 ESP_LOGW(retryName, "10 retry calls failed because mutex was locked, forcing unlock...");
                 this->esp8266Mutex = true;
-                f();
+                (*callback)();
                 this->esp8266Mutex = false;
-                return RetryResult::DONE;
+                return;
             }
             ESP_LOGI(retryName, "testMutex is already locked, defferring...");
-            return RetryResult::RETRY;
+            const uint32_t next_delay_ms = static_cast<uint32_t>(delay_ms * 1.2f);
+            this->set_timeout(retryName, delay_ms, [retry, retry_count, next_delay_ms]() {
+                (*retry)(retry_count + 1, next_delay_ms);
+            });
+            return;
         } else {
             this->esp8266Mutex = true;
             ESP_LOGD(retryName, "emulateMutex normal behaviour, locking...");
-            f();
+            (*callback)();
             ESP_LOGD(retryName, "emulateMutex unlocking...");
             this->esp8266Mutex = false;
-            return RetryResult::DONE;
+            return;
         }
-        }, 1.2f);
+    };
+    (*retry)(0, 100);
 }
 #endif
 #endif
