@@ -16,6 +16,8 @@
 #include "functions_number.h"
 #include "functions_button.h"
 #include "sub_mode_sensor.h"
+#include "error_code_sensor.h"
+#include "remote_temp_source_info.h"
 #include "hvac_option_switch.h"
 #include "hardware_setting_select.h"
 #include "localization.h"
@@ -86,6 +88,9 @@ namespace esphome {
 
         void set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor);
         void set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor);
+        void set_error_code_sensor(esphome::text_sensor::TextSensor* error_code_sensor);
+        void set_remote_temp_source(esphome::sensor::Sensor* source);
+        void set_remote_temp_source_info_sensor(esphome::text_sensor::TextSensor* info_sensor);
         void set_hp_uptime_connection_sensor(cn105::HpUpTimeConnectionSensor* hp_up_connection_sensor);
         
         void set_remote_temperature_control_sensor(esphome::binary_sensor::BinarySensor* sensor);
@@ -105,6 +110,9 @@ namespace esphome {
         FunctionsNumber* Functions_set_value_ = nullptr;
         text_sensor::TextSensor* Sub_mode_sensor_ = nullptr;
         text_sensor::TextSensor* Auto_sub_mode_sensor_ = nullptr;
+        text_sensor::TextSensor* error_code_sensor_{ nullptr };
+        sensor::Sensor* remote_temp_source_{ nullptr };
+        text_sensor::TextSensor* remote_temp_source_info_sensor_{ nullptr };
         HVACOptionSwitch* air_purifier_switch_ = nullptr;
         HVACOptionSwitch* night_mode_switch_ = nullptr;
         HVACOptionSwitch* circulator_switch_ = nullptr;
@@ -160,7 +168,7 @@ namespace esphome {
 
 
         float get_setup_priority() const override {
-            return setup_priority::AFTER_WIFI;  // Configurez ce composant après le WiFi
+            return setup_priority::AFTER_WIFI;  // Configurez ce composant aprÃÂ¨s le WiFi
         }
 
         void generateExtraComponents();
@@ -231,22 +239,22 @@ namespace esphome {
 
         void controlFan();
         void controlSwing();
-        // Bootstrap connexion CN105 en loop() (évite de perdre les tout premiers logs OTA)
+        // Bootstrap connexion CN105 en loop() (ÃÂ©vite de perdre les tout premiers logs OTA)
         void maybe_start_connection_();
 
-        // Délai de grâce configurable avant d'envoyer CONNECT (pour laisser le flux OTA s'attacher)
+        // DÃÂ©lai de grÃÂ¢ce configurable avant d'envoyer CONNECT (pour laisser le flux OTA s'attacher)
         void set_connection_bootstrap_delay(uint32_t delay_ms) { this->conn_bootstrap_delay_ms_ = delay_ms; }
 
-        // Mode installateur: utilise un handshake CONNECT étendu (0x5B) au lieu du standard (0x5A)
+        // Mode installateur: utilise un handshake CONNECT ÃÂ©tendu (0x5B) au lieu du standard (0x5A)
         void set_installer_mode(bool mode) {
-            // Mode demandé via YAML
+            // Mode demandÃÂ© via YAML
             this->installer_mode_ = mode;
-            // Mode effectivement utilisé: peut tomber en fallback vers standard si la PAC ignore 0x5B
+            // Mode effectivement utilisÃÂ©: peut tomber en fallback vers standard si la PAC ignore 0x5B
             this->installer_mode_effective_ = mode;
             this->installer_mode_fallback_done_ = false;
         }
 
-        // Unité de puissance brute envoyée par la PAC: false = Watts (défaut), true = BTU/s
+        // UnitÃÂ© de puissance brute envoyÃÂ©e par la PAC: false = Watts (dÃÂ©faut), true = BTU/s
         void set_power_unit_is_btu(bool v) { this->power_unit_is_btu_ = v; }
 
         // Configure the climate object with traits that we support.
@@ -309,7 +317,8 @@ namespace esphome {
         void checkHeader(uint8_t inputData);
         void initBytePointer();
         void processDataPacket();
-        void getDataFromResponsePacket();
+        void getErrorInfoFromResponsePacket();
+    void getDataFromResponsePacket();
         void getAutoModeStateFromResponsePacket(); //NET added
         void getPowerFromResponsePacket(); //NET added
         void getSettingsFromResponsePacket();
@@ -412,7 +421,7 @@ namespace esphome {
         wantedHeatpumpRunStates wantedRunStates{};
         cycleManagement loopCycle{};
 
-        // Orchestrateur des requêtes INFO
+        // Orchestrateur des requÃÂªtes INFO
         RequestScheduler scheduler_;
         void registerInfoRequests();
         void registerHardwareSettingsRequests();
@@ -477,11 +486,11 @@ namespace esphome {
         // Ensure dual setpoints are valid (no NaN, enforce spread in AUTO)
         void sanitizeDualSetpoints();
 
-        // Anti-rebond UI: mémorise le dernier côté modifié et l'instant
+        // Anti-rebond UI: mÃÂ©morise le dernier cÃÂ´tÃÂ© modifiÃÂ© et l'instant
         uint32_t last_dual_setpoint_change_ms_ = 0;
         char last_dual_setpoint_side_ = 'N'; // 'L' (low), 'H' (high), 'N' (none)
 
-        // Gestion sûre d'un paquet différé à écrire pour éviter la capture d'un buffer de pile
+        // Gestion sÃÂ»re d'un paquet diffÃÂ©rÃÂ© ÃÂ  ÃÂ©crire pour ÃÂ©viter la capture d'un buffer de pile
         void try_write_pending_packet();
         uint8_t pending_packet_[PACKET_LEN] = {};
         int pending_packet_len_ = 0;
@@ -494,12 +503,12 @@ namespace esphome {
         bool conn_wait_logged_ = false;
         bool conn_grace_logged_ = false;
         bool conn_timeout_armed_ = false;
-        uint32_t conn_bootstrap_delay_ms_{ 10000 };  // par défaut 10s
+        uint32_t conn_bootstrap_delay_ms_{ 10000 };  // par dÃÂ©faut 10s
 
         bool installer_mode_{ false };
         bool installer_mode_effective_{ false };
         bool installer_mode_fallback_done_{ false };
-        bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (nécessite conversion ×3.412)
+        bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (nÃÂ©cessite conversion ÃÂ3.412)
         bool supports_dual_setpoint_ = false;
         int horizontal_vanes_{ 1 }; // Kept for legacy logging if needed, or can be removed if unused.
         VaneType vane_type_{ VaneType::STANDARD };

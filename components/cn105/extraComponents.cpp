@@ -25,7 +25,7 @@ void CN105Climate::set_vertical_vane_select(
 
     this->vertical_vane_select_->setCallbackFunction([this](const char* setting) {
 
-        ESP_LOGD("EVT", "vane.control() -> Demande un chgt de réglage de la vane: %s", setting);
+        ESP_LOGD("EVT", "vane.control() -> Demande un chgt de rÃ©glage de la vane: %s", setting);
 
         this->setVaneSetting(setting);
         this->wantedSettings.hasChanged = true;
@@ -61,7 +61,7 @@ void CN105Climate::set_horizontal_vane_select(
     this->horizontal_vane_select_->traits.set_options(fixedOptions);
 
     this->horizontal_vane_select_->setCallbackFunction([this](const char* setting) {
-        ESP_LOGD("EVT", "wideVane.control() -> Demande un chgt de réglage de la wideVane: %s", setting);
+        ESP_LOGD("EVT", "wideVane.control() -> Demande un chgt de rÃ©glage de la wideVane: %s", setting);
 
         this->setWideVaneSetting(setting);
         this->wantedSettings.hasChanged = true;
@@ -219,6 +219,26 @@ void CN105Climate::set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mod
 
 void CN105Climate::set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor) {
     this->Auto_sub_mode_sensor_ = Auto_sub_mode_sensor;
+}
+
+void CN105Climate::set_error_code_sensor(esphome::text_sensor::TextSensor* error_code_sensor) {
+    this->error_code_sensor_ = error_code_sensor;
+}
+
+void CN105Climate::set_remote_temp_source(esphome::sensor::Sensor* source) {
+    this->remote_temp_source_ = source;
+    // Subscribe to source sensor state changes and auto-feed remote temperature
+    source->add_on_state_callback([this](float value) {
+        this->set_remote_temperature(value);
+    });
+}
+
+void CN105Climate::set_remote_temp_source_info_sensor(esphome::text_sensor::TextSensor* info_sensor) {
+    this->remote_temp_source_info_sensor_ = info_sensor;
+    // Publish the source sensor name on next loop
+    if (this->remote_temp_source_ != nullptr) {
+        info_sensor->publish_state(this->remote_temp_source_->get_name());
+    }
 }
 
 void CN105Climate::set_hp_uptime_connection_sensor(cn105::HpUpTimeConnectionSensor* hp_up_connection_sensor) {
