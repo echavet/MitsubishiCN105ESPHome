@@ -443,11 +443,11 @@ void CN105Climate::getDataFromResponsePacket() {
     // Sinon, switch pour les cas non gÃÂ©rÃÂ©s par l'orchestrateur
     switch (code) {
 
-    case 0x04: {
-            // Error info - handled by getErrorInfoFromResponsePacket
-            this->getErrorInfoFromResponsePacket();
-            break;
-    }
+    case 0x04:
+        // Handled by orchestrator (r_error_info onResponse → getErrorInfoFromResponsePacket)
+        // Reaching here means the scheduler did not intercept this response — unexpected
+        ESP_LOGW("Decoder", "[0x04] reached switch fallback — should have been handled by orchestrator");
+        break; // orchestrator
 
     case 0x05:
         /* timer packet */
