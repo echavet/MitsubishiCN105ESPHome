@@ -544,7 +544,12 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->currentStatus.runtimeHours = status.runtimeHours;
         this->currentStatus.roomTemperature = status.roomTemperature;
         this->currentStatus.outsideAirTemperature = status.outsideAirTemperature;
-        this->setCurrentTemperature(this->currentStatus.roomTemperature);
+        // If a remote temperature sensor is active, display that value in HA
+        // instead of the HP internal intake sensor (fix: PR #619)
+        float displayTemperature = (this->remoteTemperature_ > 0)
+            ? this->remoteTemperature_
+            : this->currentStatus.roomTemperature;
+        this->setCurrentTemperature(displayTemperature);
 
         this->updateAction();       // update action info on HA climate component
         this->publish_state();
