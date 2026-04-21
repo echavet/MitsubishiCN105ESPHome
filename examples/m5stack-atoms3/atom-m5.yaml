@@ -10,7 +10,7 @@ esphome:
   #name_add_mac_suffix: true
   project:
     name: esphome.clim_and_nt_proxy
-    version: "25.12.7"
+    version: "2026.4.1"
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -25,7 +25,7 @@ esp32:
   flash_size: 8MB
 
 debug:
-  update_interval: 5s
+  update_interval: 20s
 
 # Enable logging
 logger:
