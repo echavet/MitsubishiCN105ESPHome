@@ -709,6 +709,9 @@ void CN105Climate::set_remote_temperature(float setting) {
     this->shouldSendExternalTemperature_ = true;
     ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
 
+    // Reset the watchdog timeout (HA sent us a fresh value)
+    this->pingExternalTemperature();
+
     // Manage keep-alive timer based on temperature value
     if (setting > 0) {
         // Start keep-alive if not already running (periodic re-send like Kumo does)
