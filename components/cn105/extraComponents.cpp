@@ -138,8 +138,14 @@ void CN105Climate::set_functions_get_button(FunctionsButton* Button) {
     this->Functions_get_button_ = Button;
     this->Functions_get_button_->setCallbackFunction([this]() {
         ESP_LOGI(LOG_CYCLE_TAG, "Retrieving functions");
-        // Get the settings from the heat pump
-        this->getFunctions();
+
+        if (this->Functions_sensor_ != nullptr) {
+            this->Functions_sensor_->publish_state("Operation pending, please wait.");
+        }
+
+        // Request function settings from the heat pump.
+        this->isGetFunctions_ = true;
+
         // The response is handled in heatpumpFunctions.cpp
         });
 }
@@ -148,7 +154,7 @@ void CN105Climate::set_functions_set_button(FunctionsButton* Button) {
     this->Functions_set_button_ = Button;
     this->Functions_set_button_->setCallbackFunction([this]() {
 
-        if (!functions.isValid()) {
+        if (!this->functions.isValid()) {
             if (this->Functions_sensor_ != nullptr) {
                 this->Functions_sensor_->publish_state("Please get the functions first.");
             }
@@ -156,10 +162,14 @@ void CN105Climate::set_functions_set_button(FunctionsButton* Button) {
         }
 
         ESP_LOGI(LOG_CYCLE_TAG, "Setting code %i to value %i", this->functions_code_, this->functions_value_);
-        functions.setValue(this->functions_code_, this->functions_value_);
+        this->functions.setValue(this->functions_code_, this->functions_value_);
+
+        if (this->Functions_sensor_ != nullptr) {
+            this->Functions_sensor_->publish_state("Operation pending, please wait.");
+        }
 
         // Now send the codes.
-        this->setFunctions(functions);
+        this->isSetFunctions_ = true;
 
         });
 }
@@ -263,6 +273,6 @@ void CN105Climate::add_hardware_setting(HardwareSettingSelect* setting) {
         this->functions.setValue(setting->get_code(), int_value);
 
         // Trigger write to device
-        this->setFunctions(this->functions);
+        this->isSetFunctions_ = true;
         });
 }

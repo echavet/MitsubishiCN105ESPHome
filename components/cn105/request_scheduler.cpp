@@ -34,12 +34,30 @@ void RequestScheduler::disable_request(uint8_t code) {
     }
 }
 
+void RequestScheduler::enable_request(uint8_t code) {
+    for (auto& req : requests_) {
+        if (req.code == code) {
+            req.disabled = false;
+            break;
+        }
+    }
+}
+
+void RequestScheduler::timer_bypass(uint8_t code) {
+    for (auto& req : requests_) {
+        if (req.code == code) {
+            req.last_request_time = 0;
+            break;
+        }
+    }
+}
+
 bool RequestScheduler::is_empty() const {
     return requests_.empty();
 }
 
 void RequestScheduler::send_request(uint8_t code, CN105Climate* context) {
-    // Obtenir le contexte si non fourni mais que le callback est disponible
+    // Get context if not provided but callback is available
     if (!context && context_callback_) {
         context = context_callback_();
     }
@@ -49,7 +67,7 @@ void RequestScheduler::send_request(uint8_t code, CN105Climate* context) {
         if (req.code != code) continue;
         if (req.disabled) { return; }
 
-        // Vérifier canSend si présent et si le contexte est disponible
+        // Check canSend if present and if context is available
         if (req.canSend && context) {
             if (!req.canSend(*context)) {
                 return;
@@ -62,12 +80,12 @@ void RequestScheduler::send_request(uint8_t code, CN105Climate* context) {
         req.awaiting = true;
         req.last_request_time = CUSTOM_MILLIS;
 
-        // Envoyer le paquet via le callback
+        // Send the packet via callback
         if (send_callback_) {
             send_callback_(req.code);
         }
 
-        // Gérer le timeout si configuré et si le callback est disponible
+        // Manage the timeout if configured and if the callback is available
         if (req.soft_timeout_ms > 0 && timeout_callback_) {
             uint8_t code_copy = req.code;
             const std::string tname = req.timeout_name.empty() ?
@@ -75,13 +93,13 @@ void RequestScheduler::send_request(uint8_t code, CN105Climate* context) {
                 req.timeout_name;
 
             timeout_callback_(tname, req.soft_timeout_ms, [this, code_copy]() {
-                // Obtenir le contexte pour send_next_after
+                // Get context for send_next_after
                 CN105Climate* ctx = nullptr;
                 if (this->context_callback_) {
                     ctx = this->context_callback_();
                 }
 
-                // Si la réponse est toujours attendue, considérer comme un échec soft et continuer
+                // If the response is still expected, consider it a soft failure and continue
                 for (auto& r : this->requests_) {
                     if (r.code == code_copy && r.awaiting) {
                         r.awaiting = false;
@@ -106,7 +124,7 @@ void RequestScheduler::send_request(uint8_t code, CN105Climate* context) {
 }
 
 void RequestScheduler::mark_response_seen(uint8_t code, CN105Climate* context) {
-    // Obtenir le contexte si non fourni mais que le callback est disponible
+    // Get context if not provided but callback is available
     if (!context && context_callback_) {
         context = context_callback_();
     }
@@ -117,7 +135,7 @@ void RequestScheduler::mark_response_seen(uint8_t code, CN105Climate* context) {
             req.failures = 0;
             ESP_LOGD(LOG_CYCLE_TAG, "Received %s <0x%02X>", req.description, req.code);
 
-            // Appeler le callback onResponse si présent et si le contexte est disponible
+            // Call the onResponse callback if present and if the context is available
             if (req.onResponse && context) {
                 req.onResponse(*context);
             }
@@ -127,12 +145,12 @@ void RequestScheduler::mark_response_seen(uint8_t code, CN105Climate* context) {
 }
 
 void RequestScheduler::send_next_after(uint8_t previous_code, CN105Climate* context) {
-    // Obtenir le contexte si non fourni mais que le callback est disponible
+    // Get context if not provided but callback is available
     if (!context && context_callback_) {
         context = context_callback_();
     }
 
-    // Trouver l'index de départ (par code) puis essayer les entrées activables suivantes dans l'ordre
+    // Find the starting index (by code) then try the next activateable entries in order
     int start = -1;
     for (size_t i = 0; i < requests_.size(); ++i) {
         if (requests_[i].code == previous_code) {
@@ -151,7 +169,7 @@ void RequestScheduler::send_next_after(uint8_t previous_code, CN105Climate* cont
             continue;
         }
 
-        // Vérifier canSend si présent et si le contexte est disponible
+        // Check canSend if present and if context is available
         if (req.canSend && context) {
             if (!req.canSend(*context)) {
                 if (req.log_tag) {
@@ -161,7 +179,7 @@ void RequestScheduler::send_next_after(uint8_t previous_code, CN105Climate* cont
             }
         }
 
-        if (req.interval_ms > 0 && (CUSTOM_MILLIS - req.last_request_time < req.interval_ms)) {
+        if (req.interval_ms > 0 && (CUSTOM_MILLIS - req.last_request_time < req.interval_ms) && req.last_request_time > 0) {
             if (req.log_tag) {
                 ESP_LOGD(req.log_tag, "Skipping %s (0x%02X) - interval not elapsed (elapsed: %lu, interval: %u)",
                     req.description, req.code,
@@ -170,24 +188,24 @@ void RequestScheduler::send_next_after(uint8_t previous_code, CN105Climate* cont
             continue;
         }
 
-        // Envoyer la requête trouvée
+        // Send found request
         send_request(req.code, context);
         return;
     }
 
-    // Plus de requêtes → terminer le cycle
+    // No more requests → end the cycle
     if (terminate_callback_) {
         terminate_callback_();
     }
 }
 
 bool RequestScheduler::process_response(uint8_t code, CN105Climate* context) {
-    // Obtenir le contexte si non fourni mais que le callback est disponible
+    // Get context if not provided but callback is available
     if (!context && context_callback_) {
         context = context_callback_();
     }
 
-    // Chercher si le code est géré par le scheduler
+    // Find out if the code is managed by the scheduler
     bool handled = false;
     for (auto& req : requests_) {
         if (req.code == code) {
@@ -203,8 +221,8 @@ bool RequestScheduler::process_response(uint8_t code, CN105Climate* context) {
 }
 
 void RequestScheduler::loop() {
-    // Actuellement, la gestion des timeouts est faite via des callbacks
-    // Cette méthode est prévue pour une gestion future si nécessaire
-    // (par exemple, pour vérifier les timeouts manuellement dans le loop principal)
+    // Currently, timeouts are managed via callbacks
+    // This method is intended for future management if necessary
+    // (for example, to check timeouts manually in the main loop)
 }
 

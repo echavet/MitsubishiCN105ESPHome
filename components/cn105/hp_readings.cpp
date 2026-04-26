@@ -231,7 +231,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
     }
 
-    ESP_LOGD("Decoder", "[Temp ÃÂ°C: %f]", receivedSettings.temperature);
+    ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
 
     receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6], "fan reading");
     ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
@@ -303,10 +303,10 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
         int temp = data[6];
         temp -= 128;
         receivedStatus.roomTemperature = temp / 2.0f;
-        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[6]  --> [Room ÃÂ°C: %f]", receivedStatus.roomTemperature);
+        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[6]  --> [Room °C: %f]", receivedStatus.roomTemperature);
     } else {
         receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
-        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[3] map --> [Room ÃÂ°C : %f]", receivedStatus.roomTemperature);
+        ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[3] map --> [Room °C : %f]", receivedStatus.roomTemperature);
     }
 
     // Update the remote temperature control sensor (Issue 290)
@@ -323,8 +323,8 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
 
     receivedStatus.runtimeHours = float((data[11] << 16) | (data[12] << 8) | data[13]) / 60;
 
-    ESP_LOGD("Decoder", "[Room ÃÂ°C: %f]", receivedStatus.roomTemperature);
-    ESP_LOGD("Decoder", "[OAT  ÃÂ°C: %f]", receivedStatus.outsideAirTemperature);
+    ESP_LOGD("Decoder", "[Room °C: %f]", receivedStatus.roomTemperature);
+    ESP_LOGD("Decoder", "[OAT  °C: %f]", receivedStatus.outsideAirTemperature);
 
     // no change with this packet to currentStatus for operating and compressorFrequency
     receivedStatus.operating = currentStatus.operating;
@@ -507,7 +507,7 @@ void CN105Climate::processCommand() {
         this->updateSuccess();
         break;
 
-    case 0x62:  /* packet contains data (room ÃÂ°C, settings, timer, status, or functions...)*/
+    case 0x62:  /* packet contains data (room °C, settings, timer, status, or functions...)*/
         this->getDataFromResponsePacket();
         break;
     case 0x7a:  // Connection success (User / standard)
