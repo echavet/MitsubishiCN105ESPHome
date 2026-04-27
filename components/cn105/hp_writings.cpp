@@ -552,9 +552,6 @@ void CN105Climate::sendRemoteTemperature() {
 
     // Send the packet
     this->sendRemoteTemperaturePacket();
-
-    // Reset the watchdog timeout (HA sent us a fresh value)
-    this->pingExternalTemperature();
 }
 
 void CN105Climate::sendWantedRunStates() {
