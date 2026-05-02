@@ -37,7 +37,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
 
     this->isUARTConnected_ = false;
-    this->tempMode = false;
+    this->use_temperature_encoding_b_ = false;
     this->wideVaneAdj = false;
     this->functions = heatpumpFunctions();
     this->autoUpdate = false;
@@ -46,11 +46,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->lastSend = 0;
     this->infoMode = 0;
     this->lastConnectRqTimeMs = 0;
-    this->currentStatus.operating = false;
-    this->currentStatus.compressorFrequency = NAN;
-    this->currentStatus.inputPower = NAN;
-    this->currentStatus.kWh = NAN;
-    this->currentStatus.runtimeHours = NAN;
+    // currentStatus fields are now default-initialized via heatpumpStatus struct defaults
     this->tx_pin_ = -1;
     this->rx_pin_ = -1;
 

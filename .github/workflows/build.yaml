@@ -8,8 +8,35 @@ on:
   pull_request:
 
 jobs:
-  test:
-    name: Build
+  # ──────────────────────────────────────────────
+  # Job 1 — Unit tests (standalone C++ via GoogleTest)
+  # Runs BEFORE ESPHome compile checks.
+  # ──────────────────────────────────────────────
+  unit-tests:
+    name: Unit Tests (C++)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install GoogleTest
+      run: sudo apt-get update && sudo apt-get install -y libgtest-dev cmake build-essential
+
+    - name: Configure
+      run: cmake -B tests/unit/build -S tests/unit -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build tests/unit/build -j$(nproc)
+
+    - name: Run tests
+      run: cd tests/unit/build && ctest --output-on-failure --no-tests=error
+
+  # ──────────────────────────────────────────────
+  # Job 2 — ESPHome compile (existing matrix)
+  # Now depends on unit-tests passing first.
+  # ──────────────────────────────────────────────
+  esphome-build:
+    name: ESPHome Build
+    needs: unit-tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

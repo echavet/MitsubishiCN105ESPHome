@@ -458,11 +458,11 @@ namespace esphome {
         uint8_t storedInputData[MAX_DATA_BYTES]; // multi-byte data
         uint8_t* data;
 
-        // initialise to all off, then it will update shortly after connect;
-        heatpumpStatus currentStatus{ 0, 0, false, {TIMER_MODE_MAP[0], 0, 0, 0, 0}, 0, 0, 0, 0 };
+        // All fields are default-initialized via heatpumpStatus struct defaults (NAN, false, etc.)
+        heatpumpStatus currentStatus{};
         heatpumpFunctions functions;
 
-        bool tempMode = false;
+        bool use_temperature_encoding_b_ = false;
         bool wideVaneAdj;
         bool autoUpdate;
         bool firstRun;
