@@ -1,6 +1,7 @@
 #pragma once
 #include "Globals.h"
 #include "cn105_protocol.h"
+#include "frame_parser.h"
 #include "esphome/components/uart/uart.h"
 #include "heatpumpFunctions.h"
 #include "van_orientation_select.h"
@@ -314,9 +315,6 @@ namespace esphome {
         }
 
         bool processInput(void);
-        void parse(uint8_t inputData);
-        void checkHeader(uint8_t inputData);
-        void initBytePointer();
         void processDataPacket();
         void getErrorInfoFromResponsePacket();
     void getDataFromResponsePacket();
@@ -329,7 +327,7 @@ namespace esphome {
 
         void updateSuccess();
         void processCommand();
-        bool checkSum();
+
         uint8_t checkSum(uint8_t bytes[], int len);
 
         const char* getModeSetting();
@@ -386,7 +384,7 @@ namespace esphome {
         void updateAction();
         void setActionIfOperatingTo(climate::ClimateAction action);
         void setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateAction action);
-        void hpPacketDebug(uint8_t* packet, unsigned int length, const char* packetDirection, const char* log_prefix = "");
+        void hpPacketDebug(const uint8_t* packet, unsigned int length, const char* packetDirection, const char* log_prefix = "");
         void hpFunctionsDebug(uint8_t* packet, unsigned int length);
 
         void debugSettings(const char* settingName, heatpumpSettings& settings);
@@ -456,7 +454,7 @@ namespace esphome {
         unsigned long lastConnectRqTimeMs;
         unsigned long lastReconnectTimeMs;
 
-        uint8_t storedInputData[MAX_DATA_BYTES]; // multi-byte data
+        cn105_protocol::FrameParser parser_;     // UART frame assembler (Phase 3A)
         uint8_t* data;
 
         // All fields are default-initialized via heatpumpStatus struct defaults (NAN, false, etc.)
@@ -479,10 +477,7 @@ namespace esphome {
         bool isReading = false;
         bool isWriting = false;
 
-        bool foundStart = false;
-        int bytesRead = 0;
-        int dataLength = 0;
-        uint8_t command = 0;
+        // foundStart, bytesRead, dataLength, command → moved into parser_ (Phase 3A)
 
         // Ensure dual setpoints are valid (no NaN, enforce spread in AUTO)
         void sanitizeDualSetpoints();

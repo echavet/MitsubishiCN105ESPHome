@@ -21,7 +21,7 @@ void CN105Climate::setup() {
     this->target_temperature_high = NAN;
     this->fan_mode = climate::CLIMATE_FAN_OFF;
     this->swing_mode = climate::CLIMATE_SWING_OFF;
-    this->initBytePointer();
+    this->parser_.reset();
     this->lastResponseMs = CUSTOM_MILLIS;
 
     // initialize diagnostic stats

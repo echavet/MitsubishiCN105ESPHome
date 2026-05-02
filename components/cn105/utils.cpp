@@ -364,7 +364,7 @@ void CN105Climate::debugSettingsAndStatus(const char* settingName, heatpumpSetti
 
 
 
-void CN105Climate::hpPacketDebug(uint8_t* packet, unsigned int length, const char* packetDirection, const char* log_prefix) {
+void CN105Climate::hpPacketDebug(const uint8_t* packet, unsigned int length, const char* packetDirection, const char* log_prefix) {
     if (length < 5) {
         // Fallback for too short packets
         std::string output;

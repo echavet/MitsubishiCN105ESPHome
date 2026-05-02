@@ -141,7 +141,7 @@ void CN105Climate::registerHardwareSettingsRequests() {
         bool all_zeros = true;
         // On some units (e.g. SEZ), codes may be present with a value of zero as long as the session
         // is not in installer mode. The presence of the byte (code+value) just validate the support.
-        for (int i = 1; i < self.dataLength; i++) {
+        for (int i = 1; i < self.parser_.data_length(); i++) {
             if (self.data[i] != 0) {
                 all_zeros = false;
                 break;
@@ -176,8 +176,8 @@ void CN105Climate::registerHardwareSettingsRequests() {
     InfoRequest r_funcs1("functions1", "Functions Part 1", 0x20, 3, 0, interval, LOG_FUNCTIONS_TAG);
     r_funcs1.onResponse = [this, check_and_disable](CN105Climate& self) {
         // Log the raw packet and decoded pairs even if the unit returns all zeros
-        self.hpPacketDebug(self.data, self.dataLength, "RX 0x20");
-        self.hpFunctionsDebug(self.data, self.dataLength);
+        self.hpPacketDebug(self.data, self.parser_.data_length(), "RX 0x20");
+        self.hpFunctionsDebug(self.data, self.parser_.data_length());
         if (check_and_disable(self, 0x20)) {
             self.functions.setData1(&self.data[1]);
             ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 1 (via InfoRequest)");
@@ -192,8 +192,8 @@ void CN105Climate::registerHardwareSettingsRequests() {
     InfoRequest r_funcs2("functions2", "Functions Part 2", 0x22, 3, 0, interval, LOG_FUNCTIONS_TAG);
     r_funcs2.onResponse = [this, check_and_disable](CN105Climate& self) {
         // Log the raw packet and decoded pairs even if the unit returns all zeros
-        self.hpPacketDebug(self.data, self.dataLength, "RX 0x22");
-        self.hpFunctionsDebug(self.data, self.dataLength);
+        self.hpPacketDebug(self.data, self.parser_.data_length(), "RX 0x22");
+        self.hpFunctionsDebug(self.data, self.parser_.data_length());
         if (check_and_disable(self, 0x22)) {
             self.functions.setData2(&self.data[1]);
             ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 2 (via InfoRequest)");
@@ -349,7 +349,7 @@ void CN105Climate::setupUART() {
         this->parent_->get_stop_bits() == 1) {
         ESP_LOGI(LOG_CONN_TAG, "UART configured as SERIAL_8E1");
         this->isUARTConnected_ = true;
-        this->initBytePointer();
+        this->parser_.reset();
     } else {
         ESP_LOGW(LOG_CONN_TAG, "UART is not configured as SERIAL_8E1");
     }
