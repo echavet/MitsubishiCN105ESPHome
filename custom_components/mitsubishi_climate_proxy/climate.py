@@ -158,12 +158,17 @@ class MitsubishiHybridClimate(ClimateEntity):
 
     @property
     def _source_unit(self) -> str:
-        """Return the temperature unit advertised by the source entity."""
-        if self._source_state:
-            return self._source_state.attributes.get(
-                "unit_of_measurement", UnitOfTemperature.CELSIUS
-            )
-        return UnitOfTemperature.CELSIUS
+        """Return the temperature unit used by HA for climate state attributes.
+
+        Climate entities in HA do NOT expose 'unit_of_measurement' in their
+        state attributes (unlike sensor entities).  Instead, HA converts all
+        climate temperature values to match the user's configured unit system
+        before storing them in the state object.
+
+        Therefore the reliable way to know what unit the source values are in
+        is to read the HA instance's unit system.
+        """
+        return self.hass.config.units.temperature_unit
 
     def _normalize_temp(self, val: Optional[float]) -> Optional[float]:
         """Convert a source temperature to °C if the source advertises °F.
