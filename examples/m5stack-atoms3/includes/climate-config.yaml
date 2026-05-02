@@ -45,6 +45,10 @@ climate:
       name: submode sensor
     stage_sensor:
       name: stage sensor
+    error_code_sensor:
+      name: error code
+    remote_temperature_source:
+      sensor_id: ha_cdeg_sejour_et_cuisine
     remote_temperature_timeout: 60min
     update_interval: 3500ms # shouldn't be less than 1 second
     debounce_delay: 100ms # delay to prevent bouncing
