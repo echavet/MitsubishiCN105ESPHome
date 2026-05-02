@@ -5,142 +5,64 @@
 using namespace esphome;
 
 /**
- * Seek the byte pointer to the beginning of the array
- * Initializes few variables
-*/
-void CN105Climate::initBytePointer() {
-    this->foundStart = false;
-    this->bytesRead = 0;
-    this->dataLength = -1;
-    this->command = 0;
-}
-
-/**
- *
-* The total size of a frame is made up of several elements:
-  * Header size: The header has a fixed length of 5 bytes (INFOHEADER_LEN).
-  * Data Length: The data length is variable and is specified by the fourth byte of the header (header[4]).
-  * Checksum: There is 1 checksum byte at the end of the frame.
-  *
-  * The total size of a frame is therefore the sum of these elements: header size (5 bytes) + data length (variable) + checksum (1 byte).
-  * To calculate the total size, we can use the formula:
-  * Total size = 5 (header) + Data length + 1 (checksum)
-  *The total size depends on the specific data length for each individual frame.
+ * processInput: reads available bytes from UART and feeds them to the FrameParser.
+ * When a complete frame is detected, delegates to processDataPacket().
  */
-void CN105Climate::parse(uint8_t inputData) {
-
-    ESP_LOGV("Decoder", "--> %02X [nb: %d]", inputData, this->bytesRead);
-
-    if (!this->foundStart) {                // no packet yet
-        if (inputData == HEADER[0]) {
-            this->foundStart = true;
-            this->bytesRead = 0;
-            storedInputData[this->bytesRead++] = inputData;
-        } else {
-            // unknown bytes
-        }
-    } else {                                // we are getting a packet
-        if (this->bytesRead >= (MAX_DATA_BYTES - 1)) {
-            ESP_LOGW("Decoder", "buffer overflow preventive reset (bytesRead=%d)", this->bytesRead);
-            this->initBytePointer();
-            return;
-        }
-        storedInputData[this->bytesRead] = inputData;
-
-        checkHeader(inputData);
-
-        if (this->dataLength != -1) {       // is header complete ?
-            if ((this->dataLength + 6) > MAX_DATA_BYTES) {
-                ESP_LOGW("Decoder", "declared data length %d too large, resetting parser", this->dataLength);
-                this->initBytePointer();
-                return;
-            }
-
-            if ((this->bytesRead) == this->dataLength + 5) {
-
-                this->processDataPacket();
-                this->initBytePointer();
-            } else {                                        // packet is still filling
-                this->bytesRead++;                          // more data to come
-            }
-        } else {
-            ESP_LOGV("Decoder", "data length toujours pas connu");
-            // header is not complete yet
-            this->bytesRead++;
-        }
-    }
-
-}
-
-
-bool CN105Climate::checkSum() {
-    uint8_t packetCheckSum = storedInputData[this->bytesRead];
-    uint8_t processedCS = cn105_protocol::checksum(this->storedInputData, this->dataLength + 5);
-
-    if (packetCheckSum == processedCS) {
-        ESP_LOGD("chkSum", "OK-> %02X=%02X ", processedCS, packetCheckSum);
-    } else {
-        ESP_LOGW("chkSum", "KO-> %02X!=%02X ", processedCS, packetCheckSum);
-        // During handshake, a checksum error is a useful diagnostic signal
-        if (!this->isHeatpumpConnected_) {
-            ESP_LOGD(LOG_CONN_TAG, "Checksum KO during handshake (computed=%02X packet=%02X, cmd=0x%02X len=%d)",
-                processedCS, packetCheckSum, this->command, this->dataLength);
-            this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, LOG_CONN_TAG);
-        }
-    }
-
-    return (packetCheckSum == processedCS);
-}
-
-
-void CN105Climate::checkHeader(uint8_t inputData) {
-    if (this->bytesRead == 4) {
-        if (storedInputData[2] == HEADER[2] && storedInputData[3] == HEADER[3]) {
-            ESP_LOGV("Header", "header matches HEADER");
-            ESP_LOGV("Header", "[%02X] (%02X) %02X %02X [%02X]<-- header", storedInputData[0], storedInputData[1], storedInputData[2], storedInputData[3], storedInputData[4]);
-            ESP_LOGD("Header", "command: (%02X) data length: [%02X]<-- header", storedInputData[1], storedInputData[4]);
-            this->command = storedInputData[1];
-        }
-        this->dataLength = storedInputData[4];
-    }
-}
-
 bool CN105Climate::processInput(void) {
     bool processed = false;
     while (this->get_hw_serial_()->available()) {
         processed = true;
         uint8_t inputData;
         if (this->get_hw_serial_()->read_byte(&inputData)) {
-            parse(inputData);
+            ESP_LOGV("Decoder", "--> %02X", inputData);
+            this->parser_.feed(inputData);
+            if (this->parser_.frame_complete()) {
+                this->processDataPacket();
+                this->parser_.reset();
+            }
         }
-
     }
     return processed;
 }
 
+/**
+ * processDataPacket: called when the FrameParser has assembled a complete frame.
+ * Validates checksum, sets the data pointer, and dispatches to processCommand().
+ */
 void CN105Climate::processDataPacket() {
 
     ESP_LOGV(TAG, "processing data packet...");
 
-    this->data = &this->storedInputData[5];
+    // Point data at the payload section of the parser buffer
+    // Note: cast away const because downstream code uses non-const data pointer
+    this->data = const_cast<uint8_t*>(this->parser_.data());
 
-    this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, "READ");
+    this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), "READ");
 
-    // Pendant le handshake (tant que non connectÃÂ©), logguer toute trame RX sous CN105_CONN en DEBUG
-    // afin de faciliter le diagnostic (0x7A/0x7B attendus, ou autre rÃÂ©ponse inattendue).
+    // During handshake, log every received frame for diagnostics
     if (!this->isHeatpumpConnected_) {
-        ESP_LOGD(LOG_CONN_TAG, "RX during handshake (cmd=0x%02X len=%d)", this->command, this->dataLength);
-        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, LOG_CONN_TAG);
+        ESP_LOGD(LOG_CONN_TAG, "RX during handshake (cmd=0x%02X len=%d)",
+            this->parser_.command(), this->parser_.data_length());
+        this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
     }
 
-    if (this->checkSum()) {
-        // checkPoint of a heatpump response
-        this->lastResponseMs = CUSTOM_MILLIS;    //esphome::CUSTOM_MILLIS;
+    if (this->parser_.checksum_valid()) {
+        ESP_LOGD("chkSum", "OK");
+        // checkpoint of a heatpump response
+        this->lastResponseMs = CUSTOM_MILLIS;
 
         // processing the specific command
         processCommand();
+    } else {
+        ESP_LOGW("chkSum", "KO -> checksum mismatch (cmd=0x%02X len=%d)",
+            this->parser_.command(), this->parser_.data_length());
+        if (!this->isHeatpumpConnected_) {
+            ESP_LOGD(LOG_CONN_TAG, "Checksum KO during handshake");
+            this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
+        }
     }
 }
+
 
 
 void CN105Climate::getAutoModeStateFromResponsePacket() {
@@ -550,9 +472,9 @@ void CN105Climate::updateSuccess() {
 }
 
 void CN105Climate::processCommand() {
-    switch (this->command) {
+    switch (this->parser_.command()) {
     case 0x61:  /* last update was successful */
-        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, LOG_ACK);
+        this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_ACK);
         this->updateSuccess();
         break;
 
@@ -563,9 +485,9 @@ void CN105Climate::processCommand() {
     case 0x7b:  // Connection success (Installer / extended)
         // Log en INFO sur le tag dÃÂ©diÃÂ©, dÃÂ©tails en DEBUG via hpPacketDebug
         ESP_LOGI(LOG_CONN_TAG, "--> Heatpump did reply: connection success (%s, 0x%02X)! <--",
-            (this->command == 0x7b) ? "Installer" : "User",
-            this->command);
-        this->hpPacketDebug(this->storedInputData, this->bytesRead + 1, LOG_CONN_TAG);
+            (this->parser_.command() == 0x7b) ? "Installer" : "User",
+            this->parser_.command());
+        this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
         //this->isHeatpumpConnected_ = true;
         this->setHeatpumpConnected(true);
         // let's say that the last complete cycle was over now

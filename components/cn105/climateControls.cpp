@@ -11,8 +11,18 @@ using namespace esphome;
 
 
 void CN105Climate::checkPendingWantedSettings() {
+    // Already in-flight — don't log or re-send
+    if (this->wantedSettings.hasBeenSent) {
+        return;
+    }
+
     long now = CUSTOM_MILLIS;
     if (!(this->wantedSettings.hasChanged) || (now - this->wantedSettings.lastChange < this->debounce_delay_)) {
+        return;
+    }
+
+    // Don't log if sendWantedSettings() will defer due to write throttle (300ms)
+    if (now - this->lastSend <= 300) {
         return;
     }
 
@@ -21,10 +31,21 @@ void CN105Climate::checkPendingWantedSettings() {
 }
 
 void CN105Climate::checkPendingWantedRunStates() {
+    // Already in-flight — don't log or re-send
+    if (this->wantedRunStates.hasBeenSent) {
+        return;
+    }
+
     long now = CUSTOM_MILLIS;
     if (!(this->wantedRunStates.hasChanged) || (now - this->wantedRunStates.lastChange < this->debounce_delay_)) {
         return;
     }
+
+    // Don't log if sendWantedRunStates() will defer due to write throttle (300ms)
+    if (now - this->lastSend <= 300) {
+        return;
+    }
+
     ESP_LOGI(LOG_ACTION_EVT_TAG, "checkPendingWantedRunStates - wanted run states have changed, sending them to the heatpump...");
     this->sendWantedRunStates();
 }
