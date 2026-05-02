@@ -233,7 +233,7 @@ void CN105Climate::createPacket(uint8_t* packet) {
     }
 
     if (wantedSettings.temperature != -1) {
-        if (!tempMode) {
+        if (!use_temperature_encoding_b_) {
             ESP_LOGD(TAG, "temperature (tempmode is false) -> %f", getTemperatureSetting());
             int idx = lookupByteMapIndex(TEMP_MAP, 16, getTemperatureSetting(), "temperature (write)");
             if (idx >= 0) { packet[10] = TEMP[idx]; packet[6] += CONTROL_PACKET_1[2]; } else { ESP_LOGW(TAG, "Ignoring invalid temperature setting while building packet"); }

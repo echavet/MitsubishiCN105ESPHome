@@ -135,19 +135,19 @@ const uint8_t ESPMHP_MAX_TEMPERATURE = 26;
 const float ESPMHP_TEMPERATURE_STEP = 0.5;
 
 struct heatpumpSettings {
-    const char* power;
-    const char* mode;
-    float temperature;
-    float dual_low_target;
-    float dual_high_target;
-    const char* fan;
-    const char* vane;
-    const char* wideVane;
-    bool iSee;
-    bool connected;
-    const char* stage;
-    const char* sub_mode;
-    const char* auto_sub_mode;
+    const char* power = nullptr;
+    const char* mode = nullptr;
+    float temperature = -1.0f;
+    float dual_low_target = -100.0f;
+    float dual_high_target = -100.0f;
+    const char* fan = nullptr;
+    const char* vane = nullptr;
+    const char* wideVane = nullptr;
+    bool iSee = false;
+    bool connected = false;
+    const char* stage = nullptr;
+    const char* sub_mode = nullptr;
+    const char* auto_sub_mode = nullptr;
 
     void resetSettings() {
         power = nullptr;
@@ -160,24 +160,8 @@ struct heatpumpSettings {
         wideVane = nullptr;
     }
 
-    heatpumpSettings& operator=(const heatpumpSettings& other) {
-        if (this != &other) {
-            power = other.power;
-            mode = other.mode;
-            temperature = other.temperature;
-            dual_low_target = other.dual_low_target;
-            dual_high_target = other.dual_high_target;
-            fan = other.fan;
-            vane = other.vane;
-            wideVane = other.wideVane;
-            iSee = other.iSee;
-            connected = other.connected;
-            stage = other.stage;
-            sub_mode = other.sub_mode;
-            auto_sub_mode = other.auto_sub_mode;
-        }
-        return *this;
-    }
+    // Trivial copy — all members are scalars/pointers
+    heatpumpSettings& operator=(const heatpumpSettings& other) = default;
 
     bool operator==(const heatpumpSettings& other) const {
         return power == other.power &&
@@ -188,16 +172,16 @@ struct heatpumpSettings {
             wideVane == other.wideVane;
     }
 
-    bool operator!=(const heatpumpSettings& other) {
+    bool operator!=(const heatpumpSettings& other) const {
         return !(this->operator==(other));
     }
 };
 
 struct wantedHeatpumpSettings : heatpumpSettings {
-    bool hasChanged;
-    bool hasBeenSent;
-    uint8_t nb_deffered_requests;
-    long lastChange;
+    bool hasChanged = false;
+    bool hasBeenSent = false;
+    uint8_t nb_deffered_requests = 0;
+    long lastChange = 0;
 
     void resetSettings() {
         heatpumpSettings::resetSettings();
@@ -205,14 +189,8 @@ struct wantedHeatpumpSettings : heatpumpSettings {
         hasBeenSent = false;
     }
 
-    wantedHeatpumpSettings& operator=(const wantedHeatpumpSettings& other) {
-        if (this != &other) {
-            heatpumpSettings::operator=(other);
-            hasChanged = other.hasChanged;
-            hasBeenSent = other.hasBeenSent;
-        }
-        return *this;
-    }
+    // Trivial copy — all members are scalars
+    wantedHeatpumpSettings& operator=(const wantedHeatpumpSettings& other) = default;
 
     wantedHeatpumpSettings& operator=(const heatpumpSettings& other) {
         if (this != &other) {
@@ -223,22 +201,15 @@ struct wantedHeatpumpSettings : heatpumpSettings {
 };
 
 struct heatpumpTimers {
-    const char* mode;
-    int onMinutesSet;
-    int onMinutesRemaining;
-    int offMinutesSet;
-    int offMinutesRemaining;
+    const char* mode = nullptr;
+    int onMinutesSet = 0;
+    int onMinutesRemaining = 0;
+    int offMinutesSet = 0;
+    int offMinutesRemaining = 0;
 
-    heatpumpTimers& operator=(const heatpumpTimers& other) {
-        if (this != &other) {
-            mode = other.mode;
-            onMinutesSet = other.onMinutesSet;
-            onMinutesRemaining = other.onMinutesRemaining;
-            offMinutesSet = other.offMinutesSet;
-            offMinutesRemaining = other.offMinutesRemaining;
-        }
-        return *this;
-    }
+    // Trivial copy — all members are scalars/pointers
+    heatpumpTimers& operator=(const heatpumpTimers& other) = default;
+
     bool operator==(const heatpumpTimers& other) const {
         return
             mode == other.mode &&
@@ -253,14 +224,14 @@ struct heatpumpTimers {
 };
 
 struct heatpumpStatus {
-    float roomTemperature;
-    float outsideAirTemperature;
-    bool operating;
-    heatpumpTimers timers;
-    float compressorFrequency;
-    float inputPower;
-    float kWh;
-    float runtimeHours;
+    float roomTemperature = NAN;
+    float outsideAirTemperature = NAN;
+    bool operating = false;
+    heatpumpTimers timers{};
+    float compressorFrequency = NAN;
+    float inputPower = NAN;
+    float kWh = NAN;
+    float runtimeHours = NAN;
 
     bool operator==(const heatpumpStatus& other) const {
         return (std::isnan(roomTemperature) ? std::isnan(other.roomTemperature) : roomTemperature == other.roomTemperature) &&
@@ -278,10 +249,10 @@ struct heatpumpStatus {
 };
 
 struct heatpumpRunStates {
-    int8_t air_purifier;
-    int8_t night_mode;
-    int8_t circulator;
-    const char* airflow_control;
+    int8_t air_purifier = -1;
+    int8_t night_mode = -1;
+    int8_t circulator = -1;
+    const char* airflow_control = nullptr;
 
     void resetSettings() {
         air_purifier = -1;
@@ -290,15 +261,8 @@ struct heatpumpRunStates {
         airflow_control = nullptr;
     }
 
-    heatpumpRunStates& operator=(const heatpumpRunStates& other) {
-        if (this != &other) {
-            air_purifier = other.air_purifier;
-            night_mode = other.night_mode;
-            circulator = other.circulator;
-            airflow_control = other.airflow_control;
-        }
-        return *this;
-    }
+    // Trivial copy — all members are scalars/pointers
+    heatpumpRunStates& operator=(const heatpumpRunStates& other) = default;
 
     bool operator==(const heatpumpRunStates& other) const {
         return air_purifier == other.air_purifier &&
@@ -307,15 +271,15 @@ struct heatpumpRunStates {
             airflow_control == other.airflow_control;
     }
 
-    bool operator!=(const heatpumpRunStates& other) {
+    bool operator!=(const heatpumpRunStates& other) const {
         return !(this->operator==(other));
     }
 };
 
 struct wantedHeatpumpRunStates : heatpumpRunStates {
-    bool hasChanged;
-    bool hasBeenSent;
-    long lastChange;
+    bool hasChanged = false;
+    bool hasBeenSent = false;
+    long lastChange = 0;
 
     void resetSettings() {
         heatpumpRunStates::resetSettings();
@@ -323,14 +287,8 @@ struct wantedHeatpumpRunStates : heatpumpRunStates {
         hasBeenSent = false;
     }
 
-    wantedHeatpumpRunStates& operator=(const wantedHeatpumpRunStates& other) {
-        if (this != &other) {
-            heatpumpRunStates::operator=(other);
-            hasChanged = other.hasChanged;
-            hasBeenSent = other.hasBeenSent;
-        }
-        return *this;
-    }
+    // Trivial copy — all members are scalars
+    wantedHeatpumpRunStates& operator=(const wantedHeatpumpRunStates& other) = default;
 
     wantedHeatpumpRunStates& operator=(const heatpumpRunStates& other) {
         if (this != &other) {
