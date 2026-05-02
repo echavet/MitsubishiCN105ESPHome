@@ -4,11 +4,7 @@
 using namespace esphome;
 
 uint8_t CN105Climate::checkSum(uint8_t bytes[], int len) {
-    uint8_t sum = 0;
-    for (int i = 0; i < len; i++) {
-        sum += bytes[i];
-    }
-    return (0xfc - sum) & 0xff;
+    return cn105_protocol::checksum(bytes, len);
 }
 
 

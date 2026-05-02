@@ -1,5 +1,6 @@
 #pragma once
 #include "Globals.h"
+#include "cn105_protocol.h"
 #include "esphome/components/uart/uart.h"
 #include "heatpumpFunctions.h"
 #include "van_orientation_select.h"

@@ -46,7 +46,7 @@ const char* CN105Climate::getIfNotNull(const char* what, const char* defaultValu
  */
 float CN105Climate::calculateTemperatureSetting(float setting) {
     if (!this->use_temperature_encoding_b_) {
-        return this->lookupByteMapIndex(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
+        return cn105_protocol::lookup_index(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
     } else {
         setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
         return setting < 10 ? 10 : (setting > 31 ? 31 : setting);
@@ -478,48 +478,43 @@ void CN105Climate::hpFunctionsDebug(uint8_t* packet, unsigned int length) {
 }
 
 int CN105Climate::lookupByteMapIndex(const int valuesMap[], int len, int lookupValue, const char* debugInfo) {
-    for (int i = 0; i < len; i++) {
-        if (valuesMap[i] == lookupValue) {
-            return i;
-        }
+    int idx = cn105_protocol::lookup_index(valuesMap, len, lookupValue);
+    if (idx < 0) {
+        ESP_LOGW("lookup", "%s caution value %d not found, returning -1", debugInfo, lookupValue);
     }
-    ESP_LOGW("lookup", "%s caution value %d not found, returning -1", debugInfo, lookupValue);
-    //esphome::delay(200);
-    return -1;
+    return idx;
 }
 int CN105Climate::lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue, const char* debugInfo) {
-    for (int i = 0; i < len; i++) {
-        if (strcasecmp(valuesMap[i], lookupValue) == 0) {
-            return i;
-        }
+    int idx = cn105_protocol::lookup_index(valuesMap, len, lookupValue);
+    if (idx < 0) {
+        ESP_LOGW("lookup", "%s caution value %s not found, returning -1", debugInfo, lookupValue);
     }
-    ESP_LOGW("lookup", "%s caution value %s not found, returning -1", debugInfo, lookupValue);
-    //esphome::delay(200);
-    return -1;
+    return idx;
 }
 const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo, const char* defaultValue) {
+    // Check if value exists in the map first
     for (int i = 0; i < len; i++) {
         if (byteMap[i] == byteValue) {
             return valuesMap[i];
         }
     }
-
     if (defaultValue != nullptr) {
         return defaultValue;
-    } else {
-        ESP_LOGW("lookup", "%s caution: value %d not found, returning value at index 0", debugInfo, byteValue);
-        return valuesMap[0];
-    }
-
-}
-int CN105Climate::lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo) {
-    for (int i = 0; i < len; i++) {
-        if (byteMap[i] == byteValue) {
-            return valuesMap[i];
-        }
     }
     ESP_LOGW("lookup", "%s caution: value %d not found, returning value at index 0", debugInfo, byteValue);
     return valuesMap[0];
+}
+int CN105Climate::lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo) {
+    int result = cn105_protocol::lookup_value(valuesMap, byteMap, len, byteValue);
+    // Check if the lookup actually found a match vs returned fallback
+    bool found = false;
+    for (int i = 0; i < len; i++) {
+        if (byteMap[i] == byteValue) { found = true; break; }
+    }
+    if (!found) {
+        ESP_LOGW("lookup", "%s caution: value %d not found, returning value at index 0", debugInfo, byteValue);
+    }
+    return result;
 }
 
 #ifndef USE_ESP32
