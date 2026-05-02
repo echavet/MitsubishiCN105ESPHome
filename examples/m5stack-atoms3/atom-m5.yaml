@@ -44,8 +44,8 @@ logger:
     climate: DEBUG
     sensor: WARN
     chkSum: INFO
-    WRITE: WARN
-    READ: WARN
+    WRITE: DEBUG
+    READ: DEBUG
     ACK: INFO
     REMOTE_TEMP: DEBUG
     Header: INFO
