@@ -317,8 +317,11 @@ void CN105Climate::publishWantedSettingsStateToHA() {
         checkVaneSettings(this->wantedSettings, false);
     }
 
-    // HA Temp
-    this->updateTargetTemperaturesFromSettings(this->getTemperatureSetting());
+    // HA Temp — only update if this SET includes an explicit temperature change;
+    // otherwise the stale currentSettings.temperature would overwrite the UI.
+    if (this->wantedSettings.temperature != -1.0f) {
+        this->updateTargetTemperaturesFromSettings(this->getTemperatureSetting());
+    }
 
     // publish to HA
     this->publish_state();
