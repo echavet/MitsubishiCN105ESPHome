@@ -1,11 +1,12 @@
 /// cn105_protocol.h — Pure protocol functions for the Mitsubishi CN105 UART protocol.
 /// Role: Decoupled, testable logic for checksum, temperature encoding/decoding, and byte-map lookups.
-/// Deps: <cstdint>, <cmath>, <cstring> (no ESPHome dependency)
+/// Deps: <cstdint>, <cmath>, <cstring>, <optional> (no ESPHome dependency)
 #pragma once
 
 #include <cstdint>
 #include <cmath>
 #include <cstring>
+#include <optional>
 
 namespace cn105_protocol {
 
@@ -75,7 +76,7 @@ inline void encode_remote_temperature(float temperature, uint8_t& enc_a, uint8_t
 }
 
 // ════════════════════════════════════════════════════════════════
-// Byte-map lookups (generic, type-safe)
+// Byte-map lookups — fallback variant (legacy compatibility)
 // ════════════════════════════════════════════════════════════════
 
 /// Look up a mapped value from a parallel byte-map / value-map pair.
@@ -127,6 +128,60 @@ inline int lookup_index(const char* valuesMap[], int len, const char* lookupValu
         }
     }
     return -1;
+}
+
+// ════════════════════════════════════════════════════════════════
+// Byte-map lookups — std::optional variant (graceful degradation)
+// ════════════════════════════════════════════════════════════════
+
+/// Look up a mapped value, returning std::nullopt on miss.
+/// Unlike lookup_value(), this does NOT silently fall back to index 0.
+/// Callers can decide how to handle unknown bytes (keep previous value, log, etc.).
+///
+/// @tparam T         Value type (typically const char* or int).
+/// @param valuesMap  Array of mapped values.
+/// @param byteMap    Array of protocol byte codes (same length as valuesMap).
+/// @param len        Number of entries in both arrays.
+/// @param byteValue  The raw protocol byte to look up.
+/// @return           The corresponding value, or std::nullopt if not found.
+template <typename T>
+inline std::optional<T> lookup_value_opt(const T valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue) {
+    for (int i = 0; i < len; i++) {
+        if (byteMap[i] == byteValue) {
+            return valuesMap[i];
+        }
+    }
+    return std::nullopt;
+}
+
+/// Look up the index of a value in a value-map, returning std::nullopt on miss.
+///
+/// @param valuesMap   Array of mapped values (int variant).
+/// @param len         Number of entries.
+/// @param lookupValue The value to search for.
+/// @return            Index of the match, or std::nullopt if not found.
+inline std::optional<int> lookup_index_opt(const int valuesMap[], int len, int lookupValue) {
+    for (int i = 0; i < len; i++) {
+        if (valuesMap[i] == lookupValue) {
+            return i;
+        }
+    }
+    return std::nullopt;
+}
+
+/// Look up the index of a string value (case-insensitive), returning std::nullopt on miss.
+///
+/// @param valuesMap   Array of mapped string values.
+/// @param len         Number of entries.
+/// @param lookupValue The string to search for.
+/// @return            Index of the match, or std::nullopt if not found.
+inline std::optional<int> lookup_index_opt(const char* valuesMap[], int len, const char* lookupValue) {
+    for (int i = 0; i < len; i++) {
+        if (strcasecmp(valuesMap[i], lookupValue) == 0) {
+            return i;
+        }
+    }
+    return std::nullopt;
 }
 
 }  // namespace cn105_protocol

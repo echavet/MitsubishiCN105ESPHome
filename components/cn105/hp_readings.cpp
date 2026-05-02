@@ -165,9 +165,31 @@ void CN105Climate::getPowerFromResponsePacket() {
     ESP_LOGD("Decoder", "[0x09 is sub modes]");
 
     heatpumpSettings receivedSettings{};
-    receivedSettings.stage = lookupByteMapValue(STAGE_MAP, STAGE, 7, data[4], "current stage for delivery");
-    receivedSettings.sub_mode = lookupByteMapValue(SUB_MODE_MAP, SUB_MODE, 6, data[3], "submode");
-    receivedSettings.auto_sub_mode = lookupByteMapValue(AUTO_SUB_MODE_MAP, AUTO_SUB_MODE, 7, data[5], "auto mode sub mode");
+
+    // Use std::optional lookups — keep previous value on unknown bytes
+    auto stage_opt = cn105_protocol::lookup_value_opt(STAGE_MAP, STAGE, 7, data[4]);
+    if (stage_opt) {
+        receivedSettings.stage = *stage_opt;
+    } else {
+        ESP_LOGW("Decoder", "Unknown stage byte 0x%02X — keeping previous value", data[4]);
+        receivedSettings.stage = this->currentSettings.stage;
+    }
+
+    auto sub_mode_opt = cn105_protocol::lookup_value_opt(SUB_MODE_MAP, SUB_MODE, 6, data[3]);
+    if (sub_mode_opt) {
+        receivedSettings.sub_mode = *sub_mode_opt;
+    } else {
+        ESP_LOGW("Decoder", "Unknown sub_mode byte 0x%02X — keeping previous value", data[3]);
+        receivedSettings.sub_mode = this->currentSettings.sub_mode;
+    }
+
+    auto auto_sub_mode_opt = cn105_protocol::lookup_value_opt(AUTO_SUB_MODE_MAP, AUTO_SUB_MODE, 7, data[5]);
+    if (auto_sub_mode_opt) {
+        receivedSettings.auto_sub_mode = *auto_sub_mode_opt;
+    } else {
+        ESP_LOGW("Decoder", "Unknown auto_sub_mode byte 0x%02X — keeping previous value", data[5]);
+        receivedSettings.auto_sub_mode = this->currentSettings.auto_sub_mode;
+    }
 
     ESP_LOGD("Decoder", "[Stage : %s]", receivedSettings.stage);
     ESP_LOGD("Decoder", "[Sub Mode  : %s]", receivedSettings.sub_mode);
@@ -203,9 +225,24 @@ void CN105Climate::getSettingsFromResponsePacket() {
     ESP_LOGD("Decoder", "[0x02 is settings]");
 
     receivedSettings.connected = true;
-    receivedSettings.power = lookupByteMapValue(POWER_MAP, POWER, 2, data[3], "power reading");
+
+    auto power_opt = cn105_protocol::lookup_value_opt(POWER_MAP, POWER, 2, data[3]);
+    if (power_opt) {
+        receivedSettings.power = *power_opt;
+    } else {
+        ESP_LOGW("Decoder", "Unknown power byte 0x%02X — keeping previous value", data[3]);
+        receivedSettings.power = this->currentSettings.power;
+    }
+
     receivedSettings.iSee = data[4] > 0x08 ? true : false;
-    receivedSettings.mode = lookupByteMapValue(MODE_MAP, MODE, 5, receivedSettings.iSee ? (data[4] - 0x08) : data[4], "mode reading");
+    uint8_t modeByte = receivedSettings.iSee ? (data[4] - 0x08) : data[4];
+    auto mode_opt = cn105_protocol::lookup_value_opt(MODE_MAP, MODE, 5, modeByte);
+    if (mode_opt) {
+        receivedSettings.mode = *mode_opt;
+    } else {
+        ESP_LOGW("Decoder", "Unknown mode byte 0x%02X — keeping previous value", modeByte);
+        receivedSettings.mode = this->currentSettings.mode;
+    }
 
     ESP_LOGD("Decoder", "[Power : %s]", receivedSettings.power);
     ESP_LOGD("Decoder", "[iSee  : %d]", receivedSettings.iSee);
@@ -217,20 +254,45 @@ void CN105Climate::getSettingsFromResponsePacket() {
         receivedSettings.temperature = (float)temp / 2;
         this->use_temperature_encoding_b_ = true;
     } else {
-        receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
+        auto temp_opt = cn105_protocol::lookup_value_opt(TEMP_MAP, TEMP, 16, data[5]);
+        if (temp_opt) {
+            receivedSettings.temperature = static_cast<float>(*temp_opt);
+        } else {
+            ESP_LOGW("Decoder", "Unknown temperature byte 0x%02X — keeping previous value", data[5]);
+            receivedSettings.temperature = this->currentSettings.temperature;
+        }
     }
 
     ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
 
-    receivedSettings.fan = lookupByteMapValue(FAN_MAP, FAN, 6, data[6], "fan reading");
+    auto fan_opt = cn105_protocol::lookup_value_opt(FAN_MAP, FAN, 6, data[6]);
+    if (fan_opt) {
+        receivedSettings.fan = *fan_opt;
+    } else {
+        ESP_LOGW("Decoder", "Unknown fan byte 0x%02X — keeping previous value", data[6]);
+        receivedSettings.fan = this->currentSettings.fan;
+    }
     ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
 
-    receivedSettings.vane = lookupByteMapValue(VANE_MAP, VANE, 7, data[7], "vane reading");
+    auto vane_opt = cn105_protocol::lookup_value_opt(VANE_MAP, VANE, 7, data[7]);
+    if (vane_opt) {
+        receivedSettings.vane = *vane_opt;
+    } else {
+        ESP_LOGW("Decoder", "Unknown vane byte 0x%02X — keeping previous value", data[7]);
+        receivedSettings.vane = this->currentSettings.vane;
+    }
     ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
 
     // --- START OF MODIFIED SECTION - Reverted widevane section back to more or less original state
     if ((data[10] != 0) && (this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {    // wideVane is not always supported
-        receivedSettings.wideVane = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 8, data[10] & 0x0F, "wideVane reading");
+        uint8_t wideVaneByte = data[10] & 0x0F;
+        auto wideVane_opt = cn105_protocol::lookup_value_opt(WIDEVANE_MAP, WIDEVANE, 8, wideVaneByte);
+        if (wideVane_opt) {
+            receivedSettings.wideVane = *wideVane_opt;
+        } else {
+            ESP_LOGW("Decoder", "Unknown wideVane byte 0x%02X — keeping previous value", wideVaneByte);
+            receivedSettings.wideVane = this->currentSettings.wideVane;
+        }
         this->wideVaneAdj = (data[10] & 0xF0) == 0x80 ? true : false;
         ESP_LOGD("Decoder", "[wideVane: %s (adj:%d)]", receivedSettings.wideVane, this->wideVaneAdj);
     } else {
@@ -246,7 +308,13 @@ void CN105Climate::getSettingsFromResponsePacket() {
     if (this->airflow_control_select_ != nullptr) {
         if (data[10] == 0x80) {
             if (receivedSettings.iSee) {
-                receivedRunStates.airflow_control = lookupByteMapValue(AIRFLOW_CONTROL_MAP, AIRFLOW_CONTROL, 3, data[14], "airflow control reading");
+                auto airflow_opt = cn105_protocol::lookup_value_opt(AIRFLOW_CONTROL_MAP, AIRFLOW_CONTROL, 3, data[14]);
+                if (airflow_opt) {
+                    receivedRunStates.airflow_control = *airflow_opt;
+                } else {
+                    ESP_LOGW("Decoder", "Unknown airflow_control byte 0x%02X — keeping previous value", data[14]);
+                    receivedRunStates.airflow_control = this->currentRunStates.airflow_control;
+                }
             } else {
                 // For some reason data[10] is 0x80, but the i-See sensor is not active. 
                 // Some units let us do this, but the real mode is unknown (might be powersave) and the i-See sensor does not get activated.
@@ -294,7 +362,13 @@ void CN105Climate::getRoomTemperatureFromResponsePacket() {
         receivedStatus.roomTemperature = temp / 2.0f;
         ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[6]  --> [Room °C: %f]", receivedStatus.roomTemperature);
     } else {
-        receivedStatus.roomTemperature = lookupByteMapValue(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
+        auto room_temp_opt = cn105_protocol::lookup_value_opt(ROOM_TEMP_MAP, ROOM_TEMP, 32, data[3]);
+        if (room_temp_opt) {
+            receivedStatus.roomTemperature = static_cast<float>(*room_temp_opt);
+        } else {
+            ESP_LOGW("Decoder", "Unknown room_temp byte 0x%02X — keeping previous value", data[3]);
+            receivedStatus.roomTemperature = this->currentStatus.roomTemperature;
+        }
         ESP_LOGD(LOG_TEMP_SENSOR_TAG, "data[3] map --> [Room °C : %f]", receivedStatus.roomTemperature);
     }
 

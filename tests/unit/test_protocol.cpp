@@ -227,3 +227,95 @@ TEST(ProtocolLookupIndex, StringCaseInsensitive) {
 TEST(ProtocolLookupIndex, StringNotFound) {
     EXPECT_EQ(lookup_index(MODE_MAP, 5, "TURBO"), -1);
 }
+
+// ════════════════════════════════════════════════════════════════
+// lookup_value_opt() — std::optional variant (graceful degradation)
+// ════════════════════════════════════════════════════════════════
+
+TEST(ProtocolLookupOpt, PowerOnReturnsValue) {
+    auto result = lookup_value_opt(POWER_MAP, POWER, 2, 0x01);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_STREQ(*result, "ON");
+}
+
+TEST(ProtocolLookupOpt, UnknownPowerReturnsNullopt) {
+    auto result = lookup_value_opt(POWER_MAP, POWER, 2, 0xFF);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(ProtocolLookupOpt, ModeCoolReturnsValue) {
+    auto result = lookup_value_opt(MODE_MAP, MODE, 5, 0x03);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_STREQ(*result, "COOL");
+}
+
+TEST(ProtocolLookupOpt, UnknownModeReturnsNullopt) {
+    // 0x0A could be a future "ECO" mode — should return nullopt, NOT "HEAT"
+    auto result = lookup_value_opt(MODE_MAP, MODE, 5, 0x0A);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(ProtocolLookupOpt, FanQuietReturnsValue) {
+    auto result = lookup_value_opt(FAN_MAP, FAN, 6, 0x01);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_STREQ(*result, "QUIET");
+}
+
+TEST(ProtocolLookupOpt, UnknownFanReturnsNullopt) {
+    auto result = lookup_value_opt(FAN_MAP, FAN, 6, 0x09);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(ProtocolLookupOpt, VaneSwingReturnsValue) {
+    auto result = lookup_value_opt(VANE_MAP, VANE, 7, 0x07);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_STREQ(*result, "SWING");
+}
+
+TEST(ProtocolLookupOpt, UnknownVaneReturnsNullopt) {
+    auto result = lookup_value_opt(VANE_MAP, VANE, 7, 0x06);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(ProtocolLookupOpt, TempMapIntReturnsValue) {
+    auto result = lookup_value_opt(TEMP_MAP, TEMP, 16, 0x09);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(*result, 22);
+}
+
+TEST(ProtocolLookupOpt, TempMapIntUnknownReturnsNullopt) {
+    auto result = lookup_value_opt(TEMP_MAP, TEMP, 16, 0x10);
+    EXPECT_FALSE(result.has_value());
+}
+
+// ════════════════════════════════════════════════════════════════
+// lookup_index_opt() — std::optional variant
+// ════════════════════════════════════════════════════════════════
+
+TEST(ProtocolLookupIndexOpt, IntFound) {
+    auto result = lookup_index_opt(TEMP_MAP, 16, 22);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(*result, 9);
+}
+
+TEST(ProtocolLookupIndexOpt, IntNotFound) {
+    auto result = lookup_index_opt(TEMP_MAP, 16, 99);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(ProtocolLookupIndexOpt, StringFound) {
+    auto result = lookup_index_opt(MODE_MAP, 5, "AUTO");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(*result, 4);
+}
+
+TEST(ProtocolLookupIndexOpt, StringCaseInsensitive) {
+    auto result = lookup_index_opt(MODE_MAP, 5, "auto");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(*result, 4);
+}
+
+TEST(ProtocolLookupIndexOpt, StringNotFound) {
+    auto result = lookup_index_opt(MODE_MAP, 5, "TURBO");
+    EXPECT_FALSE(result.has_value());
+}

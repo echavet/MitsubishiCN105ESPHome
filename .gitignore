@@ -23,10 +23,7 @@ www/custom-thermostat-card.js
 www/dom-inspector-card.js
 example-climate-test/.gitignore
 example-climate-test/climate-test.yaml
-components/climate_test/__init__.py
-components/climate_test/climate_test.cpp
-components/climate_test/climate_test.h
-components/climate_test/climate.py
+**/climate_test/
 RESUME-EVOLUTIONS-ET-TENTATIVES.md
 examples/root-configs/hp-esp32-c6-esp-idf.yaml
 examples/root-configs/hp-esp32-s2-saola-arduino.yaml

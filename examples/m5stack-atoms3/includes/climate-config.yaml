@@ -52,6 +52,7 @@ climate:
     remote_temperature_timeout: 60min
     update_interval: 3500ms # shouldn't be less than 1 second
     debounce_delay: 100ms # delay to prevent bouncing
+    connection_bootstrap_delay: 24s # delay to wait for the ESP32 to boot up and stabilize the WiFi connection
     hp_uptime_connection_sensor:
       name: ${name} HP Uptime Connection
       update_interval: 30s
