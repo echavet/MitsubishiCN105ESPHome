@@ -5,7 +5,7 @@ sensor:
     name: "dg_uart_connected"
     entity_category: DIAGNOSTIC
     lambda: |-
-      return (bool) id(atoms3_clim).isUARTConnected_;
+      return (bool) id(atoms3_clim).isUARTReady_();
     update_interval: 30s
 
   - platform: template

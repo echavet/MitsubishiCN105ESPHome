@@ -8,6 +8,8 @@ using namespace esphome;
  * processInput: reads available bytes from UART and feeds them to the FrameParser.
  * When a complete frame is detected, delegates to processDataPacket().
  */
+
+
 bool CN105Climate::processInput(void) {
     bool processed = false;
     while (this->get_hw_serial_()->available()) {
@@ -40,7 +42,7 @@ void CN105Climate::processDataPacket() {
     this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), "READ");
 
     // During handshake, log every received frame for diagnostics
-    if (!this->isHeatpumpConnected_) {
+    if (!this->isHeatpumpConnected()) {
         ESP_LOGD(LOG_CONN_TAG, "RX during handshake (cmd=0x%02X len=%d)",
             this->parser_.command(), this->parser_.data_length());
         this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
@@ -56,7 +58,7 @@ void CN105Climate::processDataPacket() {
     } else {
         ESP_LOGW("chkSum", "KO -> checksum mismatch (cmd=0x%02X len=%d)",
             this->parser_.command(), this->parser_.data_length());
-        if (!this->isHeatpumpConnected_) {
+        if (!this->isHeatpumpConnected()) {
             ESP_LOGD(LOG_CONN_TAG, "Checksum KO during handshake");
             this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
         }
@@ -488,7 +490,7 @@ void CN105Climate::processCommand() {
             (this->parser_.command() == 0x7b) ? "Installer" : "User",
             this->parser_.command());
         this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
-        //this->isHeatpumpConnected_ = true;
+        // isHeatpumpConnected_ replaced by FSM transition in setHeatpumpConnected()
         this->setHeatpumpConnected(true);
         // let's say that the last complete cycle was over now
         this->loopCycle.lastCompleteCycleMs = CUSTOM_MILLIS;
