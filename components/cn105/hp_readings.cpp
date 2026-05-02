@@ -74,25 +74,14 @@ void CN105Climate::parse(uint8_t inputData) {
 
 
 bool CN105Climate::checkSum() {
-    // TODO: use the CN105Climate::checkSum(byte bytes[], int len) function
-
     uint8_t packetCheckSum = storedInputData[this->bytesRead];
-    uint8_t processedCS = 0;
-
-    ESP_LOGV("chkSum", "controling chkSum should be: %02X ", packetCheckSum);
-
-    for (int i = 0;i < this->dataLength + 5;i++) {
-        ESP_LOGV("chkSum", "adding %02X to %03X --> %X", this->storedInputData[i], processedCS, processedCS + this->storedInputData[i]);
-        processedCS += this->storedInputData[i];
-    }
-
-    processedCS = (0xfc - processedCS) & 0xff;
+    uint8_t processedCS = cn105_protocol::checksum(this->storedInputData, this->dataLength + 5);
 
     if (packetCheckSum == processedCS) {
         ESP_LOGD("chkSum", "OK-> %02X=%02X ", processedCS, packetCheckSum);
     } else {
         ESP_LOGW("chkSum", "KO-> %02X!=%02X ", processedCS, packetCheckSum);
-        // Pendant le handshake, une erreur de checksum est un signal utile: logguer la trame sous CN105_CONN
+        // During handshake, a checksum error is a useful diagnostic signal
         if (!this->isHeatpumpConnected_) {
             ESP_LOGD(LOG_CONN_TAG, "Checksum KO during handshake (computed=%02X packet=%02X, cmd=0x%02X len=%d)",
                 processedCS, packetCheckSum, this->command, this->dataLength);

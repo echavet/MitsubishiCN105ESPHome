@@ -73,10 +73,6 @@ sensor:
     id: ha_cdeg_sejour_et_cuisine
     entity_id: sensor.temperature_sejour
     internal: true
-    on_value:
-      then:
-        - lambda: |-
-            id(atoms3_clim).set_remote_temperature(x);
 
 
 text_sensor:

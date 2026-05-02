@@ -762,7 +762,41 @@ climate:
 > [!NOTE]
 > If you have an existing heartbeat/interval automation in your YAML that periodically calls `set_remote_temperature()`, you can safely remove it - the built-in keep-alive handles this automatically. You may see a warning in the logs if conflicting heartbeat patterns are detected.
 
-### Recommended - Get external temperature from a [HomeAssistant Sensor](https://esphome.io/components/sensor/homeassistant.html) through the HomeAssistant API
+### Recommended — Native `remote_temperature_source` binding (no lambda needed)
+
+Since PR [#624](https://github.com/echavet/MitsubishiCN105ESPHome/pull/624), the component supports a **native sensor binding** that eliminates the need for lambda code. Simply declare a Home Assistant sensor and reference it directly in your climate config. The component automatically subscribes to sensor updates and forwards the temperature to the heat pump.
+
+**Step 1:** Declare the Home Assistant sensor (in your sensor section):
+
+```yaml
+sensor:
+  - platform: homeassistant
+    id: ha_remote_temp
+    entity_id: sensor.my_room_temperature # Your HA temperature sensor
+    internal: true
+```
+
+**Step 2:** Reference it in the climate config:
+
+```yaml
+climate:
+  - platform: cn105
+    id: hp
+    # ... other options ...
+    remote_temperature_source:
+      sensor_id: ha_remote_temp       # References the sensor declared above
+      info:                           # Optional: exposes a text sensor showing the source name
+        name: "Remote Temp Source"
+    remote_temperature_timeout: 30min
+    remote_temperature_keepalive_interval: 20s
+```
+
+That's it — no lambda, no `on_value` block, no manual `set_remote_temperature()` call. The component handles everything internally.
+
+> [!TIP]
+> The optional `info` sub-key creates a text sensor that displays the name of the source sensor in Home Assistant, making it easy to verify which sensor is providing the remote temperature.
+
+### Alternate — Lambda with a [HomeAssistant Sensor](https://esphome.io/components/sensor/homeassistant.html) through the HomeAssistant API
 
 Creates the sensor used to receive the remote temperature from Home Assistant. Uses sensor selected in substitutions area at top of config or manually entered into the sensor configuration. When the HomeAssistant sensor updates, it will send the new value to the ESP device, which will update the heatpump's remote temperature value.
 
