@@ -16,7 +16,7 @@ jobs:
     name: Unit Tests (C++)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Configure
       run: cmake -B tests/unit/build -S tests/unit -DCMAKE_BUILD_TYPE=Release
@@ -53,7 +53,7 @@ jobs:
       USERNAME: test
       PASSWORD: github-run
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Generate random secret
       env:
         keys: >-
