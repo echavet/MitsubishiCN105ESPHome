@@ -34,6 +34,7 @@ add_executable(cn105_tests
     test_temperature.cpp
     test_types.cpp
     test_calculate_temp.cpp
+    test_real_frames.cpp
 )
 
 target_link_libraries(cn105_tests
