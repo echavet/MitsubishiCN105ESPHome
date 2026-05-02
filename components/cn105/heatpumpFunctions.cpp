@@ -5,34 +5,6 @@
 using namespace esphome;
 //#region heatpump_functions fonctions clim
 
-void CN105Climate::getFunctions() {
-    ESP_LOGV(TAG, "getting the list of functions...");
-
-    functions.clear();
-
-    uint8_t packet1[PACKET_LEN] = {};
-
-    prepareInfoPacket(packet1, PACKET_LEN);
-    packet1[5] = FUNCTIONS_GET_PART1;
-    packet1[21] = checkSum(packet1, 21);
-
-    writePacket(packet1, PACKET_LEN);
-
-    // Read command will issue part 2.
-}
-
-void CN105Climate::getFunctionsPart2() {
-    ESP_LOGV(TAG, "getting the list of functions part 2...");
-
-    uint8_t packet2[PACKET_LEN] = {};
-
-    prepareInfoPacket(packet2, PACKET_LEN);
-    packet2[5] = FUNCTIONS_GET_PART2;
-    packet2[21] = checkSum(packet2, 21);
-
-    writePacket(packet2, PACKET_LEN);
-}
-
 void CN105Climate::functionsArrived() {
 
     // Called after 2nd packet has arrived.
