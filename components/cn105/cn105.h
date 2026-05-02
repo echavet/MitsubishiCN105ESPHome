@@ -38,6 +38,18 @@
 
 namespace esphome {
 
+    // Connection lifecycle FSM — replaces 6 scattered booleans
+    enum class DriverState : uint8_t {
+        BOOT,           // setup() done, loop() not yet called
+        WAIT_WIFI,      // WiFi required but not yet connected
+        WAIT_GRACE,     // WiFi OK, OTA grace delay in progress
+        CONNECTING,     // UART configured, CONNECT sent, awaiting 0x7A/0x7B
+        CONNECTED,      // Handshake succeeded, ready to poll
+        DISCONNECTED,   // Response timeout, reconnection needed
+    };
+
+    const char* driver_state_to_str(DriverState s);
+
     void log_info_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix = "");
     void log_debug_uint32(const char* tag, const char* msg, uint32_t value, const char* suffix = "");
 
@@ -191,6 +203,13 @@ namespace esphome {
         bool isHeatpumpConnectionActive();
         void reconnectIfConnectionLost();
 
+        // FSM
+        DriverState driver_state() const { return state_; }
+        void transition_to_(DriverState next);
+        // Compatibility accessors (replace former booleans)
+        bool isUARTReady_() const { return state_ >= DriverState::CONNECTING; }
+        bool isHeatpumpConnected() const { return state_ == DriverState::CONNECTED; }
+
         void sendWantedSettings();
         void sendWantedSettingsDelegate();
         // Use the temperature from an external sensor. Use
@@ -265,8 +284,9 @@ namespace esphome {
         /// le bouton de setup de l'UART
         bool uart_setup_switch;
 
-        bool isUARTConnected_ = false;
-        bool isHeatpumpConnected_ = false;
+        // Legacy booleans replaced by DriverState FSM (see state_)
+        // bool isUARTConnected_  → isUARTReady_()
+        // bool isHeatpumpConnected_ → isHeatpumpConnected()
         bool shouldSendExternalTemperature_ = false;
         float remoteTemperature_ = 0;
 
@@ -493,12 +513,9 @@ namespace esphome {
         bool pending_check_is_active_ = true;
         bool has_pending_packet_ = false;
 
-        // Bootstrap de connexion (loop)
+        // Connection lifecycle FSM
+        DriverState state_ = DriverState::BOOT;
         uint32_t boot_ms_ = 0;
-        bool conn_bootstrap_started_ = false;
-        bool conn_wait_logged_ = false;
-        bool conn_grace_logged_ = false;
-        bool conn_timeout_armed_ = false;
         uint32_t conn_bootstrap_delay_ms_{ 10000 };  // par dÃÂ©faut 10s
 
         bool installer_mode_{ false };

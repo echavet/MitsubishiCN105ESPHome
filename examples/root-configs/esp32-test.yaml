@@ -149,14 +149,14 @@ sensor:
     name: "dg_uart_connected"
     entity_category: DIAGNOSTIC
     lambda: |-
-      return (bool) id(esp32_clim).isUARTConnected_;
+      return (bool) id(esp32_clim).isUARTReady_();
     update_interval: 30s
 
   - platform: template
     name: "dg_hp_connected"
     entity_category: DIAGNOSTIC
     lambda: |-
-      return (bool) id(esp32_clim).isUARTConnected_;
+      return (bool) id(esp32_clim).isUARTReady_();
     update_interval: 30s
 
   - platform: template

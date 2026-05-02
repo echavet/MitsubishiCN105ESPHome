@@ -9,6 +9,24 @@
 
 using namespace esphome;
 
+const char* esphome::driver_state_to_str(DriverState s) {
+    switch (s) {
+        case DriverState::BOOT:         return "BOOT";
+        case DriverState::WAIT_WIFI:    return "WAIT_WIFI";
+        case DriverState::WAIT_GRACE:   return "WAIT_GRACE";
+        case DriverState::CONNECTING:   return "CONNECTING";
+        case DriverState::CONNECTED:    return "CONNECTED";
+        case DriverState::DISCONNECTED: return "DISCONNECTED";
+        default:                        return "UNKNOWN";
+    }
+}
+
+void CN105Climate::transition_to_(DriverState next) {
+    if (state_ == next) return;
+    ESP_LOGI("FSM", "State: %s -> %s", driver_state_to_str(state_), driver_state_to_str(next));
+    state_ = next;
+}
+
 
 CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     UARTDevice(uart),
@@ -36,7 +54,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->traits_.set_visual_temperature_step(ESPMHP_TEMPERATURE_STEP);
 
 
-    this->isUARTConnected_ = false;
+    // state_ is initialized to BOOT in the header
     this->use_temperature_encoding_b_ = false;
     this->wideVaneAdj = false;
     this->functions = heatpumpFunctions();
@@ -278,13 +296,13 @@ void CN105Climate::startRemoteTempKeepAlive() {
     log_info_uint32(LOG_REMOTE_TEMP, "Starting remote temperature keep-alive with interval ", this->remote_temp_keepalive_interval_ms_);
 
     this->set_interval(SCHEDULER_REMOTE_TEMP_KEEPALIVE, this->remote_temp_keepalive_interval_ms_, [this]() {
-        if (this->remoteTemperature_ > 0 && this->isHeatpumpConnected_) {
+        if (this->remoteTemperature_ > 0 && this->isHeatpumpConnected()) {
             ESP_LOGD(LOG_REMOTE_TEMP, "Keep-alive: re-sending remote temperature %.1f", this->remoteTemperature_);
             // Send the temperature packet without resetting the watchdog timeout
             // (watchdog is only reset when HA sends a new value via set_remote_temperature)
             this->shouldSendExternalTemperature_ = true;
         } else {
-            if (!this->isHeatpumpConnected_) {
+            if (!this->isHeatpumpConnected()) {
                 ESP_LOGW(LOG_REMOTE_TEMP, "Keep-alive skipped: Heatpump not connected!");
             } else {
                 ESP_LOGD(LOG_REMOTE_TEMP, "Keep-alive skipped: remoteTemp %.1f <= 0", this->remoteTemperature_);
@@ -339,7 +357,7 @@ void CN105Climate::setupUART() {
     log_info_uint32(TAG, "setupUART() with baudrate ", this->parent_->get_baud_rate());
     ESP_LOGI(LOG_CONN_TAG, "setupUART(): baud=%d tx=%d rx=%d (UART port=%d)", this->parent_->get_baud_rate(), this->tx_pin_, this->rx_pin_, this->uart_port_);
     this->setHeatpumpConnected(false);
-    this->isUARTConnected_ = false;
+    // isUARTConnected_ replaced by state_ (set to CONNECTING after successful config below)
 
     // just for debugging purpose, a way to use a button i, yaml to trigger a reconnect
     this->uart_setup_switch = true;
@@ -348,7 +366,7 @@ void CN105Climate::setupUART() {
         this->parent_->get_parity() == uart::UART_CONFIG_PARITY_EVEN &&
         this->parent_->get_stop_bits() == 1) {
         ESP_LOGI(LOG_CONN_TAG, "UART configured as SERIAL_8E1");
-        this->isUARTConnected_ = true;
+        this->transition_to_(DriverState::CONNECTING);
         this->parser_.reset();
     } else {
         ESP_LOGW(LOG_CONN_TAG, "UART is not configured as SERIAL_8E1");
@@ -357,7 +375,11 @@ void CN105Climate::setupUART() {
 }
 
 void CN105Climate::setHeatpumpConnected(bool state) {
-    this->isHeatpumpConnected_ = state;
+    if (state) {
+        this->transition_to_(DriverState::CONNECTED);
+    } else if (state_ == DriverState::CONNECTED) {
+        this->transition_to_(DriverState::DISCONNECTED);
+    }
     if (this->hp_uptime_connection_sensor_ != nullptr) {
         if (state) {
             this->hp_uptime_connection_sensor_->start();
@@ -372,8 +394,7 @@ void CN105Climate::disconnectUART() {
     ESP_LOGD(TAG, "disconnectUART()");
     this->uart_setup_switch = false;
     this->setHeatpumpConnected(false);
-    //this->isHeatpumpConnected_ = false;
-    //this->isUARTConnected_ = false;
+    // Legacy booleans removed — state managed by FSM (setHeatpumpConnected / transition_to_)
     this->firstRun = true;
     this->publish_state();
 

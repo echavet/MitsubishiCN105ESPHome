@@ -9,7 +9,7 @@ uint8_t CN105Climate::checkSum(uint8_t bytes[], int len) {
 
 
 void CN105Climate::sendFirstConnectionPacket() {
-    if (this->isUARTConnected_) {
+    if (this->isUARTReady_()) {
         this->lastReconnectTimeMs = CUSTOM_MILLIS;          // marker to prevent to many reconnections
         this->setHeatpumpConnected(false);
         uint8_t packet[CONNECT_LEN];
@@ -33,7 +33,7 @@ void CN105Climate::sendFirstConnectionPacket() {
 
         // we wait for a 10s timeout to check if the hp has replied to connection packet
         this->set_timeout("checkFirstConnection", 10000, [this]() {
-            if (!this->isHeatpumpConnected_) {
+            if (!this->isHeatpumpConnected()) {
                 ESP_LOGE(LOG_CONN_TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
                 // Fallback automatique: si le mode installateur est demandé mais que la PAC ignore 0x5B,
                 // on retente une fois en mode standard (0x5A) pour préserver la connectivité.
@@ -90,7 +90,7 @@ void CN105Climate::prepareSetPacket(uint8_t* packet, int length) {
 
 void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) {
 
-    if ((this->isUARTConnected_) &&
+    if ((this->isUARTReady_()) &&
         (this->isHeatpumpConnectionActive() || (!checkIsActive))) {
 
         ESP_LOGD(TAG, "writing packet...");
@@ -121,7 +121,7 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
 
 void CN105Climate::try_write_pending_packet() {
     if (!this->has_pending_packet_) return;
-    if (!this->isUARTConnected_) {
+    if (!this->isUARTReady_()) {
         this->reconnectUART();
         this->set_timeout("write", 2000, [this]() { this->try_write_pending_packet(); });
         return;
@@ -396,7 +396,7 @@ void CN105Climate::sendWantedSettingsDelegate() {
  *
 */
 void CN105Climate::sendWantedSettings() {
-    if (this->isHeatpumpConnectionActive() && this->isUARTConnected_) {
+    if (this->isHeatpumpConnectionActive() && this->isUARTReady_()) {
         if (CUSTOM_MILLIS - this->lastSend > 300) {        // we don't want to send too many packets
 
             //this->cycleEnded();   // only if we let the cycle be interrupted to send wented settings
@@ -443,7 +443,7 @@ void CN105Climate::buildAndSendInfoPacket(uint8_t code) {
 
 
 void CN105Climate::buildAndSendRequestsInfoPackets() {
-    if (this->isHeatpumpConnected_) {
+    if (this->isHeatpumpConnected()) {
         ESP_LOGV(LOG_UPD_INT_TAG, "triggering infopacket because of update interval tick");
         ESP_LOGV("CONTROL_WANTED_SETTINGS", "hasChanged is %s", wantedSettings.hasChanged ? "true" : "false");
         this->loopCycle.cycleStarted();

@@ -58,7 +58,7 @@ void CN105Climate::loop() {
 
     // As long as the connection is not successful, we do not launch ANY cycle/write (otherwise it short-circuits the delay).
     // We still continue to read/process the input in order to detect 0x7A/0x7B (connection success).
-    const bool can_talk_to_hp = this->isHeatpumpConnected_;
+    const bool can_talk_to_hp = this->isHeatpumpConnected();
 
     if (!this->processInput()) {                                            // if we don't get any input: no read op
         if (!can_talk_to_hp) {
@@ -96,45 +96,58 @@ void CN105Climate::loop() {
 }
 
 void CN105Climate::maybe_start_connection_() {
-    if (this->conn_bootstrap_started_) return;
-
-    // Timeout global: au bout de 2 minutes on démarre même sans WiFi
-    if (!this->conn_timeout_armed_) {
-        this->conn_timeout_armed_ = true;
-        this->set_timeout("cn105_bootstrap_timeout", 120000, [this]() {
-            if (this->conn_bootstrap_started_) return;
-            ESP_LOGW(LOG_CONN_TAG, "Bootstrap connexion: timeout 120s, démarrage CN105 malgré tout");
-            this->conn_bootstrap_started_ = true;
-            this->setupUART();
-            this->sendFirstConnectionPacket();
+    switch (state_) {
+        case DriverState::BOOT: {
+            // Arm a 120s global timeout (fires once, forces connection even without WiFi)
+            this->set_timeout("cn105_bootstrap_timeout", 120000, [this]() {
+                if (state_ >= DriverState::CONNECTING) return;
+                ESP_LOGW(LOG_CONN_TAG, "Bootstrap connexion: timeout 120s, démarrage CN105 malgré tout");
+                this->setupUART();
+                this->sendFirstConnectionPacket();
             });
-    }
 
 #ifdef USE_WIFI
-    if (wifi::global_wifi_component != nullptr && !wifi::global_wifi_component->is_connected()) {
-        if (!this->conn_wait_logged_) {
-            this->conn_wait_logged_ = true;
-            ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: attente WiFi avant init UART/CONNECT");
-        }
-        return;
-    }
+            if (wifi::global_wifi_component != nullptr && !wifi::global_wifi_component->is_connected()) {
+                this->transition_to_(DriverState::WAIT_WIFI);
+                ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: attente WiFi avant init UART/CONNECT");
+                return;
+            }
 #endif
-
-    // Délai de grâce pour laisser le flux de logs OTA se connecter (évite de rater la séquence CONNECT)
-    const uint32_t grace_ms = this->conn_bootstrap_delay_ms_;
-    const uint32_t elapsed = CUSTOM_MILLIS - this->boot_ms_;
-    if (elapsed < grace_ms) {
-        if (!this->conn_grace_logged_) {
-            this->conn_grace_logged_ = true;
-            ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: délai de grâce %ums pour logs OTA", grace_ms);
+            // WiFi ready (or no WiFi) — check grace delay
+            this->transition_to_(DriverState::WAIT_GRACE);
+            ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: délai de grâce %ums pour logs OTA", this->conn_bootstrap_delay_ms_);
+            return;
         }
-        return;
-    }
 
-    this->conn_bootstrap_started_ = true;
-    ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: init UART + envoi CONNECT (loop)");
-    this->setupUART();
-    this->sendFirstConnectionPacket();
+        case DriverState::WAIT_WIFI: {
+#ifdef USE_WIFI
+            if (wifi::global_wifi_component != nullptr && !wifi::global_wifi_component->is_connected()) {
+                return;  // still waiting
+            }
+#endif
+            this->transition_to_(DriverState::WAIT_GRACE);
+            ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: WiFi connecté, délai de grâce %ums", this->conn_bootstrap_delay_ms_);
+            return;
+        }
+
+        case DriverState::WAIT_GRACE: {
+            const uint32_t elapsed = CUSTOM_MILLIS - this->boot_ms_;
+            if (elapsed < this->conn_bootstrap_delay_ms_) {
+                return;  // grace delay not elapsed yet
+            }
+            ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: init UART + envoi CONNECT (loop)");
+            this->setupUART();
+            this->sendFirstConnectionPacket();
+            // setupUART() transitions to CONNECTING if UART config is valid
+            return;
+        }
+
+        case DriverState::CONNECTING:
+        case DriverState::CONNECTED:
+        case DriverState::DISCONNECTED:
+            // Nothing to do — connection already started or managed elsewhere
+            return;
+    }
 }
 
 uint32_t CN105Climate::get_update_interval() const { return this->update_interval_; }
