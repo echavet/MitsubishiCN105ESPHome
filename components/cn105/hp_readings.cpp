@@ -226,7 +226,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
         int temp = data[11];
         temp -= 128;
         receivedSettings.temperature = (float)temp / 2;
-        this->tempMode = true;
+        this->use_temperature_encoding_b_ = true;
     } else {
         receivedSettings.temperature = lookupByteMapValue(TEMP_MAP, TEMP, 16, data[5], "temperature reading");
     }
