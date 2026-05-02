@@ -35,6 +35,7 @@ add_executable(cn105_tests
     test_types.cpp
     test_calculate_temp.cpp
     test_real_frames.cpp
+    test_frame_parser.cpp
     test_protocol.cpp
 )
 
