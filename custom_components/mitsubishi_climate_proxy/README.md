@@ -12,6 +12,7 @@ This component wraps the ESPHome entity and provides a "Proxy" entity that:
 *   Shows **1 Slider** in **Heat**, **Cool**, and **Auto** modes.
 *   Shows **2 Sliders** in **Heat/Cool** mode.
 *   Intelligently maps single-setpoint adjustments to the underlying dual-setpoint ESPHome entity.
+*   Exposes **independent horizontal vane (WideVane)** control via the HA-native `swing_horizontal_mode` API (requires HA 2024.12+).
 
 ## Prerequisites
 
@@ -43,6 +44,7 @@ This integration now supports configuration directly via the Home Assistant user
 4.  Follow the on-screen instructions:
     *   Select the source ESPHome entity (e.g., `climate.living_room_esphome`).
     *   Give your new proxy entity a name (e.g., `Living Room Climate`).
+    *   *(Optional)* Select the horizontal vane select entity (e.g., `select.living_room_horizontal_vane`) to enable WideVane control in the climate card.
 5.  Click **Submit**.
 
 Your new entity will be created immediately.
@@ -56,8 +58,9 @@ If you prefer to define your entities in YAML, you can still add this to your `c
 
 climate:
   - platform: mitsubishi_climate_proxy
-    source_entity: climate.chambre_esphome  # The ID of your real ESPHome entity
-    name: Chambre Hybrid                    # The name of the new entity to use in your Dashboard
+    source_entity: climate.chambre_esphome     # The ID of your real ESPHome entity
+    name: Chambre Hybrid                       # The name of the new entity to use in your Dashboard
+    horizontal_vane_entity: select.chambre_horizontal_vane  # (Optional) WideVane select entity
 ```
 
 ## Dashboard Setup
@@ -71,10 +74,20 @@ entity: climate.living_room_climate # Use the new proxy entity here
 
 ## How it works
 
+### Temperature Setpoints
 *   **Heat Mode**: Controls `target_temp_low`.
 *   **Cool Mode**: Controls `target_temp_high`.
 *   **Auto Mode**: Controls the midpoint of the range (moving both low and high to maintain the spread).
 *   **Heat/Cool Mode**: Exposes both Low and High setpoints.
+
+### Horizontal Vane (WideVane)
+When a `horizontal_vane_entity` is configured, the proxy:
+*   Reads the current vane position from the ESPHome `select` entity
+*   Exposes it as `swing_horizontal_mode` (HA-native, requires HA **2024.12+**)
+*   Forwards position changes via the `select.select_option` service
+*   Updates in real-time when the vane position changes (state tracking)
+
+This allows the WideVane to appear directly in the standard climate card alongside the vertical swing.
 
 ## Under the Hood: How it solves the UI Glitch
 
@@ -86,6 +99,7 @@ This component uses the **Proxy Pattern**. It mirrors the state of your real ESP
 
 *   **When in `HEAT` or `AUTO` mode:** The component masks the "Dual Setpoint" capability. Home Assistant believes the device only supports a single target and renders **one slider**.
 *   **When in `HEAT_COOL` mode:** The component reveals the "Dual Setpoint" capability. Home Assistant renders **two sliders**.
+*   **When a horizontal vane entity is configured:** The component adds `SWING_HORIZONTAL_MODE` to the features, making the horizontal swing selector appear in the climate UI.
 
 ### Fahrenheit Compatibility
 
