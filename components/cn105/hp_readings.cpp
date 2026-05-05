@@ -412,11 +412,14 @@ void CN105Climate::getErrorInfoFromResponsePacket() {
     if (this->error_code_sensor_ != nullptr) {
         uint8_t error_raw = this->data[4];
         uint8_t error_sub = this->data[5];
-        if (error_raw == 0x00 && error_sub == 0x00) {
+        // Bit 7 (0x80) is a protocol status flag ("error reporting available"),
+        // not an actual error code. Use lower 7 bits for real error detection.
+        uint8_t error_code = error_raw & 0x7F;
+        if (error_code == 0x00 && error_sub == 0x00) {
             this->error_code_sensor_->publish_state("No Error");
         } else {
             char buf[32];
-            snprintf(buf, sizeof(buf), "Error 0x%02X sub 0x%02X", error_raw, error_sub);
+            snprintf(buf, sizeof(buf), "Error 0x%02X sub 0x%02X", error_code, error_sub);
             this->error_code_sensor_->publish_state(buf);
         }
     }

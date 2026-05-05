@@ -939,7 +939,7 @@ sensor:
     name: "dg_uart_connected"
     entity_category: DIAGNOSTIC
     lambda: |-
-      return (bool) id(hp).isUARTConnected_;
+      return (bool) id(hp).isUARTReady_();
     update_interval: 30s
   - platform: template
     name: "dg_complete_cycles"
