@@ -7,6 +7,7 @@
 #include "van_orientation_select.h"
 #include "uptime_connection_sensor.h"
 #include "compressor_frequency_sensor.h"
+#include "target_humidity_sensor.h"
 #include "input_power_sensor.h"
 #include "kwh_sensor.h"
 #include "runtime_hours_sensor.h"
@@ -71,6 +72,7 @@ namespace esphome {
         void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select, const std::vector<std::string>& options = {});
         void set_airflow_control_select(VaneOrientationSelect* airflow_control_select);
         void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);
+        void set_target_humidity_sensor(esphome::sensor::Sensor* target_humidity_sensor);
         void set_input_power_sensor(esphome::sensor::Sensor* input_power_sensor);
         void set_kwh_sensor(esphome::sensor::Sensor* kwh_sensor);
         void set_runtime_hours_sensor(esphome::sensor::Sensor* runtime_hours_sensor);
@@ -149,6 +151,8 @@ namespace esphome {
             nullptr;
         sensor::Sensor* compressor_frequency_sensor_ =
             nullptr;  // Sensor to store compressor frequency
+        sensor::Sensor* target_humidity_sensor_ =
+            nullptr;  // Sensor to expose target humidity from 0x02 settings packet (byte 12)
         sensor::Sensor* input_power_sensor_ =
             nullptr;  // Sensor to store compressor frequency
         sensor::Sensor* kwh_sensor_ =

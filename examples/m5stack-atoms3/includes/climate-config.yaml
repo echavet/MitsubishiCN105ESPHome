@@ -35,6 +35,8 @@ climate:
     #  name: ${name} Outside air temperature
     vertical_vane_select:
       name: Orientation de la Vane Verticale
+    target_humidity_sensor:
+      name: "Target Humidity"
     #horizontal_vane_select:
     #  name: Orientation de la Vane Horizontale
     #isee_sensor:

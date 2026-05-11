@@ -98,6 +98,11 @@ void CN105Climate::set_compressor_frequency_sensor(
     this->compressor_frequency_sensor_ = compressor_frequency_sensor;
 }
 
+void CN105Climate::set_target_humidity_sensor(
+    sensor::Sensor* target_humidity_sensor) {
+    this->target_humidity_sensor_ = target_humidity_sensor;
+}
+
 void CN105Climate::set_input_power_sensor(
     sensor::Sensor* input_power_sensor) {
     this->input_power_sensor_ = input_power_sensor;

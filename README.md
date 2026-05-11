@@ -1124,6 +1124,83 @@ climate:
             1: "ON (Default)"
             2: "OFF"
 ```
+## Experimental Features
+
+The following features are considered experimental. They rely on protocol bytes or behaviors that are not officially documented by Mitsubishi and may not work on all unit models. Community feedback is essential to validate and improve them.
+
+### Target Humidity Sensor
+
+Some premium Mitsubishi models (e.g. MSZ-LN series) expose a target humidity value in byte 12 of the `0x02` settings response packet. This value changes automatically when the operating mode is switched via the IR remote (e.g. COOL→70%, DRY→50%, HEAT→40%).
+
+This read-only diagnostic sensor allows you to monitor this value in Home Assistant.
+
+```yaml
+climate:
+  - platform: cn105
+    # ... your existing config ...
+    target_humidity_sensor:
+      name: Target Humidity
+```
+
+The sensor appears in Home Assistant with:
+- **Unit**: `%`
+- **Icon**: `mdi:water-percent`
+- **Category**: Diagnostic
+- **Precision**: 0 decimals
+
+> [!NOTE]
+> This sensor is **read-only** and **optional**. On units that do not populate byte 12, the value will remain unavailable (the sensor won't publish `0`). If your unit reports valid humidity values, please share your model and observations in [Discussion #649](https://github.com/echavet/MitsubishiCN105ESPHome/issues/649) to help the community validate this feature.
+
+### Split Vane (Dual Motor) Support
+
+Some Mitsubishi wall-mount units feature split vanes with two independent motors. This component supports controlling both motors together via the `vane_type` option in the `supports` block.
+
+There are two split-vane configurations depending on your unit's hardware:
+
+| `vane_type` | Description | Tested on |
+|------------|-------------|-----------|
+| `standard` (default) | Single motor per vane axis — standard behavior | Most units |
+| `split_horizontal` | Dual horizontal (wide) vane motors — both left/right wide-vane motors are synchronized | MSZ-GE24NA (confirmed by [@polskikrol](https://github.com/polskikrol)) |
+| `split_vertical` | Dual vertical vane motors — experimental, awaiting community validation | MSZ-FH series (pending) |
+
+#### Example: Split Horizontal Vane Configuration
+
+For units with two independent horizontal (wide) vane motors (e.g. MSZ-GE24NA):
+
+```yaml
+climate:
+  - platform: cn105
+    name: "My Heat Pump"
+    # ... your existing config ...
+    horizontal_vane_select:
+      name: Horizontal Vane
+    vertical_vane_select:
+      name: Vertical Vane
+    supports:
+      mode: [HEAT_COOL, COOL, HEAT, DRY, FAN_ONLY]
+      fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
+      swing_mode: ["OFF", HORIZONTAL, VERTICAL]
+      vane_type: split_horizontal  # ← Synchronizes both horizontal vane motors
+```
+
+#### Example: Split Vertical Vane Configuration (Experimental)
+
+For units with two independent vertical vane motors (e.g. MSZ-FH series):
+
+```yaml
+climate:
+  - platform: cn105
+    name: "My Heat Pump"
+    # ... your existing config ...
+    vertical_vane_select:
+      name: Vertical Vane
+    supports:
+      swing_mode: ["OFF", VERTICAL]
+      vane_type: split_vertical  # ← Experimental: synchronizes both vertical vane motors
+```
+
+> [!WARNING]
+> `split_vertical` is experimental and has not yet been validated by community testers. If your unit has dual vertical vane motors, please test and report your findings in [Issue #505](https://github.com/echavet/MitsubishiCN105ESPHome/issues/505).
 
 ## Comparison with ESPHome Native `mitsubishi_cn105`
 
