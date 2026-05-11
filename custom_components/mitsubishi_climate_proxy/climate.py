@@ -1,3 +1,8 @@
+## climate.py — Mitsubishi Climate Proxy
+## Role: Wraps an ESPHome CN105 climate entity to fix dual setpoint, F/C conversion,
+##        and expose Mitsubishi-specific features (horizontal vane) via standard HA APIs.
+## Deps: homeassistant.components.climate, homeassistant.helpers.event
+
 import logging
 from typing import Any, List, Optional
 import voluptuous as vol
@@ -29,11 +34,13 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 _LOGGER = logging.getLogger(__name__)
 
 CONF_SOURCE_ENTITY = "source_entity"
+CONF_HORIZONTAL_VANE_ENTITY = "horizontal_vane_entity"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_SOURCE_ENTITY): cv.entity_id,
         vol.Optional(CONF_NAME): cv.string,
+        vol.Optional(CONF_HORIZONTAL_VANE_ENTITY): cv.entity_id,
     }
 )
 
@@ -47,9 +54,13 @@ async def async_setup_platform(
     """Set up the Mitsubishi Hybrid Climate platform via YAML."""
     source_entity_id = config[CONF_SOURCE_ENTITY]
     name = config.get(CONF_NAME)
+    horizontal_vane_entity_id = config.get(CONF_HORIZONTAL_VANE_ENTITY)
 
     async_add_entities(
-        [MitsubishiHybridClimate(hass, name, source_entity_id)],
+        [MitsubishiHybridClimate(
+            hass, name, source_entity_id,
+            horizontal_vane_entity_id=horizontal_vane_entity_id,
+        )],
         True,
     )
 
@@ -67,15 +78,25 @@ async def async_setup_entry(
         source_entity_id = entry.data.get(CONF_SOURCE_ENTITY)
 
     name = entry.data.get(CONF_NAME)
+    horizontal_vane_entity_id = entry.data.get(CONF_HORIZONTAL_VANE_ENTITY)
 
     async_add_entities(
-        [MitsubishiHybridClimate(hass, name, source_entity_id, entry.entry_id)],
+        [MitsubishiHybridClimate(
+            hass, name, source_entity_id, entry.entry_id,
+            horizontal_vane_entity_id=horizontal_vane_entity_id,
+        )],
         True,
     )
 
 
 class MitsubishiHybridClimate(ClimateEntity):
-    """Representation of a Mitsubishi Hybrid Climate device."""
+    """Representation of a Mitsubishi Hybrid Climate device.
+
+    Wraps an ESPHome CN105 climate entity to provide:
+    - Adaptive single/dual setpoint based on current HVAC mode
+    - Fahrenheit normalisation (avoids double F→C conversion)
+    - Independent horizontal swing via HA 2024.12+ swing_horizontal_mode
+    """
 
     def __init__(
         self,
@@ -83,6 +104,7 @@ class MitsubishiHybridClimate(ClimateEntity):
         name: str | None,
         source_entity_id: str,
         unique_id: str | None = None,
+        horizontal_vane_entity_id: str | None = None,
     ) -> None:
         """Initialize the climate device."""
         super().__init__()
@@ -92,15 +114,28 @@ class MitsubishiHybridClimate(ClimateEntity):
         self._source_state = None
         self._attr_should_poll = False
         self._attr_unique_id = unique_id or f"{source_entity_id}_hybrid"
+        # Horizontal vane (WideVane) — optional select entity from ESPHome
+        self._horizontal_vane_entity_id = horizontal_vane_entity_id
+        self._horizontal_vane_state = None
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
         # Get initial state
         self._source_state = self.hass.states.get(self._source_entity_id)
 
+        # Track source climate entity changes
+        tracked_entities = [self._source_entity_id]
+
+        # Track horizontal vane select entity changes (if configured)
+        if self._horizontal_vane_entity_id:
+            self._horizontal_vane_state = self.hass.states.get(
+                self._horizontal_vane_entity_id
+            )
+            tracked_entities.append(self._horizontal_vane_entity_id)
+
         self.async_on_remove(
             async_track_state_change_event(
-                self.hass, [self._source_entity_id], self._async_source_changed
+                self.hass, tracked_entities, self._async_source_changed
             )
         )
 
@@ -108,7 +143,13 @@ class MitsubishiHybridClimate(ClimateEntity):
     def _async_source_changed(self, event: Event) -> None:
         """Handle source entity state changes."""
         new_state = event.data.get("new_state")
-        self._source_state = new_state
+        entity_id = event.data.get("entity_id")
+
+        if entity_id == self._source_entity_id:
+            self._source_state = new_state
+        elif entity_id == self._horizontal_vane_entity_id:
+            self._horizontal_vane_state = new_state
+
         self.async_write_ha_state()
 
     @property
@@ -154,7 +195,15 @@ class MitsubishiHybridClimate(ClimateEntity):
         else:
             features |= ClimateEntityFeature.TARGET_TEMPERATURE
 
+        # Add independent horizontal swing support when a horizontal vane entity is configured
+        if self._horizontal_vane_entity_id:
+            features |= ClimateEntityFeature.SWING_HORIZONTAL_MODE
+
         return ClimateEntityFeature(features)
+
+    # ════════════════════════════════════════════════════════════════
+    # Temperature normalisation (F ↔ C)
+    # ════════════════════════════════════════════════════════════════
 
     @property
     def _source_unit(self) -> str:
@@ -207,6 +256,10 @@ class MitsubishiHybridClimate(ClimateEntity):
         always °C regardless of what the source entity advertises.
         """
         return UnitOfTemperature.CELSIUS
+
+    # ════════════════════════════════════════════════════════════════
+    # Temperature properties
+    # ════════════════════════════════════════════════════════════════
 
     @property
     def current_temperature(self) -> Optional[float]:
@@ -263,6 +316,10 @@ class MitsubishiHybridClimate(ClimateEntity):
                 self._source_state.attributes.get("target_temp_low")
             )
         return None
+
+    # ════════════════════════════════════════════════════════════════
+    # HVAC mode
+    # ════════════════════════════════════════════════════════════════
 
     @property
     def hvac_mode(self) -> HVACMode:
@@ -433,6 +490,10 @@ class MitsubishiHybridClimate(ClimateEntity):
             blocking=True,
         )
 
+    # ════════════════════════════════════════════════════════════════
+    # Fan mode (pass-through)
+    # ════════════════════════════════════════════════════════════════
+
     @property
     def fan_mode(self) -> Optional[str]:
         """Return the fan setting."""
@@ -456,6 +517,10 @@ class MitsubishiHybridClimate(ClimateEntity):
             blocking=True,
         )
 
+    # ════════════════════════════════════════════════════════════════
+    # Swing mode — vertical (pass-through from source climate)
+    # ════════════════════════════════════════════════════════════════
+
     @property
     def swing_mode(self) -> Optional[str]:
         """Return the swing setting."""
@@ -478,6 +543,86 @@ class MitsubishiHybridClimate(ClimateEntity):
             {"entity_id": self._source_entity_id, "swing_mode": swing_mode},
             blocking=True,
         )
+
+    # ════════════════════════════════════════════════════════════════
+    # Swing horizontal mode — WideVane (Mitsubishi-specific)
+    # Maps the ESPHome horizontal_vane_select entity to the HA-native
+    # swing_horizontal_mode API (available since HA 2024.12).
+    # ════════════════════════════════════════════════════════════════
+
+    @property
+    def swing_horizontal_mode(self) -> Optional[str]:
+        """Return the current horizontal vane (WideVane) position.
+
+        Reads from the configured ESPHome select entity for horizontal vane.
+        Returns None if no horizontal vane entity is configured or unavailable.
+        """
+        if not self._horizontal_vane_entity_id:
+            return None
+
+        if self._horizontal_vane_state is None:
+            self._horizontal_vane_state = self.hass.states.get(
+                self._horizontal_vane_entity_id
+            )
+
+        if (
+            self._horizontal_vane_state is None
+            or self._horizontal_vane_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN)
+        ):
+            return None
+
+        return self._horizontal_vane_state.state
+
+    @property
+    def swing_horizontal_modes(self) -> Optional[List[str]]:
+        """Return the list of available horizontal vane positions.
+
+        Reads the options from the ESPHome select entity's 'options' attribute.
+        Falls back to a default Mitsubishi WideVane set if options are unavailable.
+        """
+        if not self._horizontal_vane_entity_id:
+            return None
+
+        if self._horizontal_vane_state is None:
+            self._horizontal_vane_state = self.hass.states.get(
+                self._horizontal_vane_entity_id
+            )
+
+        if self._horizontal_vane_state is not None:
+            options = self._horizontal_vane_state.attributes.get("options")
+            if options:
+                return list(options)
+
+        # Fallback: standard Mitsubishi WideVane options
+        return ["←←", "←", "|", "→", "→→", "←→", "SWING"]
+
+    async def async_set_swing_horizontal_mode(
+        self, swing_horizontal_mode: str
+    ) -> None:
+        """Set new horizontal vane (WideVane) position.
+
+        Forwards the command to the ESPHome select entity via the
+        select.select_option service.
+        """
+        if not self._horizontal_vane_entity_id:
+            _LOGGER.warning(
+                "Cannot set horizontal swing: no horizontal_vane_entity configured"
+            )
+            return
+
+        await self.hass.services.async_call(
+            "select",
+            "select_option",
+            {
+                "entity_id": self._horizontal_vane_entity_id,
+                "option": swing_horizontal_mode,
+            },
+            blocking=True,
+        )
+
+    # ════════════════════════════════════════════════════════════════
+    # Preset mode (pass-through)
+    # ════════════════════════════════════════════════════════════════
 
     @property
     def preset_mode(self) -> Optional[str]:
@@ -504,6 +649,10 @@ class MitsubishiHybridClimate(ClimateEntity):
             },
             blocking=True,
         )
+
+    # ════════════════════════════════════════════════════════════════
+    # Temperature bounds
+    # ════════════════════════════════════════════════════════════════
 
     @property
     def min_temp(self) -> float:
