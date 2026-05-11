@@ -72,6 +72,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
     this->vertical_vane_select_ = nullptr;
     this->airflow_control_select_ = nullptr;
     this->compressor_frequency_sensor_ = nullptr;
+    this->target_humidity_sensor_ = nullptr;
     this->input_power_sensor_ = nullptr;
     this->kwh_sensor_ = nullptr;
     this->runtime_hours_sensor_ = nullptr;

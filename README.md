@@ -1,27 +1,5 @@
 # Mitsubishi CN105 ESPHome
 
-> [!WARNING]
-> Due to a change in ESPHome 2025.8.0, some users are facing UART connection issues after a cold boot. Forcing the firmware esphome version to a previous release (2025.7.5 and below) solves the issue (no cold boot required). Alternative is to force ESP32 IDF version to 5.4.0. Note that OTA updates to 2025.8.0+ may work but can break after a subsequent cold boot.
->
-> _"commit 116c91e9c5fc6d0d32191bd4e6d6e406e2bff6bf Author: Jonathan Swoboda <154711427+swoboda1337@users.noreply.github.com> Date: Tue Jul 22 19:15:31 2025 -0400_
->
-> _Bump ESP32 IDF version to 5.4.2 and Arduino version to 3.2.1 (#9770)"_
->
-> [!IMPORTANT]
-> Temporary fix included: This component now implements a fallback low-level UART reinitialization that triggers only if the initial (normal) connection fails at boot. It reconfigures the UART controller linked to your `uart:` block (clock source, reapplies baudrate, RX pull-up, flush, etc.). No YAML `on_boot` workaround is required. This aims to mitigate ESP-IDF 5.4.x regressions observed on some ESP32 at low baud (2400, 8E1).
->
-> If this fallback still doesn’t work on your hardware, you can temporarily force ESP‑IDF 5.4.0 in your YAML:
->
-> ```yaml
-> esp32:
->   board: esp32-s3-devkitc-1
->   framework:
->     type: esp-idf
->     version: 5.4.0
->   variant: esp32s3
->   flash_size: 8MB
-> ```
-
 This project is a firmware for ESP32 microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump through Home Assistant, a web interface, or any MQTT client.
 
 It uses the ESPHome framework and is compatible with the Arduino framework and ESP-IDF.
@@ -1124,6 +1102,83 @@ climate:
             1: "ON (Default)"
             2: "OFF"
 ```
+## Experimental Features
+
+The following features are considered experimental. They rely on protocol bytes or behaviors that are not officially documented by Mitsubishi and may not work on all unit models. Community feedback is essential to validate and improve them.
+
+### Target Humidity Sensor
+
+Some premium Mitsubishi models (e.g. MSZ-LN series) expose a target humidity value in byte 12 of the `0x02` settings response packet. This value changes automatically when the operating mode is switched via the IR remote (e.g. COOL→70%, DRY→50%, HEAT→40%).
+
+This read-only diagnostic sensor allows you to monitor this value in Home Assistant.
+
+```yaml
+climate:
+  - platform: cn105
+    # ... your existing config ...
+    target_humidity_sensor:
+      name: Target Humidity
+```
+
+The sensor appears in Home Assistant with:
+- **Unit**: `%`
+- **Icon**: `mdi:water-percent`
+- **Category**: Diagnostic
+- **Precision**: 0 decimals
+
+> [!NOTE]
+> This sensor is **read-only** and **optional**. On units that do not populate byte 12, the value will remain unavailable (the sensor won't publish `0`). If your unit reports valid humidity values, please share your model and observations in [Discussion #649](https://github.com/echavet/MitsubishiCN105ESPHome/issues/649) to help the community validate this feature.
+
+### Split Vane (Dual Motor) Support
+
+Some Mitsubishi wall-mount units feature split vanes with two independent motors. This component supports controlling both motors together via the `vane_type` option in the `supports` block.
+
+There are two split-vane configurations depending on your unit's hardware:
+
+| `vane_type` | Description | Tested on |
+|------------|-------------|-----------|
+| `standard` (default) | Single motor per vane axis — standard behavior | Most units |
+| `split_horizontal` | Dual horizontal (wide) vane motors — both left/right wide-vane motors are synchronized | MSZ-GE24NA (confirmed by [@polskikrol](https://github.com/polskikrol)) |
+| `split_vertical` | Dual vertical vane motors — experimental, awaiting community validation | MSZ-FH series (pending) |
+
+#### Example: Split Horizontal Vane Configuration
+
+For units with two independent horizontal (wide) vane motors (e.g. MSZ-GE24NA):
+
+```yaml
+climate:
+  - platform: cn105
+    name: "My Heat Pump"
+    # ... your existing config ...
+    horizontal_vane_select:
+      name: Horizontal Vane
+    vertical_vane_select:
+      name: Vertical Vane
+    supports:
+      mode: [HEAT_COOL, COOL, HEAT, DRY, FAN_ONLY]
+      fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
+      swing_mode: ["OFF", HORIZONTAL, VERTICAL]
+      vane_type: split_horizontal  # ← Synchronizes both horizontal vane motors
+```
+
+#### Example: Split Vertical Vane Configuration (Experimental)
+
+For units with two independent vertical vane motors (e.g. MSZ-FH series):
+
+```yaml
+climate:
+  - platform: cn105
+    name: "My Heat Pump"
+    # ... your existing config ...
+    vertical_vane_select:
+      name: Vertical Vane
+    supports:
+      swing_mode: ["OFF", VERTICAL]
+      vane_type: split_vertical  # ← Experimental: synchronizes both vertical vane motors
+```
+
+> [!WARNING]
+> `split_vertical` is experimental and has not yet been validated by community testers. If your unit has dual vertical vane motors, please test and report your findings in [Issue #505](https://github.com/echavet/MitsubishiCN105ESPHome/issues/505).
 
 ## Comparison with ESPHome Native `mitsubishi_cn105`
 

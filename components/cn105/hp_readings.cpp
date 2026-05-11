@@ -228,6 +228,24 @@ void CN105Climate::getSettingsFromResponsePacket() {
         this->iSee_sensor_->publish_state(receivedSettings.iSee);
     }
 
+    // --- TARGET HUMIDITY (byte 12 of 0x02 settings packet) ---
+    // Some premium models (e.g. MSZ-LN series) store a target humidity
+    // percentage in data[12]. This value changes when the mode is switched
+    // via the IR remote (e.g. COOL→70%, DRY→50%, HEAT→40%).
+    // Not all models populate this byte — it may read 0x00 on unsupported units.
+    if (this->target_humidity_sensor_ != nullptr) {
+        uint8_t raw_humidity = data[12];
+        if (raw_humidity > 0 && raw_humidity <= 100) {
+            float humidity_pct = static_cast<float>(raw_humidity);
+            if (this->target_humidity_sensor_->get_raw_state() != humidity_pct) {
+                ESP_LOGD("Decoder", "[Target Humidity: %.0f%%]", humidity_pct);
+                this->target_humidity_sensor_->publish_state(humidity_pct);
+            }
+        } else if (raw_humidity != 0) {
+            ESP_LOGD("Decoder", "[Target Humidity byte out of range: 0x%02X]", raw_humidity);
+        }
+    }
+
     // --- AIRFLOW CONTROL START
     if (this->airflow_control_select_ != nullptr) {
         if (data[10] == 0x80) {
