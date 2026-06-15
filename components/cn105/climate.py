@@ -100,6 +100,7 @@ CONF_ERROR_CODE_SENSOR = "error_code_sensor"
 CONF_REMOTE_TEMP_SOURCE = "remote_temperature_source"
 CONF_REMOTE_TEMP_SOURCE_SENSOR_ID = "sensor_id"
 CONF_REMOTE_TEMP_SOURCE_INFO = "info"
+CONF_REMOTE_TEMP_AS_CURRENT = "use_as_current_temperature"
 CONF_HP_UP_TIME_CONNECTION_SENSOR = "hp_uptime_connection_sensor"
 CONF_USE_AS_OPERATING_FALLBACK = "use_as_operating_fallback"  # Nouvelle constante
 CONF_FAHRENHEIT_SUPPORT_MODE = "fahrenheit_compatibility"
@@ -308,6 +309,7 @@ REMOTE_TEMP_SOURCE_SCHEMA = cv.Schema(
         cv.Optional(CONF_REMOTE_TEMP_SOURCE_INFO): text_sensor.text_sensor_schema(RemoteTempSourceInfo).extend(
             {cv.GenerateID(CONF_ID): cv.declare_id(RemoteTempSourceInfo)}
         ),
+        cv.Optional(CONF_REMOTE_TEMP_AS_CURRENT, default=False): cv.boolean,
     }
 )
 
@@ -729,6 +731,7 @@ def to_code(config):
         rts_config = config[CONF_REMOTE_TEMP_SOURCE]
         source_sensor = yield cg.get_variable(rts_config[CONF_REMOTE_TEMP_SOURCE_SENSOR_ID])
         cg.add(var.set_remote_temp_source(source_sensor))
+        cg.add(var.set_remote_temp_as_current(rts_config[CONF_REMOTE_TEMP_AS_CURRENT]))
         if CONF_REMOTE_TEMP_SOURCE_INFO in rts_config:
             info_sensor = yield text_sensor.new_text_sensor(rts_config[CONF_REMOTE_TEMP_SOURCE_INFO])
             cg.add(var.set_remote_temp_source_info_sensor(info_sensor))

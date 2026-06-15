@@ -107,6 +107,9 @@ namespace esphome {
         void set_error_code_sensor(esphome::text_sensor::TextSensor* error_code_sensor);
         void set_remote_temp_source(esphome::sensor::Sensor* source);
         void set_remote_temp_source_info_sensor(esphome::text_sensor::TextSensor* info_sensor);
+        // When true, display the active remote_temperature_source value as the climate
+        // current_temperature instead of the heat pump's internal probe.
+        void set_remote_temp_as_current(bool v) { this->remote_temp_as_current_ = v; }
         void set_hp_uptime_connection_sensor(cn105::HpUpTimeConnectionSensor* hp_up_connection_sensor);
         
         void set_remote_temperature_control_sensor(esphome::binary_sensor::BinarySensor* sensor);
@@ -129,6 +132,7 @@ namespace esphome {
         text_sensor::TextSensor* error_code_sensor_{ nullptr };
         sensor::Sensor* remote_temp_source_{ nullptr };
         text_sensor::TextSensor* remote_temp_source_info_sensor_{ nullptr };
+        bool remote_temp_as_current_ = false;
         HVACOptionSwitch* air_purifier_switch_ = nullptr;
         HVACOptionSwitch* night_mode_switch_ = nullptr;
         HVACOptionSwitch* circulator_switch_ = nullptr;

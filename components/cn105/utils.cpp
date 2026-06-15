@@ -238,6 +238,13 @@ void CN105Climate::setTargetTemperatureHigh(float temperature) {
 }
 
 void CN105Climate::setCurrentTemperature(float temperature) {
+    // If a remote_temperature_source is active and configured to drive the displayed
+    // current temperature, surface the remote (room) value instead of the unit's
+    // internal probe. remoteTemperature_ is reset to 0 on timeout/revert, so this
+    // automatically falls back to the heat pump probe when no remote temp is in use.
+    if (this->remote_temp_as_current_ && this->remoteTemperature_ > 0) {
+        temperature = this->remoteTemperature_;
+    }
     this->current_temperature = this->fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(temperature);
 }
 
