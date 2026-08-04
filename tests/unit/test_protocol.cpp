@@ -319,3 +319,42 @@ TEST(ProtocolLookupIndexOpt, StringNotFound) {
     auto result = lookup_index_opt(MODE_MAP, 5, "TURBO");
     EXPECT_FALSE(result.has_value());
 }
+
+// ════════════════════════════════════════════════════════════════
+// MSZ-A24NA setpoint table
+// ════════════════════════════════════════════════════════════════
+
+TEST(ProtocolA24naSetpoint, Decode_HighNibbleIsHalfDegree) {
+    EXPECT_FLOAT_EQ(decode_msz_a24na_setpoint(0x0F), 16.0f);
+    EXPECT_FLOAT_EQ(decode_msz_a24na_setpoint(0x1F), 16.5f);
+    EXPECT_FLOAT_EQ(decode_msz_a24na_setpoint(0x0E), 17.0f);
+    EXPECT_FLOAT_EQ(decode_msz_a24na_setpoint(0x1E), 17.5f);
+    EXPECT_FLOAT_EQ(decode_msz_a24na_setpoint(0x00), 31.0f);
+}
+
+TEST(ProtocolA24naSetpoint, Encode_HighNibbleIsHalfDegree) {
+    EXPECT_EQ(encode_msz_a24na_setpoint(16.0f), 0x0F);
+    EXPECT_EQ(encode_msz_a24na_setpoint(16.5f), 0x1F);
+    EXPECT_EQ(encode_msz_a24na_setpoint(17.0f), 0x0E);
+    EXPECT_EQ(encode_msz_a24na_setpoint(17.5f), 0x1E);
+    EXPECT_EQ(encode_msz_a24na_setpoint(31.0f), 0x00);
+}
+
+TEST(ProtocolA24naSetpoint, RoundTrip_AllHalfSteps) {
+    for (int half_steps = 0; half_steps <= 30; ++half_steps) {
+        float temp = 16.0f + half_steps * 0.5f;
+        uint8_t encoded = encode_msz_a24na_setpoint(temp);
+        float decoded = decode_msz_a24na_setpoint(encoded);
+        EXPECT_FLOAT_EQ(decoded, temp) << "half_step=" << half_steps;
+    }
+}
+
+TEST(ProtocolA24naSetpoint, ClampAndRound) {
+    // out-of-range: clamp to [16.0, 31.0]
+    EXPECT_EQ(encode_msz_a24na_setpoint(15.0f), 0x0F);
+    EXPECT_EQ(encode_msz_a24na_setpoint(32.0f), 0x00);
+    // midpoints between half-degree steps: std::round is half-away-from-zero
+    // 16.25 → 16.5 (0x1F); 16.75 → 17.0 (0x0E)
+    EXPECT_EQ(encode_msz_a24na_setpoint(16.25f), 0x1F);
+    EXPECT_EQ(encode_msz_a24na_setpoint(16.75f), 0x0E);
+}

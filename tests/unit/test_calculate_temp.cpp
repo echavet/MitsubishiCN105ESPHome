@@ -17,7 +17,11 @@ static int lookupByteMapIndex_int(const int valuesMap[], int len, int lookupValu
 
 // Standalone reimplementation of calculateTemperatureSetting (from utils.cpp)
 // tempMode parameter replaces the `this->tempMode` member access
-static float calculateTemperatureSetting(float setting, bool tempMode) {
+static float calculateTemperatureSetting(float setting, bool tempMode, bool a24na = false) {
+    if (a24na) {
+        setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
+        return setting < 16.0f ? 16.0f : (setting > 31.0f ? 31.0f : setting);
+    }
     if (!tempMode) {
         return lookupByteMapIndex_int(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
     } else {
@@ -107,4 +111,28 @@ TEST(CalculateTempTest, EncodingB_ExactMin_10) {
 TEST(CalculateTempTest, EncodingB_ExactMax_31) {
     float result = calculateTemperatureSetting(31.0f, true);
     EXPECT_FLOAT_EQ(result, 31.0f); // boundary — no clamp
+}
+
+// ========================================================
+// MSZ-A24NA table (a24na = true)
+// ========================================================
+
+TEST(CalculateTempTest, A24na_ClampsMin) {
+    float result = calculateTemperatureSetting(15.0f, false, true);
+    EXPECT_FLOAT_EQ(result, 16.0f);
+}
+
+TEST(CalculateTempTest, A24na_ClampsMax) {
+    float result = calculateTemperatureSetting(32.0f, false, true);
+    EXPECT_FLOAT_EQ(result, 31.0f);
+}
+
+TEST(CalculateTempTest, A24na_RoundsToHalfDegree) {
+    float result = calculateTemperatureSetting(16.3f, false, true);
+    EXPECT_FLOAT_EQ(result, 16.5f);
+}
+
+TEST(CalculateTempTest, A24na_KeepsExactHalfDegree) {
+    float result = calculateTemperatureSetting(21.5f, false, true);
+    EXPECT_FLOAT_EQ(result, 21.5f);
 }

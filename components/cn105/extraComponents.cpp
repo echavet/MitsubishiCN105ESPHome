@@ -263,8 +263,18 @@ void CN105Climate::set_hp_uptime_connection_sensor(cn105::HpUpTimeConnectionSens
 void CN105Climate::set_use_fahrenheit_support_mode(FahrenheitMode mode) {
     this->fahrenheitSupport_.setUseFahrenheitSupportMode(mode);
     const char* mode_name = (mode == FahrenheitMode::OFF) ? "disabled" :
-                           (mode == FahrenheitMode::STANDARD) ? "standard" : "alt";
+                           (mode == FahrenheitMode::STANDARD) ? "standard" :
+                           (mode == FahrenheitMode::ALT) ? "alt" : "msz_a24na";
     ESP_LOGI(TAG, "Fahrenheit compatibility mode: %s", mode_name);
+}
+
+void CN105Climate::set_msz_a24na_setpoint_table(bool value) {
+    this->use_msz_a24na_setpoint_table_ = value;
+    if (value) {
+        this->traits_.set_visual_min_temperature(16.0f);
+        this->traits_.set_visual_max_temperature(31.0f);
+    }
+    ESP_LOGI(TAG, "MSZ-A24NA setpoint table: %s", value ? "enabled" : "disabled");
 }
 
 void CN105Climate::add_hardware_setting(HardwareSettingSelect* setting) {

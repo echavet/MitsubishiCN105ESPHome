@@ -45,6 +45,10 @@ const char* CN105Climate::getIfNotNull(const char* what, const char* defaultValu
  * It returns the temperature setting.
  */
 float CN105Climate::calculateTemperatureSetting(float setting) {
+    if (this->use_msz_a24na_setpoint_table_) {
+        setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
+        return setting < 16.0f ? 16.0f : (setting > 31.0f ? 31.0f : setting);
+    }
     if (!this->use_temperature_encoding_b_) {
         return cn105_protocol::lookup_index(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
     } else {
@@ -407,8 +411,8 @@ void CN105Climate::hpPacketDebug(const uint8_t* packet, unsigned int length, con
         case 0x04: subLabel = ":Status"; break; // Or "Unknown"? 0x04 is RQST_PKT_STATUS in cn105_types.h
         case 0x05: subLabel = ":Standby"; break; // RQST_PKT_STANDBY
         case 0x06: subLabel = ":Status"; break;  // RQST_PKT_HVAC_OPTIONS? Wait, need to check types map.
-                                                 // In cn105_types: 0x06 is RQST_PKT_HVAC_OPTIONS? 
-                                                 // Actually 0x06 in RCVD_PKT is TIMER? 
+                                                 // In cn105_types: 0x06 is RQST_PKT_HVAC_OPTIONS?
+                                                 // Actually 0x06 in RCVD_PKT is TIMER?
                                                  // Let's stick to common ones seen in logs:
                                                  // 02=Settings, 03=RoomTemp, 06=Status/Timers?, 09=Power?
                                                  // 0x09 is RCVD_PKT_STATUS in some contexts or Power?
@@ -416,17 +420,17 @@ void CN105Climate::hpPacketDebug(const uint8_t* packet, unsigned int length, con
                                                  // FC 62 ... 09 ... -> Power/Standby?
                                                  // FC 62 ... 06 ... -> Status?
         case 0x09: subLabel = ":Power"; break;
-        case 0x10: subLabel = ":Hello"; break; // Connect response 
+        case 0x10: subLabel = ":Hello"; break; // Connect response
         case 0x20: subLabel = ":Func1"; break; // Functions part 1
         case 0x22: subLabel = ":Func2"; break; // Functions part 2
         }
     }
-    
-    // For 0x06 specifically, in many logs it's Status or Timers. 
+
+    // For 0x06 specifically, in many logs it's Status or Timers.
     // In types.h: RCVD_PKT_STATUS = 5, RCVD_PKT_TIMER = 6.
     // Let's use generic names if unsure, but user wants semantic.
-    if (packet[5] == 0x06) subLabel = ":Status"; 
-    
+    if (packet[5] == 0x06) subLabel = ":Status";
+
     char fullLabel[20];
     snprintf(fullLabel, sizeof(fullLabel), "%s%s", label, subLabel);
 
@@ -453,7 +457,7 @@ void CN105Climate::hpPacketDebug(const uint8_t* packet, unsigned int length, con
     csStr = byteBuf;
 
 // Output format: [LABEL:SubLabel ] HEADER -> [ PAYLOAD ] CS
-    ESP_LOGD(packetDirection, "%s|%s|->[%s](%s) <%s>", 
+    ESP_LOGD(packetDirection, "%s|%s|->[%s](%s) <%s>",
         log_prefix, headerStr.c_str(), dataStr.c_str(), csStr.c_str(), fullLabel);
 }
 

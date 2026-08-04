@@ -3,6 +3,7 @@
 /// Deps: <cstdint>, <cmath>, <cstring>, <optional> (no ESPHome dependency)
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <cmath>
 #include <cstring>
@@ -73,6 +74,23 @@ inline void encode_remote_temperature(float temperature, uint8_t& enc_a, uint8_t
     float rounded = std::round(temperature * 2.0f);
     enc_a = static_cast<uint8_t>(rounded - 16);
     enc_b = static_cast<uint8_t>(rounded + 128);
+}
+
+/// Decode an MSZ-A24NA setpoint byte (data[5]) into °C.
+/// The A24NA uses the low nibble as the integer part and bit 4 as a +0.5 °C indicator:
+///   temperature = 31.0 - (byte & 0x0F) + 0.5 * ((byte >> 4) & 0x01)
+inline float decode_msz_a24na_setpoint(uint8_t byte) {
+    return 31.0f - static_cast<float>(byte & 0x0F)
+           + 0.5f * static_cast<float>((byte >> 4) & 0x01);
+}
+
+/// Encode a target setpoint temperature (16.0 .. 31.0 °C, 0.5 steps) into the MSZ-A24NA byte format.
+inline uint8_t encode_msz_a24na_setpoint(float temperature) {
+    float clamped = std::clamp(temperature, 16.0f, 31.0f);
+    int half_steps = static_cast<int>(std::round((clamped - 16.0f) * 2.0f));
+    uint8_t low = static_cast<uint8_t>(15 - (half_steps / 2));
+    uint8_t high = static_cast<uint8_t>((half_steps % 2) << 4);
+    return high | low;
 }
 
 // ════════════════════════════════════════════════════════════════

@@ -7,7 +7,8 @@ namespace esphome {
     enum class FahrenheitMode {
         OFF = 0,
         STANDARD = 1,
-        ALT = 2
+        ALT = 2,
+        MSZ_A24NA = 3
     };
 
     class FahrenheitSupport {
@@ -22,8 +23,10 @@ namespace esphome {
             }
 
             // Select the appropriate conversion table based on mode
-            const std::vector<std::pair<float, float>>& localTable =
-                (fahrenheit_mode_ == FahrenheitMode::ALT) ? fahrenheitToCelsiusTableAlt : fahrenheitToCelsiusTable;
+            const std::vector<std::pair<float, float>>& localTable = getActiveTable();
+            if (localTable.empty()) {
+                return c;
+            }
 
             auto it = std::upper_bound(
                 localTable.begin(),
@@ -34,13 +37,16 @@ namespace esphome {
                 }
             );
 
-            if (it == localTable.begin() || it == localTable.end()) {
-                return c;
+            float fahrenheitResult;
+            if (it == localTable.begin()) {
+                fahrenheitResult = localTable.front().first;
+            } else if (it == localTable.end()) {
+                fahrenheitResult = localTable.back().first;
+            } else {
+                auto prev = it;
+                --prev;
+                fahrenheitResult = std::abs(prev->second - c) < std::abs(it->second - c) ? prev->first : it->first;
             }
-
-            auto prev = it;
-            --prev;
-            float fahrenheitResult = std::abs(prev->second - c) < std::abs(it->second - c) ? prev->first : it->first;
 
             return (fahrenheitResult - 32.0f) / 1.8f;
         }
@@ -51,8 +57,10 @@ namespace esphome {
             }
 
             // Select the appropriate conversion table based on mode
-            const std::vector<std::pair<float, float>>& localTable =
-                (fahrenheit_mode_ == FahrenheitMode::ALT) ? fahrenheitToCelsiusTableAlt : fahrenheitToCelsiusTable;
+            const std::vector<std::pair<float, float>>& localTable = getActiveTable();
+            if (localTable.empty()) {
+                return c;
+            }
 
             float fahrenheitInput = (c * 1.8f) + 32.0f;
 
@@ -64,8 +72,12 @@ namespace esphome {
                 [](const std::pair<float, float>& a, const std::pair<float, float>& b) {
                     return a.first < b.first;
                 });
-            if (it == localTable.begin() || it == localTable.end()) {
-                return c;
+            
+            if (it == localTable.begin()) {
+                return localTable.front().second;
+            }
+            if (it == localTable.end()) {
+                return localTable.back().second;
             }
 
             auto prev = it;
@@ -75,6 +87,18 @@ namespace esphome {
         }
 
     private:
+        const std::vector<std::pair<float, float>>& getActiveTable() {
+            switch (fahrenheit_mode_) {
+                case FahrenheitMode::ALT:
+                    return fahrenheitToCelsiusTableAlt;
+                case FahrenheitMode::MSZ_A24NA:
+                    return fahrenheitToCelsiusTableMszA24na;
+                case FahrenheitMode::STANDARD:
+                default:
+                    return fahrenheitToCelsiusTable;
+            }
+        }
+
         FahrenheitMode fahrenheit_mode_ = FahrenheitMode::OFF;
 
         // Given a temperature in Celsius that was converted from Fahrenheit, converts
@@ -96,6 +120,15 @@ namespace esphome {
             {76, 24.5}, {77, 25.0}, {78, 25.5}, {79, 26.0}, {80, 26.5},
             {81, 27.0}, {82, 28.0}, {83, 28.5}, {84, 29.0}, {85, 29.5},
             {86, 30.0}, {87, 30.5}, {88, 31.0}
+        };
+        const std::vector<std::pair<float, float>> fahrenheitToCelsiusTableMszA24na = {
+            {59, 16.0}, {60, 16.5}, {61, 17.0}, {62, 17.5}, {63, 18.0},
+            {64, 18.5}, {65, 19.0}, {66, 19.5}, {67, 20.0}, {68, 20.5},
+            {69, 21.0}, {70, 21.5}, {71, 22.0}, {72, 22.5}, {73, 23.0},
+            {74, 23.5}, {75, 24.0}, {76, 24.5}, {77, 25.0}, {78, 25.5},
+            {79, 26.0}, {80, 26.5}, {81, 27.0}, {82, 27.5}, {83, 28.0},
+            {84, 28.5}, {85, 29.0}, {86, 29.5}, {87, 30.0}, {88, 30.5},
+            {89, 31.0}
         };
     };
 }

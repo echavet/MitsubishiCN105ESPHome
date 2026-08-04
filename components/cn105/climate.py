@@ -103,6 +103,7 @@ CONF_REMOTE_TEMP_SOURCE_INFO = "info"
 CONF_HP_UP_TIME_CONNECTION_SENSOR = "hp_uptime_connection_sensor"
 CONF_USE_AS_OPERATING_FALLBACK = "use_as_operating_fallback"  # Nouvelle constante
 CONF_FAHRENHEIT_SUPPORT_MODE = "fahrenheit_compatibility"
+CONF_MSZ_A24NA_SETPOINT_TABLE = "msz_a24na_setpoint_table"
 CONF_AIRFLOW_CONTROL_SELECT = "airflow_control_select"
 CONF_AIR_PURIFIER_SWITCH = "air_purifier_switch"
 CONF_NIGHT_MODE_SWITCH = "night_mode_switch"
@@ -127,6 +128,7 @@ FAHRENHEIT_MODES = {
     "disabled": 0,
     "standard": 1,
     "alt": 2,
+    "msz_a24na": 3,
     "false": 0,
     "true": 1,
 }
@@ -400,6 +402,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_FAHRENHEIT_SUPPORT_MODE, default="disabled"): cv.enum(
                 FAHRENHEIT_MODES, lower=True
             ),
+            cv.Optional(CONF_MSZ_A24NA_SETPOINT_TABLE, default=False): cv.boolean,
             cv.Optional(
                 CONF_STAGE_SENSOR
             ): STAGE_SENSOR_CONFIG_SCHEMA,  # ModifiÃÂÃÂ© pour le nouveau schÃÂÃÂ©ma
@@ -507,7 +510,7 @@ def to_code(config):
 
         # Set the number of horizontal vanes (Legacy)
         cg.add(var.set_horizontal_vanes(supports.get(CONF_HORIZONTAL_VANES, 1)))
-        
+
         # Set vane type (New)
         vane_type_conf = supports.get(CONF_VANE_TYPE, "standard")
         vane_type_val = VANE_TYPES.get(vane_type_conf, 0)
@@ -692,6 +695,8 @@ def to_code(config):
         f"static_cast<esphome::FahrenheitMode>({fahrenheit_value})"
     )
     cg.add(var.set_use_fahrenheit_support_mode(mode_enum))
+
+    cg.add(var.set_msz_a24na_setpoint_table(config[CONF_MSZ_A24NA_SETPOINT_TABLE]))
 
     # --- TRAITEMENT POUR STAGE_SENSOR AVEC LA NOUVELLE OPTION ---
     if CONF_STAGE_SENSOR in config:

@@ -182,7 +182,9 @@ void CN105Climate::getSettingsFromResponsePacket() {
     ESP_LOGD("Decoder", "[iSee  : %d]", receivedSettings.iSee);
     ESP_LOGD("Decoder", "[Mode  : %s]", receivedSettings.mode);
 
-    if (data[11] != 0x00) {
+    if (this->use_msz_a24na_setpoint_table_) {
+        receivedSettings.temperature = cn105_protocol::decode_msz_a24na_setpoint(data[5]);
+    } else if (data[11] != 0x00) {
         int temp = data[11];
         temp -= 128;
         receivedSettings.temperature = (float)temp / 2;
@@ -277,7 +279,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
                     receivedRunStates.airflow_control = this->currentRunStates.airflow_control;
                 }
             } else {
-                // For some reason data[10] is 0x80, but the i-See sensor is not active. 
+                // For some reason data[10] is 0x80, but the i-See sensor is not active.
                 // Some units let us do this, but the real mode is unknown (might be powersave) and the i-See sensor does not get activated.
                 //receivedRunStates.airflow_control = "N/A";
                 ESP_LOGD("Decoder", "i-See sensor not present/active.");
@@ -429,7 +431,7 @@ void CN105Climate::getHVACOptionsFromResponsePacket() {
 void CN105Climate::terminateCycle() {
     if (this->shouldSendExternalTemperature_) {
         // We will receive ACK packet for this.
-        // Sending WantedSettings must be delayed in this case (lastSend timestamp updated).        
+        // Sending WantedSettings must be delayed in this case (lastSend timestamp updated).
         ESP_LOGD(LOG_REMOTE_TEMP, "Sending remote temperature...");
         this->sendRemoteTemperature();
     }
@@ -629,7 +631,7 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
 void CN105Climate::heatpumpUpdate(heatpumpSettings& settings) {
     // settings correponds to current settings
     ESP_LOGV(LOG_SETTINGS_TAG, "Settings received");
-    // if received settings are different from current settings 
+    // if received settings are different from current settings
     if (settings != this->currentSettings) {
         ESP_LOGI(LOG_SETTINGS_TAG, "Settings changed, updating HA states");
         this->debugSettings("current", this->currentSettings);
