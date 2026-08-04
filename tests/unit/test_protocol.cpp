@@ -350,9 +350,11 @@ TEST(ProtocolA24naSetpoint, RoundTrip_AllHalfSteps) {
 }
 
 TEST(ProtocolA24naSetpoint, ClampAndRound) {
-    // out-of-range and non-half values are clamped/rounded to the nearest valid step
+    // out-of-range: clamp to [16.0, 31.0]
     EXPECT_EQ(encode_msz_a24na_setpoint(15.0f), 0x0F);
     EXPECT_EQ(encode_msz_a24na_setpoint(32.0f), 0x00);
-    EXPECT_EQ(encode_msz_a24na_setpoint(16.25f), 0x0F);
-    EXPECT_EQ(encode_msz_a24na_setpoint(16.75f), 0x1F);
+    // midpoints between half-degree steps: std::round is half-away-from-zero
+    // 16.25 → 16.5 (0x1F); 16.75 → 17.0 (0x0E)
+    EXPECT_EQ(encode_msz_a24na_setpoint(16.25f), 0x1F);
+    EXPECT_EQ(encode_msz_a24na_setpoint(16.75f), 0x0E);
 }
