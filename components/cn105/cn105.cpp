@@ -356,7 +356,7 @@ bool CN105Climate::is_circulator() {
 void CN105Climate::setupUART() {
 
     log_info_uint32(TAG, "setupUART() with baudrate ", this->parent_->get_baud_rate());
-    ESP_LOGI(LOG_CONN_TAG, "setupUART(): baud=%d tx=%d rx=%d (UART port=" PRIu32 ")", this->parent_->get_baud_rate(), this->tx_pin_, this->rx_pin_, this->uart_port_);
+    ESP_LOGI(LOG_CONN_TAG, "setupUART(): baud=" PRIu32 " tx=%d rx=%d (UART port=%d)", this->parent_->get_baud_rate(), this->tx_pin_, this->rx_pin_, this->uart_port_);
     this->setHeatpumpConnected(false);
     // isUARTConnected_ replaced by state_ (set to CONNECTING after successful config below)
 
