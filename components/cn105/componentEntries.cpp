@@ -1,3 +1,4 @@
+#include <cinttypes>
 #include "cn105.h"
 #ifdef USE_WIFI
 #include "esphome/components/wifi/wifi_component.h"
@@ -119,7 +120,7 @@ void CN105Climate::maybe_start_connection_() {
 #endif
             // WiFi ready (or no WiFi) — check grace delay
             this->transition_to_(DriverState::WAIT_GRACE);
-            ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: délai de grâce %ums pour logs OTA", this->conn_bootstrap_delay_ms_);
+            ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: délai de grâce " PRIu32 "ms pour logs OTA", this->conn_bootstrap_delay_ms_);
             return;
         }
 
