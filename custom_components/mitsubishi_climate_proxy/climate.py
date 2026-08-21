@@ -359,11 +359,22 @@ class MitsubishiHybridClimate(ClimateEntity):
         features = source_features & ~ClimateEntityFeature.TARGET_TEMPERATURE
         features = features & ~ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
 
-        # Dynamically add the flag based on current mode
-        # Use RANGE if we are in HEAT_COOL mode, OR if we are in OFF mode and the device supports HEAT_COOL
-        # (This ensures OFF mode shows dual setpoints instead of being empty, as OFF typically lacks a single 'temperature' attribute on dual-sp entities)
+        # Dynamically expose the target shape based on the current mode and
+        # values retained by the source. In OFF mode, ESPHome may retain a
+        # single target even when HEAT_COOL is supported; advertising a range
+        # in that case leaves the HA control empty because no range exists.
+        source_has_single_target = (
+            self._source_state.attributes.get("temperature") is not None
+        )
+        source_has_range_target = (
+            self._source_state.attributes.get("target_temp_low") is not None
+            and self._source_state.attributes.get("target_temp_high") is not None
+        )
+
         if self.hvac_mode == HVACMode.HEAT_COOL or (
-            self.hvac_mode == HVACMode.OFF and HVACMode.HEAT_COOL in self.hvac_modes
+            self.hvac_mode == HVACMode.OFF
+            and source_has_range_target
+            and not source_has_single_target
         ):
             features |= ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
         else:
