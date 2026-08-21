@@ -1,0 +1,15 @@
+{
+  "entity": {
+    "climate": {
+      "climate_proxy": {
+        "state_attributes": {
+          "fan_mode": {
+            "state": {
+              "quiet": "mdi:volume-off"
+            }
+          }
+        }
+      }
+    }
+  }
+}
