@@ -119,7 +119,7 @@ void CN105Climate::maybe_start_connection_() {
 #endif
             // WiFi ready (or no WiFi) — check grace delay
             this->transition_to_(DriverState::WAIT_GRACE);
-            ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: délai de grâce %ums pour logs OTA", this->conn_bootstrap_delay_ms_);
+            ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: délai de grâce %" PRIu32 "ms pour logs OTA", this->conn_bootstrap_delay_ms_);
             return;
         }
 
@@ -130,7 +130,7 @@ void CN105Climate::maybe_start_connection_() {
             }
 #endif
             this->transition_to_(DriverState::WAIT_GRACE);
-            ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: WiFi connecté, délai de grâce %ums", this->conn_bootstrap_delay_ms_);
+            ESP_LOGI(LOG_CONN_TAG, "Bootstrap connexion: WiFi connecté, délai de grâce %" PRIu32 "ms", this->conn_bootstrap_delay_ms_);
             return;
         }
 
