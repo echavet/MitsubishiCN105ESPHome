@@ -181,7 +181,7 @@ void RequestScheduler::send_next_after(uint8_t previous_code, CN105Climate* cont
 
         if (req.interval_ms > 0 && (CUSTOM_MILLIS - req.last_request_time < req.interval_ms) && req.last_request_time > 0) {
             if (req.log_tag) {
-                ESP_LOGD(req.log_tag, "Skipping %s (0x%02X) - interval not elapsed (elapsed: %lu, interval: %u)",
+                ESP_LOGD(req.log_tag, "Skipping %s (0x%02X) - interval not elapsed (elapsed: %lu, interval: %" PRIu32 ")",
                     req.description, req.code,
                     (unsigned long)(CUSTOM_MILLIS - req.last_request_time), req.interval_ms);
             }
