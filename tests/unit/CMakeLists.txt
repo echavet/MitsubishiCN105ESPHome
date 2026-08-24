@@ -41,6 +41,7 @@ add_executable(cn105_tests
     test_dual_setpoint_recenter.cpp
     test_setpoint_persistence.cpp
     test_mode_preservation.cpp
+    test_vane_setpoint_persistence.cpp
 )
 
 target_link_libraries(cn105_tests

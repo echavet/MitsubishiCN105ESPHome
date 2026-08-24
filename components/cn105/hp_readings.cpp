@@ -1,5 +1,6 @@
 #include "cn105.h"
 
+#include <cmath>
 #include <map>
 
 using namespace esphome;
@@ -184,12 +185,36 @@ void CN105Climate::getSettingsFromResponsePacket() {
 
     if (this->use_msz_a24na_setpoint_table_) {
         receivedSettings.temperature = cn105_protocol::decode_msz_a24na_setpoint(data[5]);
+    } else if (data[11] == 0x80) {
+        // 0x80 is "unused" (same as remote-temp clear packet), NOT 0°C.
+        // Keep previous temperature value.
+        ESP_LOGD("Decoder", "data[11]=0x80 is unused marker, keeping previous temp %.1f", this->currentSettings.temperature);
+        receivedSettings.temperature = this->currentSettings.temperature;
     } else if (data[11] != 0x00) {
+        // Encoding B: (data[11] - 128) / 2.0 gives temperature in °C
         int temp = data[11];
         temp -= 128;
         receivedSettings.temperature = (float)temp / 2;
+        // Latch encoding B: once detected, stay latched even if single packets have data[11]==0
+        if (!this->use_temperature_encoding_b_latched_) {
+            ESP_LOGI("Decoder", "Latching temperature encoding B (half-degree precision)");
+            this->use_temperature_encoding_b_latched_ = true;
+        }
         this->use_temperature_encoding_b_ = true;
+    } else if (this->use_temperature_encoding_b_latched_) {
+        // Encoding B was previously detected but this packet has data[11]==0.
+        // This can happen transiently. Use encoding A from data[5] as fallback,
+        // but don't unlatch encoding B for future packets.
+        auto temp_opt = cn105_protocol::lookup_value_opt(TEMP_MAP, TEMP, 16, data[5]);
+        if (temp_opt) {
+            receivedSettings.temperature = static_cast<float>(*temp_opt);
+            ESP_LOGD("Decoder", "Encoding B latched but data[11]=0, using encoding A fallback: %.1f", receivedSettings.temperature);
+        } else {
+            ESP_LOGW("Decoder", "Encoding B latched, data[11]=0, encoding A lookup failed (0x%02X) — keeping previous", data[5]);
+            receivedSettings.temperature = this->currentSettings.temperature;
+        }
     } else {
+        // Encoding A: lookup table
         auto temp_opt = cn105_protocol::lookup_value_opt(TEMP_MAP, TEMP, 16, data[5]);
         if (temp_opt) {
             receivedSettings.temperature = static_cast<float>(*temp_opt);
@@ -603,18 +628,40 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
         checkWideVaneSettings(settings);
     }
 
-    // HA Temp
-    // Ignorer temporairement une consigne entrante si une consigne utilisateur est en cours
+    // HA Temp — apply grace window to prevent PAC from overwriting user setpoint
+    // Three conditions block incoming setpoint:
+    // 1. Pending user temperature not yet sent
+    // 2. Recently sent user temperature (within grace window after TX)
+    // 3. NEW: PAC reports a different temperature than last_user_temperature within RECEIVED_SETPOINT_GRACE_WINDOW_MS
     bool hasPendingUserTemp = (this->wantedSettings.temperature != -1.0f) && (this->wantedSettings.hasChanged) && (!this->wantedSettings.hasBeenSent);
     uint32_t graceWindowMs = this->get_update_interval() + DEFER_SCHEDULE_UPDATE_LOOP_DELAY;
     bool graceAfterSend = (this->wantedSettings.hasBeenSent) && ((CUSTOM_MILLIS - this->wantedSettings.lastChange) < graceWindowMs);
-    if (!hasPendingUserTemp && !graceAfterSend) {
+
+    // Extended grace window: if the PAC reports a setpoint that disagrees with the user's
+    // last command, and we're within RECEIVED_SETPOINT_GRACE_WINDOW_MS, ignore the PAC value.
+    // This prevents race conditions where the PAC echoes an old value or a default (16/17°C).
+    bool withinSetpointGrace = false;
+    if (this->wantedSettings.last_user_temperature > 0 && this->wantedSettings.last_user_temperature_ms > 0) {
+        uint32_t elapsed = CUSTOM_MILLIS - this->wantedSettings.last_user_temperature_ms;
+        if (elapsed < RECEIVED_SETPOINT_GRACE_WINDOW_MS) {
+            // Within grace window: only accept if PAC agrees with user command (within 0.5°C)
+            float diff = std::abs(settings.temperature - this->wantedSettings.last_user_temperature);
+            if (diff > 0.5f) {
+                withinSetpointGrace = true;
+                ESP_LOGD(LOG_SETTINGS_TAG, "Setpoint grace: PAC reports %.1f but user sent %.1f %ums ago, ignoring PAC",
+                    settings.temperature, this->wantedSettings.last_user_temperature, elapsed);
+            }
+        }
+    }
+
+    if (!hasPendingUserTemp && !graceAfterSend && !withinSetpointGrace) {
         if (this->wantedSettings.temperature == -1) { // to prevent overwriting a user demand
             this->updateTargetTemperaturesFromSettings(settings.temperature);
             this->currentSettings.temperature = settings.temperature;
         }
     } else {
-        ESP_LOGD(LOG_SETTINGS_TAG, "Ignoring incoming setpoint due to pending user change or grace window");
+        ESP_LOGD(LOG_SETTINGS_TAG, "Ignoring incoming setpoint due to pending user change or grace window (pending=%d, afterSend=%d, setpointGrace=%d)",
+            hasPendingUserTemp, graceAfterSend, withinSetpointGrace);
     }
 
     this->currentSettings.iSee = settings.iSee;
@@ -644,7 +691,27 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings& settings) {
 }
 
 void CN105Climate::checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
-    if (this->hasChanged(currentSettings.vane, settings.vane, "vane")) {    // widevane setting change ?
+    // Grace window protection for vane: if the PAC reports a vane position that
+    // disagrees with the user's last command, and we're within grace window,
+    // re-send the user's vane on the next SET packet instead of accepting PAC's value.
+    // This handles the case where the PAC physically snaps the vane to a default
+    // but still echoes the last commanded value (or reports a different value).
+    if (this->wantedSettings.last_user_vane != nullptr && this->wantedSettings.last_user_vane_ms > 0) {
+        uint32_t elapsed = CUSTOM_MILLIS - this->wantedSettings.last_user_vane_ms;
+        // Use a longer grace window for vane (same as setpoint grace)
+        if (elapsed < RECEIVED_SETPOINT_GRACE_WINDOW_MS) {
+            if (settings.vane != nullptr && strcmp(settings.vane, this->wantedSettings.last_user_vane) != 0) {
+                ESP_LOGD(LOG_SETTINGS_TAG, "Vane grace: PAC reports %s but user sent %s %ums ago, keeping user vane",
+                    settings.vane, this->wantedSettings.last_user_vane, elapsed);
+                // Don't update currentSettings or swing_mode from PAC during grace
+                // The next SET packet will re-send last_user_vane via createPacket()
+                updateExtraSelectComponents(settings);
+                return;
+            }
+        }
+    }
+
+    if (this->hasChanged(currentSettings.vane, settings.vane, "vane")) {    // vane setting change ?
         ESP_LOGI(LOG_SETTINGS_TAG, "vane setting changed");
 
         //this->debugSettings("settings", settings);

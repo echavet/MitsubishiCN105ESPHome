@@ -183,7 +183,17 @@ struct wantedHeatpumpSettings : heatpumpSettings {
     uint8_t nb_deffered_requests = 0;
     long lastChange = 0;
 
+    // Last user-commanded values: persist across resetSettings() so that
+    // subsequent SET packets (e.g. temp-only) still include these fields,
+    // preventing the PAC from snapping vane/temp to defaults.
+    const char* last_user_vane = nullptr;
+    float last_user_temperature = -1.0f;
+    uint32_t last_user_vane_ms = 0;        // timestamp of last user vane command
+    uint32_t last_user_temperature_ms = 0; // timestamp of last user temperature command
+
     void resetSettings() {
+        // Preserve last_user_* fields across reset — they represent the user's
+        // intended state and should be re-sent on subsequent SET packets.
         heatpumpSettings::resetSettings();
         hasChanged = false;
         hasBeenSent = false;

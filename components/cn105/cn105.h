@@ -491,6 +491,7 @@ namespace esphome {
         heatpumpFunctions functions;
 
         bool use_temperature_encoding_b_ = false;
+        bool use_temperature_encoding_b_latched_ = false;  // Once encoding B is detected, stay latched
         bool use_msz_a24na_setpoint_table_ = false;
         bool wideVaneAdj;
         bool autoUpdate;
