@@ -251,21 +251,7 @@ void CN105Climate::createPacket(uint8_t* packet) {
         if (idx >= 0) { packet[11] = FAN[idx]; packet[6] += CONTROL_PACKET_1[3]; } else { ESP_LOGW(TAG, "Ignoring invalid fan setting while building packet"); }
     }
 
-    // VANE HANDLING: Always include vane control bits to prevent PAC from snapping
-    // the physical vane to a default position (AUTO/up) on non-vane SET packets.
-    // If user explicitly set vane this packet, use that; otherwise use last_user_vane.
-    const char* vane_to_send = nullptr;
-    if (this->wantedSettings.vane != nullptr) {
-        vane_to_send = getVaneSetting();
-        ESP_LOGD(TAG, "heatpump vane (explicit) -> %s", vane_to_send);
-    } else if (this->wantedSettings.last_user_vane != nullptr) {
-        vane_to_send = this->wantedSettings.last_user_vane;
-        ESP_LOGD(TAG, "heatpump vane (last_user) -> %s", vane_to_send);
-    }
-    if (vane_to_send != nullptr) {
-        int idx = lookupByteMapIndex(VANE_MAP, 7, vane_to_send, "vane (write)");
-        if (idx >= 0) { packet[12] = VANE[idx]; packet[6] += CONTROL_PACKET_1[4]; } else { ESP_LOGW(TAG, "Ignoring invalid vane setting while building packet"); }
-    }
+    this->applyVaneToPacket(packet);
 
     if (this->wantedSettings.wideVane != nullptr) {
         ESP_LOGD(TAG, "heatpump widevane -> %s", getWideVaneSetting());
@@ -300,12 +286,27 @@ void CN105Climate::createPacket(uint8_t* packet) {
     // add the checksum
     uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
-    //ESP_LOGD(TAG, "debug before write packet:");
-    //this->hpPacketDebug(packet, 22, "WRITE");
 }
 
+const char* CN105Climate::vaneSettingForPacket() const {
+    if (this->wantedSettings.vane != nullptr) {
+        return this->wantedSettings.vane;
+    }
+    return this->wantedSettings.last_user_vane;
+}
 
-
+void CN105Climate::applyVaneToPacket(uint8_t* packet) {
+    const char* vane = this->vaneSettingForPacket();
+    if (vane == nullptr) return;
+    int idx = lookupByteMapIndex(VANE_MAP, 7, vane, "vane (write)");
+    if (idx < 0) {
+        ESP_LOGW(TAG, "Invalid vane setting");
+        return;
+    }
+    ESP_LOGD(TAG, "vane -> %s", vane);
+    packet[12] = VANE[idx];
+    packet[6] += CONTROL_PACKET_1[4];
+}
 
 
 void CN105Climate::publishWantedSettingsStateToHA() {

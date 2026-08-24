@@ -183,46 +183,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
     ESP_LOGD("Decoder", "[iSee  : %d]", receivedSettings.iSee);
     ESP_LOGD("Decoder", "[Mode  : %s]", receivedSettings.mode);
 
-    if (this->use_msz_a24na_setpoint_table_) {
-        receivedSettings.temperature = cn105_protocol::decode_msz_a24na_setpoint(data[5]);
-    } else if (data[11] == 0x80) {
-        // 0x80 is "unused" (same as remote-temp clear packet), NOT 0°C.
-        // Keep previous temperature value.
-        ESP_LOGD("Decoder", "data[11]=0x80 is unused marker, keeping previous temp %.1f", this->currentSettings.temperature);
-        receivedSettings.temperature = this->currentSettings.temperature;
-    } else if (data[11] != 0x00) {
-        // Encoding B: (data[11] - 128) / 2.0 gives temperature in °C
-        int temp = data[11];
-        temp -= 128;
-        receivedSettings.temperature = (float)temp / 2;
-        // Latch encoding B: once detected, stay latched even if single packets have data[11]==0
-        if (!this->use_temperature_encoding_b_latched_) {
-            ESP_LOGI("Decoder", "Latching temperature encoding B (half-degree precision)");
-            this->use_temperature_encoding_b_latched_ = true;
-        }
-        this->use_temperature_encoding_b_ = true;
-    } else if (this->use_temperature_encoding_b_latched_) {
-        // Encoding B was previously detected but this packet has data[11]==0.
-        // This can happen transiently. Use encoding A from data[5] as fallback,
-        // but don't unlatch encoding B for future packets.
-        auto temp_opt = cn105_protocol::lookup_value_opt(TEMP_MAP, TEMP, 16, data[5]);
-        if (temp_opt) {
-            receivedSettings.temperature = static_cast<float>(*temp_opt);
-            ESP_LOGD("Decoder", "Encoding B latched but data[11]=0, using encoding A fallback: %.1f", receivedSettings.temperature);
-        } else {
-            ESP_LOGW("Decoder", "Encoding B latched, data[11]=0, encoding A lookup failed (0x%02X) — keeping previous", data[5]);
-            receivedSettings.temperature = this->currentSettings.temperature;
-        }
-    } else {
-        // Encoding A: lookup table
-        auto temp_opt = cn105_protocol::lookup_value_opt(TEMP_MAP, TEMP, 16, data[5]);
-        if (temp_opt) {
-            receivedSettings.temperature = static_cast<float>(*temp_opt);
-        } else {
-            ESP_LOGW("Decoder", "Unknown temperature byte 0x%02X — keeping previous value", data[5]);
-            receivedSettings.temperature = this->currentSettings.temperature;
-        }
-    }
+    receivedSettings.temperature = this->decodeSettingsTemperature(data);
 
     ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
 
@@ -628,40 +589,9 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
         checkWideVaneSettings(settings);
     }
 
-    // HA Temp — apply grace window to prevent PAC from overwriting user setpoint
-    // Three conditions block incoming setpoint:
-    // 1. Pending user temperature not yet sent
-    // 2. Recently sent user temperature (within grace window after TX)
-    // 3. NEW: PAC reports a different temperature than last_user_temperature within RECEIVED_SETPOINT_GRACE_WINDOW_MS
-    bool hasPendingUserTemp = (this->wantedSettings.temperature != -1.0f) && (this->wantedSettings.hasChanged) && (!this->wantedSettings.hasBeenSent);
-    uint32_t graceWindowMs = this->get_update_interval() + DEFER_SCHEDULE_UPDATE_LOOP_DELAY;
-    bool graceAfterSend = (this->wantedSettings.hasBeenSent) && ((CUSTOM_MILLIS - this->wantedSettings.lastChange) < graceWindowMs);
-
-    // Extended grace window: if the PAC reports a setpoint that disagrees with the user's
-    // last command, and we're within RECEIVED_SETPOINT_GRACE_WINDOW_MS, ignore the PAC value.
-    // This prevents race conditions where the PAC echoes an old value or a default (16/17°C).
-    bool withinSetpointGrace = false;
-    if (this->wantedSettings.last_user_temperature > 0 && this->wantedSettings.last_user_temperature_ms > 0) {
-        uint32_t elapsed = CUSTOM_MILLIS - this->wantedSettings.last_user_temperature_ms;
-        if (elapsed < RECEIVED_SETPOINT_GRACE_WINDOW_MS) {
-            // Within grace window: only accept if PAC agrees with user command (within 0.5°C)
-            float diff = std::abs(settings.temperature - this->wantedSettings.last_user_temperature);
-            if (diff > 0.5f) {
-                withinSetpointGrace = true;
-                ESP_LOGD(LOG_SETTINGS_TAG, "Setpoint grace: PAC reports %.1f but user sent %.1f %ums ago, ignoring PAC",
-                    settings.temperature, this->wantedSettings.last_user_temperature, elapsed);
-            }
-        }
-    }
-
-    if (!hasPendingUserTemp && !graceAfterSend && !withinSetpointGrace) {
-        if (this->wantedSettings.temperature == -1) { // to prevent overwriting a user demand
-            this->updateTargetTemperaturesFromSettings(settings.temperature);
-            this->currentSettings.temperature = settings.temperature;
-        }
-    } else {
-        ESP_LOGD(LOG_SETTINGS_TAG, "Ignoring incoming setpoint due to pending user change or grace window (pending=%d, afterSend=%d, setpointGrace=%d)",
-            hasPendingUserTemp, graceAfterSend, withinSetpointGrace);
+    if (this->shouldApplyIncomingSetpoint(settings)) {
+        this->updateTargetTemperaturesFromSettings(settings.temperature);
+        this->currentSettings.temperature = settings.temperature;
     }
 
     this->currentSettings.iSee = settings.iSee;
@@ -691,27 +621,12 @@ void CN105Climate::heatpumpUpdate(heatpumpSettings& settings) {
 }
 
 void CN105Climate::checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
-    // Grace window protection for vane: if the PAC reports a vane position that
-    // disagrees with the user's last command, and we're within grace window,
-    // re-send the user's vane on the next SET packet instead of accepting PAC's value.
-    // This handles the case where the PAC physically snaps the vane to a default
-    // but still echoes the last commanded value (or reports a different value).
-    if (this->wantedSettings.last_user_vane != nullptr && this->wantedSettings.last_user_vane_ms > 0) {
-        uint32_t elapsed = CUSTOM_MILLIS - this->wantedSettings.last_user_vane_ms;
-        // Use a longer grace window for vane (same as setpoint grace)
-        if (elapsed < RECEIVED_SETPOINT_GRACE_WINDOW_MS) {
-            if (settings.vane != nullptr && strcmp(settings.vane, this->wantedSettings.last_user_vane) != 0) {
-                ESP_LOGD(LOG_SETTINGS_TAG, "Vane grace: PAC reports %s but user sent %s %ums ago, keeping user vane",
-                    settings.vane, this->wantedSettings.last_user_vane, elapsed);
-                // Don't update currentSettings or swing_mode from PAC during grace
-                // The next SET packet will re-send last_user_vane via createPacket()
-                updateExtraSelectComponents(settings);
-                return;
-            }
-        }
+    if (this->shouldIgnoreIncomingVane(settings)) {
+        updateExtraSelectComponents(settings);
+        return;
     }
 
-    if (this->hasChanged(currentSettings.vane, settings.vane, "vane")) {    // vane setting change ?
+    if (this->hasChanged(currentSettings.vane, settings.vane, "vane")) {
         ESP_LOGI(LOG_SETTINGS_TAG, "vane setting changed");
 
         //this->debugSettings("settings", settings);
@@ -885,4 +800,101 @@ void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings, bool up
             this->mode = climate::CLIMATE_MODE_OFF;
         }
     }
+}
+
+// ════════════════════════════════════════════════════════════════
+// Composed method helpers — temperature decoding
+// ════════════════════════════════════════════════════════════════
+
+float CN105Climate::decodeSettingsTemperature(const uint8_t* data) {
+    if (this->use_msz_a24na_setpoint_table_) {
+        return cn105_protocol::decode_msz_a24na_setpoint(data[5]);
+    }
+    if (data[11] == 0x80) {
+        ESP_LOGD("Decoder", "data[11]=0x80 unused, keeping previous");
+        return this->currentSettings.temperature;
+    }
+    if (data[11] != 0x00) {
+        float temp = static_cast<float>(data[11] - 128) / 2.0f;
+        if (!this->use_temperature_encoding_b_latched_) {
+            ESP_LOGI("Decoder", "Latching encoding B");
+            this->use_temperature_encoding_b_latched_ = true;
+        }
+        this->use_temperature_encoding_b_ = true;
+        return temp;
+    }
+    if (this->use_temperature_encoding_b_latched_) {
+        auto opt = cn105_protocol::lookup_value_opt(TEMP_MAP, TEMP, 16, data[5]);
+        if (opt) {
+            ESP_LOGD("Decoder", "Encoding B latched, fallback to A: %.1f", static_cast<float>(*opt));
+            return static_cast<float>(*opt);
+        }
+        ESP_LOGW("Decoder", "Encoding A fallback failed (0x%02X)", data[5]);
+        return this->currentSettings.temperature;
+    }
+    auto opt = cn105_protocol::lookup_value_opt(TEMP_MAP, TEMP, 16, data[5]);
+    if (opt) {
+        return static_cast<float>(*opt);
+    }
+    ESP_LOGW("Decoder", "Unknown temp byte 0x%02X", data[5]);
+    return this->currentSettings.temperature;
+}
+
+// ════════════════════════════════════════════════════════════════
+// Composed method helpers — setpoint grace window
+// ════════════════════════════════════════════════════════════════
+
+bool CN105Climate::hasPendingUserTemperature() const {
+    return (this->wantedSettings.temperature != -1.0f) &&
+           (this->wantedSettings.hasChanged) &&
+           (!this->wantedSettings.hasBeenSent);
+}
+
+bool CN105Climate::isWithinPostSendGrace() const {
+    if (!this->wantedSettings.hasBeenSent) return false;
+    uint32_t graceMs = this->update_interval_ + DEFER_SCHEDULE_UPDATE_LOOP_DELAY;
+    return (CUSTOM_MILLIS - this->wantedSettings.lastChange) < graceMs;
+}
+
+bool CN105Climate::disagreesWithLastUserSetpoint(float incoming) const {
+    if (this->wantedSettings.last_user_temperature <= 0) return false;
+    if (this->wantedSettings.last_user_temperature_ms == 0) return false;
+    uint32_t elapsed = CUSTOM_MILLIS - this->wantedSettings.last_user_temperature_ms;
+    if (elapsed >= RECEIVED_SETPOINT_GRACE_WINDOW_MS) return false;
+    float diff = std::abs(incoming - this->wantedSettings.last_user_temperature);
+    return diff > 0.5f;
+}
+
+bool CN105Climate::shouldApplyIncomingSetpoint(const heatpumpSettings& settings) {
+    if (this->wantedSettings.temperature != -1) return false;
+    if (this->hasPendingUserTemperature()) {
+        ESP_LOGD(LOG_SETTINGS_TAG, "Ignoring setpoint: pending user temp");
+        return false;
+    }
+    if (this->isWithinPostSendGrace()) {
+        ESP_LOGD(LOG_SETTINGS_TAG, "Ignoring setpoint: post-send grace");
+        return false;
+    }
+    if (this->disagreesWithLastUserSetpoint(settings.temperature)) {
+        ESP_LOGD(LOG_SETTINGS_TAG, "Ignoring setpoint: disagrees with user (%.1f vs %.1f)",
+            settings.temperature, this->wantedSettings.last_user_temperature);
+        return false;
+    }
+    return true;
+}
+
+// ════════════════════════════════════════════════════════════════
+// Composed method helpers — vane grace window
+// ════════════════════════════════════════════════════════════════
+
+bool CN105Climate::shouldIgnoreIncomingVane(const heatpumpSettings& settings) const {
+    if (this->wantedSettings.last_user_vane == nullptr) return false;
+    if (this->wantedSettings.last_user_vane_ms == 0) return false;
+    uint32_t elapsed = CUSTOM_MILLIS - this->wantedSettings.last_user_vane_ms;
+    if (elapsed >= RECEIVED_SETPOINT_GRACE_WINDOW_MS) return false;
+    if (settings.vane == nullptr) return false;
+    if (strcmp(settings.vane, this->wantedSettings.last_user_vane) == 0) return false;
+    ESP_LOGD(LOG_SETTINGS_TAG, "Vane grace: ignoring %s, user sent %s",
+        settings.vane, this->wantedSettings.last_user_vane);
+    return true;
 }
