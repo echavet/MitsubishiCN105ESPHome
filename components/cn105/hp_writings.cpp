@@ -251,11 +251,7 @@ void CN105Climate::createPacket(uint8_t* packet) {
         if (idx >= 0) { packet[11] = FAN[idx]; packet[6] += CONTROL_PACKET_1[3]; } else { ESP_LOGW(TAG, "Ignoring invalid fan setting while building packet"); }
     }
 
-    if (this->wantedSettings.vane != nullptr) {
-        ESP_LOGD(TAG, "heatpump vane -> %s", getVaneSetting());
-        int idx = lookupByteMapIndex(VANE_MAP, 7, getVaneSetting(), "vane (write)");
-        if (idx >= 0) { packet[12] = VANE[idx]; packet[6] += CONTROL_PACKET_1[4]; } else { ESP_LOGW(TAG, "Ignoring invalid vane setting while building packet"); }
-    }
+    this->applyVaneToPacket(packet);
 
     if (this->wantedSettings.wideVane != nullptr) {
         ESP_LOGD(TAG, "heatpump widevane -> %s", getWideVaneSetting());
@@ -290,12 +286,27 @@ void CN105Climate::createPacket(uint8_t* packet) {
     // add the checksum
     uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
-    //ESP_LOGD(TAG, "debug before write packet:");
-    //this->hpPacketDebug(packet, 22, "WRITE");
 }
 
+const char* CN105Climate::vaneSettingForPacket() const {
+    if (this->wantedSettings.vane != nullptr) {
+        return this->wantedSettings.vane;
+    }
+    return this->wantedSettings.last_user_vane;
+}
 
-
+void CN105Climate::applyVaneToPacket(uint8_t* packet) {
+    const char* vane = this->vaneSettingForPacket();
+    if (vane == nullptr) return;
+    int idx = lookupByteMapIndex(VANE_MAP, 7, vane, "vane (write)");
+    if (idx < 0) {
+        ESP_LOGW(TAG, "Invalid vane setting");
+        return;
+    }
+    ESP_LOGD(TAG, "vane -> %s", vane);
+    packet[12] = VANE[idx];
+    packet[6] += CONTROL_PACKET_1[4];
+}
 
 
 void CN105Climate::publishWantedSettingsStateToHA() {

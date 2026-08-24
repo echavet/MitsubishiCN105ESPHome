@@ -88,7 +88,10 @@ bool CN105Climate::processModeChange(const esphome::climate::ClimateCall& call) 
     ESP_LOGD("control", "Mode change asked");
     this->mode = *call.get_mode();
     this->controlMode();
-    this->controlTemperature();
+    // Do NOT call controlTemperature() here unconditionally.
+    // A mode-only change (e.g. switching to DRY) should not emit a SET temperature
+    // packet. If the call also includes a temperature change, processTemperatureChange()
+    // will handle it. This prevents overwriting the user's last setpoint on mode changes.
     return true;
 }
 
@@ -469,7 +472,11 @@ void CN105Climate::controlTemperature() {
 
     setting = this->calculateTemperatureSetting(setting);
     this->wantedSettings.temperature = setting;
-    ESP_LOGI("control", "setting wanted temperature to %.1f", setting);
+    // Track last user temperature command: this persists across resetSettings()
+    // so we can apply a grace window before accepting PAC-reported setpoints.
+    this->wantedSettings.last_user_temperature = setting;
+    this->wantedSettings.last_user_temperature_ms = CUSTOM_MILLIS;
+    ESP_LOGI("control", "setting wanted temperature to %.1f (tracked as last_user_temperature)", setting);
 }
 
 
@@ -699,6 +706,11 @@ void CN105Climate::setVaneSetting(const char* setting) {
     int index = lookupByteMapIndex(VANE_MAP, 7, setting);
     if (index > -1) {
         wantedSettings.vane = VANE_MAP[index];
+        // Track last user vane command: this persists across resetSettings()
+        // so subsequent SET packets include the vane control bits.
+        wantedSettings.last_user_vane = VANE_MAP[index];
+        wantedSettings.last_user_vane_ms = CUSTOM_MILLIS;
+        ESP_LOGD("control", "Tracked last_user_vane: %s", wantedSettings.last_user_vane);
     } else {
         wantedSettings.vane = VANE_MAP[0];
     }

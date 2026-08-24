@@ -202,4 +202,48 @@ inline std::optional<int> lookup_index_opt(const char* valuesMap[], int len, con
     return std::nullopt;
 }
 
+// ════════════════════════════════════════════════════════════════
+// Grace window predicates (pure, testable)
+// ════════════════════════════════════════════════════════════════
+
+/// Check if incoming setpoint disagrees with last user command within grace window.
+/// @param incoming           Temperature reported by PAC
+/// @param last_user          Last user-commanded temperature (<=0 means none)
+/// @param last_user_ms       Timestamp of last user command (0 means none)
+/// @param now_ms             Current time in ms
+/// @param grace_window_ms    Grace window duration
+/// @return true if incoming should be ignored
+inline bool setpoint_disagrees_within_grace(
+    float incoming, float last_user, uint32_t last_user_ms,
+    uint32_t now_ms, uint32_t grace_window_ms
+) {
+    if (last_user <= 0 || last_user_ms == 0) return false;
+    uint32_t elapsed = now_ms - last_user_ms;
+    if (elapsed >= grace_window_ms) return false;
+    return std::abs(incoming - last_user) > 0.5f;
+}
+
+/// Check if incoming vane disagrees with last user command within grace window.
+/// @param incoming           Vane string reported by PAC
+/// @param last_user          Last user-commanded vane (nullptr means none)
+/// @param last_user_ms       Timestamp of last user command (0 means none)
+/// @param now_ms             Current time in ms
+/// @param grace_window_ms    Grace window duration
+/// @return true if incoming should be ignored
+inline bool vane_disagrees_within_grace(
+    const char* incoming, const char* last_user, uint32_t last_user_ms,
+    uint32_t now_ms, uint32_t grace_window_ms
+) {
+    if (last_user == nullptr || last_user_ms == 0) return false;
+    uint32_t elapsed = now_ms - last_user_ms;
+    if (elapsed >= grace_window_ms) return false;
+    if (incoming == nullptr) return false;
+    return std::strcmp(incoming, last_user) != 0;
+}
+
+/// Check if data[11]=0x80 indicates unused temperature slot.
+inline bool is_temp_byte_unused(uint8_t data11) {
+    return data11 == 0x80;
+}
+
 }  // namespace cn105_protocol
