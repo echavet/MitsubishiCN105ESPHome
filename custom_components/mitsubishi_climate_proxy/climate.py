@@ -162,6 +162,8 @@ class MitsubishiHybridClimate(ClimateEntity):
     - Independent horizontal swing via HA 2024.12+ swing_horizontal_mode
     """
 
+    _attr_translation_key = "climate_proxy"
+
     def __init__(
         self,
         hass: HomeAssistant,
