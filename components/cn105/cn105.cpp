@@ -145,7 +145,7 @@ void CN105Climate::registerHardwareSettingsRequests() {
     bool is_enabled = false;
 
     if (!this->hardware_settings_.empty()) {
-        ESP_LOGI(LOG_FUNCTIONS_TAG, "Registering function settings requests (0x20/0x22) with interval %u ms", this->hardware_settings_interval_ms_);
+        ESP_LOGI(LOG_FUNCTIONS_TAG, "Registering function settings requests (0x20/0x22) with interval %" PRIu32 " ms", this->hardware_settings_interval_ms_);
         interval = this->hardware_settings_interval_ms_;
         is_enabled = true;
     }
@@ -356,7 +356,7 @@ bool CN105Climate::is_circulator() {
 void CN105Climate::setupUART() {
 
     log_info_uint32(TAG, "setupUART() with baudrate ", this->parent_->get_baud_rate());
-    ESP_LOGI(LOG_CONN_TAG, "setupUART(): baud=%d tx=%d rx=%d (UART port=%d)", this->parent_->get_baud_rate(), this->tx_pin_, this->rx_pin_, this->uart_port_);
+    ESP_LOGI(LOG_CONN_TAG, "setupUART(): baud=%" PRIu32 " tx=%d rx=%d (UART port=%d)", this->parent_->get_baud_rate(), this->tx_pin_, this->rx_pin_, this->uart_port_);
     this->setHeatpumpConnected(false);
     // isUARTConnected_ replaced by state_ (set to CONNECTING after successful config below)
 
