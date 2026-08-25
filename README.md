@@ -917,7 +917,7 @@ auto_sub_mode_sensor:
   - `DEFROST` - a cold climate behavior that runs a short AC cycle during heating mode to melt ice from the coils
   - `STANDBY` - unit is off, or has been put into a "sleep" state through AUTO operation on another indoor unit
 
-Some examples of how these all fit together: Unit 1 is in AUTO set to 20C and Unit 2 is in AUTO and set to 20C. Unit 1 senses that the room is 24C and tries to enter `AUTO_COOL`. If Unit 2 wants to heat the room it is in, it will enter `STANDBY` (and in the case of a few units tested, this mean it will go to "sleep" as if it is off, but not really be off) making Unit 1 enter `AUTO_LEADER` sub mode. In future releases, it is planned to make the ACTION in HA match these modes. But at this time this is not implemented.
+Some examples of how these all fit together: Unit 1 is in AUTO set to 20C and Unit 2 is in AUTO and set to 20C. Unit 1 senses that the room is 24C and tries to enter `AUTO_COOL`. If Unit 2 wants to heat the room it is in, it will enter `STANDBY` (and in the case of a few units tested, this mean it will go to "sleep" as if it is off, but not really be off) making Unit 1 enter `AUTO_LEADER` sub mode. With ESPHome 2026.3.0 or newer, `DEFROST` is exposed to HA as the `defrosting` climate action. The other sub-modes are not currently mapped to HA climate actions.
 
 It is also important to note that the Kumo adapter has many more settings that impact the behaviour above (such as thermal fan behaviour) and if you have set these the exact actions the untis take in these modes/submodes/stages is determined by those. Some of these can also be set by remotes and other devices. The setup you have will dictate the exact actions you see. If you have permutations, please share!
 

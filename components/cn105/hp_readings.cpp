@@ -140,9 +140,19 @@ void CN105Climate::getPowerFromResponsePacket() {
             }
         }
     }
-    if (this->Sub_mode_sensor_ != nullptr && (!this->currentSettings.sub_mode || strcmp(receivedSettings.sub_mode, this->currentSettings.sub_mode) != 0)) {
+    const bool sub_mode_changed =
+        !this->currentSettings.sub_mode ||
+        strcmp(receivedSettings.sub_mode, this->currentSettings.sub_mode) != 0;
+    if (sub_mode_changed) {
         this->currentSettings.sub_mode = receivedSettings.sub_mode;
-        this->Sub_mode_sensor_->publish_state(receivedSettings.sub_mode);
+        if (this->Sub_mode_sensor_ != nullptr) {
+            this->Sub_mode_sensor_->publish_state(receivedSettings.sub_mode);
+        }
+
+        // Sub-mode is received on a separate packet from the normal status
+        // data, so refresh and publish the climate action immediately.
+        this->updateAction();
+        this->publish_state();
     }
     if (this->Auto_sub_mode_sensor_ != nullptr && (!this->currentSettings.auto_sub_mode || strcmp(receivedSettings.auto_sub_mode, this->currentSettings.auto_sub_mode) != 0)) {
         this->currentSettings.auto_sub_mode = receivedSettings.auto_sub_mode;

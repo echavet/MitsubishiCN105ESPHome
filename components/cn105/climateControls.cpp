@@ -582,6 +582,22 @@ void CN105Climate::updateAction() {
     if (this->traits().has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
         this->sanitizeDualSetpoints();
     }
+
+    // Defrosting is a transient action while a heating-capable HVAC mode remains
+    // selected. Report it before deriving the normal action from that mode.
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 3, 0)
+    if ((this->mode == climate::CLIMATE_MODE_HEAT ||
+         this->mode == climate::CLIMATE_MODE_HEAT_COOL ||
+         this->mode == climate::CLIMATE_MODE_AUTO) &&
+        this->currentSettings.sub_mode != nullptr &&
+        strcmp(this->currentSettings.sub_mode, "DEFROST") == 0) {
+        this->action = climate::CLIMATE_ACTION_DEFROSTING;
+        ESP_LOGD(TAG, "Climate mode is: %i", this->mode);
+        ESP_LOGD(TAG, "Climate action is: %i", this->action);
+        return;
+    }
+#endif
+
     switch (this->mode) {
     case climate::CLIMATE_MODE_HEAT:
         //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_HEATING);       
