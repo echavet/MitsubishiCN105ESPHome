@@ -1,0 +1,38 @@
+esphome:
+  name: lossnay-test
+  friendly_name: Lossnay Test
+
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: esp-idf
+
+logger:
+
+external_components:
+  - source:
+      type: local
+      path: ../../components
+
+uart:
+  id: lossnay_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 2400
+
+climate:
+  - platform: cn105
+    id: lossnay
+    name: Lossnay
+    uart_id: lossnay_uart
+    lossnay: true
+    supports:
+      mode:
+        - AUTO
+        - HEAT
+        - FAN_ONLY
+      fan_mode:
+        - LOW
+        - MEDIUM
+        - MIDDLE
+        - HIGH
