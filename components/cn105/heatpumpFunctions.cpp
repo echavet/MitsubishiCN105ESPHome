@@ -7,6 +7,10 @@ using namespace esphome;
 
 void CN105Climate::functionsArrived() {
 
+    if (this->lossnay_) {
+        return;
+    }
+
     // Called after 2nd packet has arrived.
 
     char states[256];
@@ -48,6 +52,11 @@ void CN105Climate::functionsArrived() {
 }
 
 bool CN105Climate::setFunctions(heatpumpFunctions const& functions) {
+    if (this->lossnay_) {
+        ESP_LOGW(LOG_FUNCTIONS_TAG, "Ignoring hardware-function write: Lossnay auxiliary controls are not supported");
+        return false;
+    }
+
     if (!functions.isValid()) {
         return false;
     }
