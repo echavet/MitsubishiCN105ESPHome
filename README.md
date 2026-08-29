@@ -6,7 +6,7 @@ It uses the ESPHome framework and is compatible with the Arduino framework and E
 
 This component version is an adaptation of [geoffdavis's esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump). Its purpose is to integrate the Mitsubishi heat pump protocol (enabled by the [SwiCago library](https://github.com/SwiCago/HeatPump)) directly into the ESPHome component classes for a more seamless integration.
 
-The intended use case is for owners of a Mitsubishi Electric heat pump or air conditioner that includes a CN105 communication port to directly control their air handler or indoor unit using local communication through a web browser, or most commonly, the [HomeAssistant](https://www.home-assistant.io/) home automation platform. Installation requires the use of a WiFi capable ESP32 or ESP8266 device, modified to include a 5 pin plug to connect to the heat pump indoor unit. ESPHome is used to load the custom firmware onto the device, and the web browser or HomeAssistant software is used to send temperature setpoints, external temperature references, and settings to the heat pump. Installation requires basic soldering skills, and basic skills in flashing a firmware to a microcontroller (though ESPHome makes this as painless as possible).
+The intended use case is for owners of a Mitsubishi Electric heat pump or air conditioner that includes a CN105 communication port to directly control their air handler or indoor unit using local communication through a web browser, or most commonly, the [HomeAssistant](https://www.home-assistant.io/) home automation platform. Installation requires a WiFi capable ESP32 or ESP8266 device, a bidirectional logic level shifter, and a 5-pin plug to connect to the heat pump indoor unit. ESPHome is used to load the custom firmware onto the device, and the web browser or HomeAssistant software is used to send temperature setpoints, external temperature references, and settings to the heat pump. Installation requires basic soldering skills, and basic skills in flashing a firmware to a microcontroller (though ESPHome makes this as painless as possible).
 
 The benefits include fully local control over your heat pump system, without reliance on a vendor network. Additional visibility, finer control, and even improved energy efficiency and comfort are possible when utilizing the remote temperature features.
 
@@ -88,7 +88,45 @@ Units tested by project contributors include:
 
 ### Step 1: Building the Control Circuit
 
-Follow the [SwiCago/HeatPump README](https://github.com/SwiCago/HeatPump/blob/master/README.md#demo-circuit) for building a control circuit using either an ESP8266 or ESP32.
+The CN105 port is a **5V TTL UART** (2400 baud). ESP32 (and ESP8266) GPIO pins are **3.3V**. The proper way to hook them up is a **bidirectional logic level shifter** on the TX and RX lines. Do not wire the heat pump UART directly to the ESP32 GPIO pins because the ESP32 GPIO pins are not 5V tolerant.
+
+The indoor unit also supplies 5V on CN105. The ESP32 can be powered from that 5V rail via the board's `5V` pin, so a separate USB supply is not required once the device is installed.
+
+#### Circuit diagram
+
+The diagram below shows a Seeed Studio XIAO ESP32-C6 with a 4-channel bidirectional level shifter. The same wiring applies to other ESP32 boards: use that board's `5V`, `GND`, `3V3`, UART TX, and UART RX pins (and match `tx_pin` / `rx_pin` in your ESPHome YAML).
+
+![CN105 to ESP32 via bidirectional level shifter. The ESP32 5V pin is powered from the CN105 5V supply.](docs/cn105-esp32-level-shifter.jpg)
+
+#### Wiring
+
+| CN105 (5V side) | Level shifter | ESP32 (3.3V side) | Notes |
+| --------------- | ------------- | ----------------- | ----- |
+| 5V              | `HV`          | `5V`              | Powers both the shifter HV rail and the ESP32 |
+| GND             | `GND` (HV and LV) | `GND`         | Common ground |
+| —               | `LV`          | `3V3`             | 3.3V reference for the shifter LV rail |
+| RX (into HVAC)  | `HV1` ↔ `LV1` | UART TX           | ESP32 TX is shifted up to 5V |
+| TX (from HVAC)  | `HV2` ↔ `LV2` | UART RX           | HVAC TX is shifted down to 3.3V |
+| 12V             | —             | —                 | Leave disconnected |
+
+TX and RX must be crossed: ESP32 TX → heat pump RX, ESP32 RX ← heat pump TX. Unused shifter channels (`HV3`/`LV3`, `HV4`/`LV4`) can be left open.
+
+#### CN105 pinout
+
+The indoor-unit connector is a JST PA 5-pin header (housing [PAP-05V-S](https://www.digikey.com/en/products/detail/jst-sales-america-inc/PAP-05V-S/608655)). Pin 1 is typically nearest the board silkscreen `1` / the keyed edge of the housing.
+
+| Pin | Signal | Use |
+| --- | ------ | --- |
+| 1   | 12V    | Not used (leave empty) |
+| 2   | GND    | Ground |
+| 3   | 5V     | Power for the ESP32 `5V` pin and the shifter `HV` rail |
+| 4   | TX     | Data **from** the indoor unit (5V logic) → shifter HV → ESP32 RX |
+| 5   | RX     | Data **to** the indoor unit (5V logic) ← shifter HV ← ESP32 TX |
+
+> [!NOTE]
+> Some indoor units provide only limited current on the CN105 5V pin. Compact boards such as the XIAO series typically draw little enough to run from that rail. If the ESP32 brownouts, resets, or Wi-Fi is unstable, power it from the CN105 12V pin through a 5V regulator instead, and keep 12V off the ESP32 `5V` pin and GPIO.
+
+Connector part numbers and pre-crimped pigtails are listed in the [SwiCago/HeatPump README](https://github.com/SwiCago/HeatPump/blob/master/README.md#demo-circuit).
 
 ### Step 2: Using ESPHome
 
