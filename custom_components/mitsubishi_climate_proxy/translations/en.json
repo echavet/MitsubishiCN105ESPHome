@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Add Mitsubishi Climate Proxy",
-        "description": "Create a hybrid entity with Dual/Single setpoint wrapper and optional vane control.",
+        "description": "Create a hybrid entity with Dual/Single setpoint wrapper and optional vane control. Turn-on can restore the last active mode or use a fixed default. Coordinator mode follows the coordinator instead.",
         "data": {
           "source": "Source Entity (ESPHome Climate)",
           "name": "Name for the new Hybrid Entity",
@@ -15,7 +15,12 @@
           "season_entity": "Season input_select entity",
           "shared_mode_entity": "Coordinator shared-mode input_select entity",
           "recompute_event": "Coordinator recompute event name",
-          "comfort_offset": "Comfort offset (°F) applied to the far band edge"
+          "comfort_offset": "Comfort offset (°F) applied to the far band edge",
+          "restore_last_mode": "Restore last active mode on turn-on",
+          "default_turn_on_mode": "Default turn-on mode (fallback when no saved mode is supported)"
+        },
+        "data_description": {
+          "default_turn_on_mode": "Choose default to use the first supported mode: heat_cool, auto, heat, cool, dry, fan_only. A supported saved mode takes precedence when restoration is enabled."
         }
       }
     },
@@ -30,7 +35,7 @@
     "step": {
       "init": {
         "title": "Mitsubishi Climate Proxy options",
-        "description": "Toggle the Tesla-style single-target surface for a coordinator-owned head. Changes reload the entry in place (HomeKit tile is preserved, no re-pair).",
+        "description": "Toggle the Tesla-style single-target surface for a coordinator-owned head. Changes reload the entry in place (HomeKit tile is preserved, no re-pair). Turn-on can restore the last active mode or use a fixed default. Coordinator mode follows the coordinator instead.",
         "data": {
           "coordinator_single_target": "Coordinator single-target mode",
           "room_key": "Coordinator room key (any zone key, e.g. 'primary')",
@@ -38,7 +43,12 @@
           "season_entity": "Season input_select entity",
           "shared_mode_entity": "Coordinator shared-mode input_select entity",
           "recompute_event": "Coordinator recompute event name",
-          "comfort_offset": "Comfort offset (°F)"
+          "comfort_offset": "Comfort offset (°F)",
+          "restore_last_mode": "Restore last active mode on turn-on",
+          "default_turn_on_mode": "Default turn-on mode (fallback when no saved mode is supported)"
+        },
+        "data_description": {
+          "default_turn_on_mode": "Choose default to use the first supported mode: heat_cool, auto, heat, cool, dry, fan_only. A supported saved mode takes precedence when restoration is enabled."
         }
       }
     }

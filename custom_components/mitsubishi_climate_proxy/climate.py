@@ -29,9 +29,20 @@ from homeassistant.const import (
 import homeassistant.helpers.config_validation as cv
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 _LOGGER = logging.getLogger(__name__)
+
+CONF_RESTORE_LAST_MODE = "restore_last_mode"
+CONF_DEFAULT_TURN_ON_MODE = "default_turn_on_mode"
+DEFAULT_RESTORE_LAST_MODE = True
+DEFAULT_TURN_ON_MODE = "default"
+# Prefer automatic operation, then the supported explicit modes.
+TURN_ON_MODE_PRIORITY = ("heat_cool", "auto", "heat", "cool", "dry", "fan_only")
+TURN_ON_MODES = (DEFAULT_TURN_ON_MODE, *TURN_ON_MODE_PRIORITY)
+ATTR_LAST_ACTIVE_HVAC_MODE = "last_active_hvac_mode"
 
 CONF_SOURCE_ENTITY = "source_entity"
 CONF_HORIZONTAL_VANE_ENTITY = "horizontal_vane_entity"
@@ -73,6 +84,8 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_NAME): cv.string,
         vol.Optional(CONF_HORIZONTAL_VANE_ENTITY): cv.entity_id,
         vol.Optional(CONF_VERTICAL_VANE_ENTITY): cv.entity_id,
+        vol.Optional(CONF_RESTORE_LAST_MODE, default=DEFAULT_RESTORE_LAST_MODE): cv.boolean,
+        vol.Optional(CONF_DEFAULT_TURN_ON_MODE, default=DEFAULT_TURN_ON_MODE): vol.In(TURN_ON_MODES),
         vol.Optional(CONF_COORDINATOR_SINGLE_TARGET, default=False): cv.boolean,
         vol.Optional(CONF_ROOM_KEY): cv.string,
         vol.Optional(CONF_HELPER_PREFIX, default=DEFAULT_HELPER_PREFIX): cv.string,
@@ -108,6 +121,8 @@ async def async_setup_platform(
             shared_mode_entity=config.get(CONF_SHARED_MODE_ENTITY, DEFAULT_SHARED_MODE_ENTITY),
             recompute_event=config.get(CONF_RECOMPUTE_EVENT, DEFAULT_RECOMPUTE_EVENT),
             comfort_offset=config.get(CONF_COMFORT_OFFSET, DEFAULT_COMFORT_OFFSET),
+            restore_last_mode=config.get(CONF_RESTORE_LAST_MODE, DEFAULT_RESTORE_LAST_MODE),
+            default_turn_on_mode=config.get(CONF_DEFAULT_TURN_ON_MODE, DEFAULT_TURN_ON_MODE),
         )],
         True,
     )
@@ -148,12 +163,14 @@ async def async_setup_entry(
             shared_mode_entity=_opt(CONF_SHARED_MODE_ENTITY, DEFAULT_SHARED_MODE_ENTITY),
             recompute_event=_opt(CONF_RECOMPUTE_EVENT, DEFAULT_RECOMPUTE_EVENT),
             comfort_offset=_opt(CONF_COMFORT_OFFSET, DEFAULT_COMFORT_OFFSET),
+            restore_last_mode=_opt(CONF_RESTORE_LAST_MODE, DEFAULT_RESTORE_LAST_MODE),
+            default_turn_on_mode=_opt(CONF_DEFAULT_TURN_ON_MODE, DEFAULT_TURN_ON_MODE),
         )],
         True,
     )
 
 
-class MitsubishiHybridClimate(ClimateEntity):
+class MitsubishiHybridClimate(ClimateEntity, RestoreEntity):
     """Representation of a Mitsubishi Hybrid Climate device.
 
     Wraps an ESPHome CN105 climate entity to provide:
@@ -179,6 +196,8 @@ class MitsubishiHybridClimate(ClimateEntity):
         shared_mode_entity: str = DEFAULT_SHARED_MODE_ENTITY,
         recompute_event: str = DEFAULT_RECOMPUTE_EVENT,
         comfort_offset: float = DEFAULT_COMFORT_OFFSET,
+        restore_last_mode: bool = DEFAULT_RESTORE_LAST_MODE,
+        default_turn_on_mode: str = DEFAULT_TURN_ON_MODE,
     ) -> None:
         """Initialize the climate device."""
         super().__init__()
@@ -186,6 +205,9 @@ class MitsubishiHybridClimate(ClimateEntity):
         self._name = name or source_entity_id
         self._source_entity_id = source_entity_id
         self._source_state = None
+        self._restore_last_mode = restore_last_mode
+        self._default_turn_on_mode = default_turn_on_mode
+        self._last_active_hvac_mode: HVACMode | None = None
         self._attr_should_poll = False
         self._attr_unique_id = unique_id or f"{source_entity_id}_hybrid"
         # Horizontal vane (WideVane) — optional select entity from ESPHome
@@ -219,8 +241,14 @@ class MitsubishiHybridClimate(ClimateEntity):
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
+        await super().async_added_to_hass()
+        if not self._cst and (last_state := await self.async_get_last_state()):
+            saved_mode = last_state.attributes.get(ATTR_LAST_ACTIVE_HVAC_MODE)
+            if saved_mode in TURN_ON_MODE_PRIORITY:
+                self._last_active_hvac_mode = HVACMode(saved_mode)
         # Get initial state
         self._source_state = self.hass.states.get(self._source_entity_id)
+        self._remember_active_mode()
 
         # Track source climate entity changes
         tracked_entities = [self._source_entity_id]
@@ -263,12 +291,23 @@ class MitsubishiHybridClimate(ClimateEntity):
 
         if entity_id == self._source_entity_id:
             self._source_state = new_state
+            self._remember_active_mode()
         elif entity_id == self._horizontal_vane_entity_id:
             self._horizontal_vane_state = new_state
         elif entity_id == self._vertical_vane_entity_id:
             self._vertical_vane_state = new_state
 
         self.async_write_ha_state()
+
+    def _remember_active_mode(self) -> None:
+        """Remember observed modes, keeping the previous value through off/outages."""
+        if not self._cst and self.available and self.hvac_mode != HVACMode.OFF:
+            self._last_active_hvac_mode = self.hvac_mode
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Persist the last active mode even when the proxy is off at shutdown."""
+        return {ATTR_LAST_ACTIVE_HVAC_MODE: self._last_active_hvac_mode}
 
     # ════════════════════════════════════════════════════════════════
     # coordinator single-target helpers
@@ -334,6 +373,22 @@ class MitsubishiHybridClimate(ClimateEntity):
         )
 
     @property
+    def _source_supports_range(self) -> bool:
+        """Whether the source accepts a low/high target pair."""
+        return bool(
+            self._source_state
+            and self._source_state.attributes.get("supported_features", 0)
+            & ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+        )
+
+    @property
+    def _map_auto_to_heat_cool(self) -> bool:
+        """Keep the existing HomeKit presentation for dual-setpoint sources."""
+        return self._source_supports_range and HVACMode.HEAT_COOL in (
+            self._source_state.attributes.get("hvac_modes", []) or []
+        )
+
+    @property
     def supported_features(self) -> ClimateEntityFeature:
         """Return the list of supported features."""
         if not self._source_state:
@@ -341,6 +396,8 @@ class MitsubishiHybridClimate(ClimateEntity):
 
         # Get source features
         source_features = self._source_state.attributes.get("supported_features", 0)
+        if self._cst or HVACMode.OFF in self.hvac_modes:
+            source_features |= ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
 
         # coordinator single-target -> always a SINGLE setpoint (never RANGE),
         # so HomeKit renders a single-target thermostat. Keep fan; vane stays as swing_mode;
@@ -373,13 +430,19 @@ class MitsubishiHybridClimate(ClimateEntity):
             and self._source_state.attributes.get("target_temp_high") is not None
         )
 
-        if self.hvac_mode == HVACMode.HEAT_COOL or (
-            self.hvac_mode == HVACMode.OFF
-            and source_has_range_target
-            and not source_has_single_target
+        if self._source_supports_range and (
+            self.hvac_mode == HVACMode.HEAT_COOL
+            or (
+                self.hvac_mode == HVACMode.OFF
+                and source_has_range_target
+                and not source_has_single_target
+            )
         ):
             features |= ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
-        else:
+        elif (
+            self._source_supports_range
+            or source_features & ClimateEntityFeature.TARGET_TEMPERATURE
+        ):
             features |= ClimateEntityFeature.TARGET_TEMPERATURE
 
         # Add independent horizontal swing support when a horizontal vane entity is configured
@@ -478,7 +541,9 @@ class MitsubishiHybridClimate(ClimateEntity):
         if val is not None:
             return self._normalize_temp(val)
 
-        # Fallback to derived values if source is in dual mode but we are presenting single
+        # Derive a single target only for a source that supports ranges.
+        if not self._source_supports_range:
+            return None
         low = self._source_state.attributes.get("target_temp_low")
         high = self._source_state.attributes.get("target_temp_high")
 
@@ -522,11 +587,9 @@ class MitsubishiHybridClimate(ClimateEntity):
     def hvac_mode(self) -> HVACMode:
         """Return hvac operation ie. heat, cool mode.
 
-        Legacy plain AUTO is hidden: the source briefly reports ``auto`` after a
-        power-cycle (band lost from ESP RAM) before the band is re-applied. We
-        present that as HEAT_COOL so HomeKit never sees a single-setpoint ``auto``
-        alongside the two-threshold heat_cool — the combination makes the HomeKit
-        thermostat render the heat/cool thresholds inverted.
+        Preserve native AUTO for single-setpoint sources. For dual-setpoint
+        sources offering HEAT_COOL, retain the HomeKit workaround that presents
+        AUTO as HEAT_COOL (including temporary AUTO reports after a power cycle).
         """
         # coordinator single-target -> report the coordinator's CURRENT shared
         # mode while this room participates (masking the firmware's fan_only/idle so Apple
@@ -536,7 +599,7 @@ class MitsubishiHybridClimate(ClimateEntity):
 
         if self._source_state:
             state = self._source_state.state
-            if state == HVACMode.AUTO:
+            if state == HVACMode.AUTO and self._map_auto_to_heat_cool:
                 return HVACMode.HEAT_COOL
             try:
                 return HVACMode(state)
@@ -548,9 +611,8 @@ class MitsubishiHybridClimate(ClimateEntity):
     def hvac_modes(self) -> List[HVACMode]:
         """Return the list of available hvac operation modes.
 
-        Drops legacy plain AUTO (see ``hvac_mode``) and guarantees HEAT_COOL is
-        offered, so the household only ever sees the dual-setpoint mode and
-        HomeKit maps it cleanly to its auto/range thermostat.
+        Mirror the source's modes. Only hide AUTO when the dual-setpoint
+        HomeKit workaround applies; never add modes the source does not offer.
         """
         # coordinator single-target AUTO -> offer OFF + HEAT + COOL (single
         # setpoint each, no heat_cool range). The coordinator auto-picks heat vs cool to
@@ -565,8 +627,8 @@ class MitsubishiHybridClimate(ClimateEntity):
         raw_modes = self._source_state.attributes.get("hvac_modes", []) or []
         modes: list[HVACMode] = []
         for raw in raw_modes:
-            if raw == HVACMode.AUTO:
-                continue  # hide legacy single-setpoint AUTO
+            if raw == HVACMode.AUTO and self._map_auto_to_heat_cool:
+                continue
             try:
                 modes.append(HVACMode(raw))
             except ValueError:
@@ -575,8 +637,6 @@ class MitsubishiHybridClimate(ClimateEntity):
                     self._source_entity_id,
                     raw,
                 )
-        if HVACMode.HEAT_COOL not in modes:
-            modes.append(HVACMode.HEAT_COOL)
         return modes
 
     @property
@@ -616,6 +676,34 @@ class MitsubishiHybridClimate(ClimateEntity):
                 raw,
             )
             return None
+
+    async def async_turn_on(self) -> None:
+        """Resume the last active mode, or use the configured default."""
+        if not self.available:
+            raise ServiceValidationError("The source climate entity is unavailable")
+        if self.hvac_mode != HVACMode.OFF:
+            return
+        if self._cst:
+            await self.async_set_hvac_mode(self._shared_mode())
+            return
+
+        # Select only a mode actually supported by the source.
+        supported = self._source_state.attributes.get("hvac_modes", []) or []
+        mode = self._default_turn_on_mode
+        if self._restore_last_mode and self._last_active_hvac_mode in supported:
+            mode = self._last_active_hvac_mode
+        elif mode == DEFAULT_TURN_ON_MODE:
+            mode = next((candidate for candidate in TURN_ON_MODE_PRIORITY if candidate in supported), None)
+            if mode is None:
+                raise ServiceValidationError(
+                    f"No supported active mode is available for {self._source_entity_id}"
+                )
+        if mode not in supported:
+            raise ServiceValidationError(
+                f"Turn-on mode '{mode}' is not supported by {self._source_entity_id}; "
+                "choose a supported default turn-on mode in the proxy configuration"
+            )
+        await self.async_set_hvac_mode(HVACMode(mode))
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
@@ -667,17 +755,16 @@ class MitsubishiHybridClimate(ClimateEntity):
 
         service_data: dict[str, Any] = {"entity_id": self._source_entity_id}
 
-        # Check source capabilities
-        source_features = 0
-        if self._source_state:
-            source_features = self._source_state.attributes.get("supported_features", 0)
-
-        source_is_dual = source_features & ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+        source_is_dual = self._source_supports_range
 
         # Determine effective mode (target mode if changing, else current)
         mode = kwargs.get("hvac_mode", self.hvac_mode)
 
         if "target_temp_low" in kwargs or "target_temp_high" in kwargs:
+            if not source_is_dual:
+                raise ServiceValidationError(
+                    f"{self._source_entity_id} does not support a target temperature range"
+                )
             # Direct dual control — HA sends values in °C (our declared unit),
             # convert back to source unit before forwarding.
             if "target_temp_low" in kwargs:
