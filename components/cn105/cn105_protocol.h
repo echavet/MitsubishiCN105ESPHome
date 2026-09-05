@@ -12,6 +12,52 @@
 namespace cn105_protocol {
 
 // ════════════════════════════════════════════════════════════════
+// Lossnay profile fields
+// ════════════════════════════════════════════════════════════════
+
+static constexpr uint8_t LOSSNAY_POWER_MASK = 0x01;
+static constexpr uint8_t LOSSNAY_MODE_MASK = 0x04;
+static constexpr uint8_t LOSSNAY_FAN_MASK = 0x08;
+
+struct LossnaySettingsBytes {
+    uint8_t power;
+    uint8_t mode;
+    uint8_t fan;
+};
+
+/// Decode the confirmed fields from a Lossnay 0x02 response payload.
+inline LossnaySettingsBytes decode_lossnay_settings(const uint8_t* data) {
+    return {data[3], data[5], data[6]};
+}
+
+/// Decode the confirmed automatic-mode result from a Lossnay 0x09 payload.
+inline std::optional<uint8_t> decode_lossnay_actual_mode(const uint8_t* data) {
+    const uint8_t actual_mode = data[8];
+    return actual_mode <= 0x01 ? std::optional<uint8_t>{actual_mode} : std::nullopt;
+}
+
+/// Apply confirmed Lossnay fields to a full 0x41 SET packet.
+inline void encode_lossnay_control(
+    uint8_t* packet,
+    std::optional<uint8_t> power,
+    std::optional<uint8_t> mode,
+    std::optional<uint8_t> fan
+) {
+    if (power) {
+        packet[8] = *power;
+        packet[6] |= LOSSNAY_POWER_MASK;
+    }
+    if (mode) {
+        packet[10] = *mode;
+        packet[6] |= LOSSNAY_MODE_MASK;
+    }
+    if (fan) {
+        packet[11] = *fan;
+        packet[6] |= LOSSNAY_FAN_MASK;
+    }
+}
+
+// ════════════════════════════════════════════════════════════════
 // Checksum
 // ════════════════════════════════════════════════════════════════
 

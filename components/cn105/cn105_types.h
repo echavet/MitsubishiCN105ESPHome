@@ -38,6 +38,8 @@ static const int PACKET_TYPE_DEFAULT = 99;
 
 static const int CONNECT_LEN = 8;
 static const uint8_t CONNECT[CONNECT_LEN] = { 0xfc, 0x5a, 0x01, 0x30, 0x02, 0xca, 0x01, 0xa8 };
+static const uint8_t HEATPUMP_PROFILE = 0x30;
+static const uint8_t LOSSNAY_PROFILE = 0x34;
 static const int HEADER_LEN = 8;
 static const uint8_t HEADER[HEADER_LEN] = { 0xfc, 0x41, 0x01, 0x30, 0x10, 0x01, 0x00, 0x00 };
 
@@ -70,6 +72,12 @@ static const uint8_t RUN_STATE_PACKET_1[5] = { 0x01, 0x04, 0x08, 0x10, 0x20 };
 static const uint8_t RUN_STATE_PACKET_2[5] = { 0x02, 0x04, 0x08, 0x10, 0x20 };
 static const uint8_t POWER[2] = { 0x00, 0x01 };
 static const char* POWER_MAP[2] = { "OFF", "ON" };
+static const uint8_t LOSSNAY_MODE[3] = { 0x00, 0x01, 0x02 };
+// Lossnay values are translated to the existing internal protocol names:
+// HEAT = heat recovery, FAN = bypass, AUTO = automatic operation.
+static const char* LOSSNAY_MODE_MAP[3] = { "HEAT", "FAN", "AUTO" };
+static const uint8_t LOSSNAY_FAN[4] = { 0x01, 0x02, 0x03, 0x04 };
+static const char* LOSSNAY_FAN_MAP[4] = { "1", "2", "3", "4" };
 static const uint8_t MODE[5] = { 0x01,   0x02,  0x03, 0x07, 0x08 };
 static const char* MODE_MAP[5] = { "HEAT", "DRY", "COOL", "FAN", "AUTO" };
 static const uint8_t TEMP[16] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
@@ -307,4 +315,3 @@ struct wantedHeatpumpRunStates : heatpumpRunStates {
         return *this;
     }
 };
-
