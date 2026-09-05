@@ -14,6 +14,12 @@ from homeassistant.components.select import DOMAIN as SELECT_DOMAIN
 
 from . import DOMAIN
 
+CONF_RESTORE_LAST_MODE = "restore_last_mode"
+CONF_DEFAULT_TURN_ON_MODE = "default_turn_on_mode"
+DEFAULT_RESTORE_LAST_MODE = True
+DEFAULT_TURN_ON_MODE = "default"
+TURN_ON_MODES = ("default", "heat_cool", "auto", "heat", "cool", "dry", "fan_only")
+
 CONF_HORIZONTAL_VANE_ENTITY = "horizontal_vane_entity"
 # Vertical vane positions as swing modes
 CONF_VERTICAL_VANE_ENTITY = "vertical_vane_entity"
@@ -65,6 +71,8 @@ class MitsubishiHybridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema({
             vol.Required(CONF_SOURCE): vol.In(climate_entities),
+            vol.Optional(CONF_RESTORE_LAST_MODE, default=DEFAULT_RESTORE_LAST_MODE): bool,
+            vol.Optional(CONF_DEFAULT_TURN_ON_MODE, default=DEFAULT_TURN_ON_MODE): vol.In(TURN_ON_MODES),
             vol.Optional(CONF_NAME): str,
             vol.Optional(CONF_HORIZONTAL_VANE_ENTITY): vol.In(
                 select_entities_with_none
@@ -108,6 +116,14 @@ class MitsubishiHybridOptionsFlow(config_entries.OptionsFlow):
 
         cur = {**self.config_entry.data, **self.config_entry.options}
         schema = vol.Schema({
+            vol.Optional(
+                CONF_RESTORE_LAST_MODE,
+                default=cur.get(CONF_RESTORE_LAST_MODE, DEFAULT_RESTORE_LAST_MODE),
+            ): bool,
+            vol.Optional(
+                CONF_DEFAULT_TURN_ON_MODE,
+                default=cur.get(CONF_DEFAULT_TURN_ON_MODE, DEFAULT_TURN_ON_MODE),
+            ): vol.In(TURN_ON_MODES),
             vol.Optional(
                 CONF_COORDINATOR_SINGLE_TARGET,
                 default=cur.get(CONF_COORDINATOR_SINGLE_TARGET, False),
