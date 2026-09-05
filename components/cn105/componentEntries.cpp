@@ -14,6 +14,10 @@ using namespace esphome;
 void CN105Climate::setup() {
 
     ESP_LOGD(TAG, "Component initialization: setup call");
+    ESP_LOGI(TAG, "CN105 protocol profile: 0x%02X (%s)", this->protocol_profile(), this->lossnay_ ? "Lossnay" : "heat pump");
+    if (this->lossnay_ && this->installer_mode_) {
+        ESP_LOGW(TAG, "installer_mode is ignored for Lossnay; using the standard 0x5A handshake");
+    }
     this->boot_ms_ = CUSTOM_MILLIS;
     this->current_temperature = NAN;
     this->target_temperature = NAN;
@@ -74,22 +78,31 @@ void CN105Climate::loop() {
             this->checkPendingWantedRunStates();
         } else if ((this->isSetFunctions_) && (!this->loopCycle.isCycleRunning())) {
             this->isSetFunctions_ = false;
-            this->setFunctions(this->functions);
-            // Also request to get function settings from heat pump to update UI with latest values.
-            this->isGetFunctions_ = true;
+            if (this->lossnay_) {
+                ESP_LOGW(LOG_FUNCTIONS_TAG, "Ignoring hardware-function operation: Lossnay auxiliary controls are not supported");
+                this->isGetFunctions_ = false;
+            } else {
+                this->setFunctions(this->functions);
+                // Also request to get function settings from heat pump to update UI with latest values.
+                this->isGetFunctions_ = true;
+            }
         } else {
             if (this->loopCycle.isCycleRunning()) {                         // if we are  running an update cycle
                 this->loopCycle.checkTimeout(this->update_interval_);
             } else { // we are not running a cycle
                 if (this->loopCycle.hasUpdateIntervalPassed(this->get_update_interval())) {
                     if (this->isGetFunctions_) {
-                        // Reactivate requests 0x20/0x22 and bypass interval timers.
-                        // This must be done before starting a new cycle to prevent a race hazard of
-                        // request 0x22 occurring before request 0x20.
-                        this->scheduler_.enable_request(0x20);
-                        this->scheduler_.timer_bypass(0x20);
-                        this->scheduler_.enable_request(0x22);
-                        this->scheduler_.timer_bypass(0x22);
+                        if (this->lossnay_) {
+                            ESP_LOGW(LOG_FUNCTIONS_TAG, "Ignoring hardware-function read: Lossnay auxiliary controls are not supported");
+                        } else {
+                            // Reactivate requests 0x20/0x22 and bypass interval timers.
+                            // This must be done before starting a new cycle to prevent a race hazard of
+                            // request 0x22 occurring before request 0x20.
+                            this->scheduler_.enable_request(0x20);
+                            this->scheduler_.timer_bypass(0x20);
+                            this->scheduler_.enable_request(0x22);
+                            this->scheduler_.timer_bypass(0x22);
+                        }
                         this->isGetFunctions_ = false;
                     }
                     this->buildAndSendRequestsInfoPackets();            // initiate an update cycle with this->cycleStarted();

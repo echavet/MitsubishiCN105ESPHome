@@ -198,6 +198,14 @@ bool CN105Climate::processTemperatureChange(const esphome::climate::ClimateCall&
         ESP_LOGD("control", "A temperature setpoint value has been provided...");
     }
 
+    if (this->lossnay_) {
+        if (!this->lossnay_target_warning_logged_) {
+            ESP_LOGW("control", "Ignoring Lossnay target-temperature changes: Lossnay has no confirmed setpoint field");
+            this->lossnay_target_warning_logged_ = true;
+        }
+        return false;
+    }
+
     float temp_low = NAN;
     float temp_high = NAN;
     float temp_single = NAN;
@@ -249,6 +257,10 @@ bool CN105Climate::processFanChange(const esphome::climate::ClimateCall& call) {
 
 bool CN105Climate::processSwingChange(const esphome::climate::ClimateCall& call) {
     if (!call.get_swing_mode().has_value()) {
+        return false;
+    }
+    if (this->lossnay_) {
+        ESP_LOGW("control", "Ignoring Lossnay swing-mode change: swing is not supported");
         return false;
     }
     ESP_LOGD("control", "Swing change asked");
@@ -483,6 +495,39 @@ void CN105Climate::controlTemperature() {
 
 void CN105Climate::controlMode() {
 
+    if (this->lossnay_) {
+        switch (this->mode) {
+        case climate::CLIMATE_MODE_HEAT:
+            ESP_LOGI("control", "changing Lossnay mode to HEAT (heat recovery)");
+            this->setModeSetting("HEAT");
+            break;
+        case climate::CLIMATE_MODE_FAN_ONLY:
+            ESP_LOGI("control", "changing Lossnay mode to FAN_ONLY (bypass)");
+            this->setModeSetting("FAN");
+            break;
+        case climate::CLIMATE_MODE_AUTO:
+            ESP_LOGI("control", "changing Lossnay mode to AUTO");
+            // The automatic-mode result belongs to the previous selection until
+            // a fresh 0x09 response confirms heat recovery or bypass.
+            this->lossnay_actual_mode_valid_ = false;
+            this->setModeSetting("AUTO");
+            break;
+        case climate::CLIMATE_MODE_OFF:
+            ESP_LOGI("control", "changing Lossnay mode to OFF");
+            this->setPowerSetting("OFF");
+            return;
+        default:
+            ESP_LOGW("control", "unsupported Lossnay climate mode");
+            return;
+        }
+
+        // Always include power when selecting an operating mode. currentSettings
+        // is updated only by the next 0x02 response, so using it here can lose a
+        // rapid OFF -> mode command by incorrectly sending mode-only while off.
+        this->setPowerSetting("ON");
+        return;
+    }
+
     switch (this->mode) {
     case climate::CLIMATE_MODE_COOL:
         ESP_LOGI("control", "changing mode to COOL");
@@ -579,6 +624,29 @@ void CN105Climate::setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateA
 //inside the below we could implement an internal only HEAT_COOL doing the math with an offset or something
 void CN105Climate::updateAction() {
     ESP_LOGV(TAG, "updating action back to espHome...");
+
+    if (this->lossnay_) {
+        if (this->currentSettings.power == nullptr || strcmp(this->currentSettings.power, "ON") != 0) {
+            this->action = climate::CLIMATE_ACTION_OFF;
+        } else if (this->mode == climate::CLIMATE_MODE_FAN_ONLY) {
+            this->action = climate::CLIMATE_ACTION_FAN;
+        } else if (this->mode == climate::CLIMATE_MODE_AUTO) {
+            if (!this->lossnay_actual_mode_valid_) {
+                this->action = climate::CLIMATE_ACTION_IDLE;
+            } else {
+                this->action = this->lossnay_actual_mode_ == 0x01
+                    ? climate::CLIMATE_ACTION_FAN
+                    : climate::CLIMATE_ACTION_HEATING;
+            }
+        } else if (this->mode == climate::CLIMATE_MODE_HEAT) {
+            this->action = climate::CLIMATE_ACTION_HEATING;
+        } else {
+            this->action = climate::CLIMATE_ACTION_OFF;
+        }
+        ESP_LOGD(TAG, "Lossnay climate action is: %i", this->action);
+        return;
+    }
+
     if (this->traits().has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
         this->sanitizeDualSetpoints();
     }
@@ -676,10 +744,16 @@ climate::ClimateTraits& CN105Climate::config_traits() {
 
 
 void CN105Climate::setModeSetting(const char* setting) {
-    int index = lookupByteMapIndex(MODE_MAP, 5, setting);
+    int index = this->lossnay_
+        ? lookupByteMapIndex(LOSSNAY_MODE_MAP, 3, setting, "Lossnay mode")
+        : lookupByteMapIndex(MODE_MAP, 5, setting);
     if (index > -1) {
-        wantedSettings.mode = MODE_MAP[index];
+        wantedSettings.mode = this->lossnay_ ? LOSSNAY_MODE_MAP[index] : MODE_MAP[index];
     } else {
+        if (this->lossnay_) {
+            ESP_LOGW("control", "Ignoring unsupported Lossnay mode %s", setting);
+            return;
+        }
         wantedSettings.mode = MODE_MAP[0];
     }
 }
@@ -694,10 +768,16 @@ void CN105Climate::setPowerSetting(const char* setting) {
 }
 
 void CN105Climate::setFanSpeed(const char* setting) {
-    int index = lookupByteMapIndex(FAN_MAP, 6, setting);
+    int index = this->lossnay_
+        ? lookupByteMapIndex(LOSSNAY_FAN_MAP, 4, setting, "Lossnay fan")
+        : lookupByteMapIndex(FAN_MAP, 6, setting);
     if (index > -1) {
-        wantedSettings.fan = FAN_MAP[index];
+        wantedSettings.fan = this->lossnay_ ? LOSSNAY_FAN_MAP[index] : FAN_MAP[index];
     } else {
+        if (this->lossnay_) {
+            ESP_LOGW("control", "Ignoring unsupported Lossnay fan mode %s", setting);
+            return;
+        }
         wantedSettings.fan = FAN_MAP[0];
     }
 }
@@ -735,6 +815,11 @@ void CN105Climate::setAirflowControlSetting(const char* setting) {
 }
 
 void CN105Climate::set_remote_temperature(float setting) {
+    if (this->lossnay_) {
+        ESP_LOGW(LOG_REMOTE_TEMP, "Ignoring remote temperature: Lossnay has no confirmed remote setpoint field");
+        return;
+    }
+
     if (std::isnan(setting)) {
         ESP_LOGW(LOG_REMOTE_TEMP, "Remote temperature is NaN, ignoring.");
         return;
