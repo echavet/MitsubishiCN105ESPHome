@@ -9,15 +9,20 @@ A Home Assistant custom component that acts as a wrapper for the Mitsubishi CN10
 The standard Home Assistant UI does not dynamically update the number of temperature sliders (Single vs Dual) when the ESPHome entity changes traits (e.g. from Heat to Heat/Cool).
 This component wraps the ESPHome entity and provides a "Proxy" entity that:
 
-*   Shows **1 Slider** in **Heat**, **Cool**, and **Auto** modes.
-*   Shows **2 Sliders** in **Heat/Cool** mode.
+*   Preserves native modes and **single-temperature controls** for single-setpoint sources.
+*   Shows **1 Slider** in **Heat** and **Cool**, and **2 Sliders** in **Heat/Cool**, for dual-setpoint sources.
 *   Intelligently maps single-setpoint adjustments to the underlying dual-setpoint ESPHome entity.
 *   Exposes **independent horizontal vane (WideVane)** control via the HA-native `swing_horizontal_mode` API (requires HA 2024.12+).
 
 ## Prerequisites
 
-**On your ESPHome Configuration (YAML):**
-You **MUST** enable `dual_setpoint` support in your climate configuration for the underlying entity to support the `HEAT_COOL` mode correctly.
+Both single-setpoint and dual-setpoint ESPHome climate sources are supported.
+**You do not need to enable `dual_setpoint` to use the proxy or mode restoration.**
+Single-setpoint sources keep their native `auto` mode and forward one target temperature.
+The proxy only lists modes advertised by the source.
+
+If you want two target temperatures in `heat_cool`, configure the source to support
+both `HEAT_COOL` and `dual_setpoint`:
 
 ```yaml
 climate:
@@ -25,7 +30,7 @@ climate:
     # ... other settings
     supports:
       mode: [COOL, HEAT, FAN_ONLY, DRY, AUTO, HEAT_COOL] # Add HEAT_COOL
-      dual_setpoint: true   # <--- CRITICAL: Must be set to true
+      dual_setpoint: true   # Required for the two-temperature HEAT_COOL configuration
 ```
 
 ## Installation via HACS
@@ -49,6 +54,44 @@ This integration now supports configuration directly via the Home Assistant user
 
 Your new entity will be created immediately.
 
+## Turn-on mode
+
+The proxy handles `climate.turn_on` by restoring its last observed active mode.
+For example, **cool → off → turn on** returns to **cool**. It also remembers mode
+changes made directly on the source entity or with the AC remote once ESPHome
+reports them. The saved mode survives normal Home Assistant restarts and integration
+reloads, including when the unit is off. Off, unknown and unavailable states do not
+erase it. An abrupt shutdown can lose changes since Home Assistant's last state save.
+
+Configure these settings when adding the integration, or open its **Configure/options**
+dialog under **Settings → Devices & Services** for an existing proxy:
+
+| Option | Default | Behavior |
+|---|---|---|
+| `restore_last_mode` | `true` | Restore the last observed active mode when supported by the source. Disable to always use the configured default. |
+| `default_turn_on_mode` | `default` | Used when restoration is disabled or no supported saved mode is available. Choices: `default`, `heat_cool`, `auto`, `heat`, `cool`, `dry`, `fan_only`. |
+
+With `default`, the proxy selects the first mode actually supported by the source in
+this order: **heat_cool → auto → heat → cool → dry → fan_only**. This extends Home
+Assistant's fallback preference by including native `auto` before explicit heating.
+It reports an error if the source has no supported active mode.
+
+Alternatively, select a fixed mode supported by your source climate entity. If neither
+the saved mode nor that fixed mode is supported, turn-on reports an error instead of
+selecting another mode.
+Single-setpoint sources remember and restore native `auto` unchanged. For dual-setpoint
+sources that also advertise `heat_cool`, the existing HomeKit workaround still presents
+and remembers `auto` as `heat_cool`.
+
+Calling turn-on while already running leaves the current mode unchanged. Explicit
+`climate.set_hvac_mode` commands still select the requested mode. In coordinator
+single-target mode, turn-on enables the room and leaves mode selection to the coordinator;
+these two settings do not override it.
+
+**Target the proxy entity** in your dashboards, automations and voice assistant exposure.
+Commands targeting the original ESPHome entity keep Home Assistant's original behavior.
+Updating this custom integration requires a Home Assistant restart; no firmware flash is needed.
+
 ## Configuration (YAML Method - Legacy)
 
 If you prefer to define your entities in YAML, you can still add this to your `configuration.yaml`.
@@ -60,6 +103,8 @@ climate:
   - platform: mitsubishi_climate_proxy
     source_entity: climate.chambre_esphome     # The ID of your real ESPHome entity
     name: Chambre Hybrid                       # The name of the new entity to use in your Dashboard
+    restore_last_mode: true                     # Resume the last active mode
+    default_turn_on_mode: default               # Pick the first supported mode, or specify a fixed mode
     horizontal_vane_entity: select.chambre_horizontal_vane  # (Optional) WideVane select entity
 ```
 
@@ -75,9 +120,16 @@ entity: climate.living_room_climate # Use the new proxy entity here
 ## How it works
 
 ### Temperature Setpoints
+
+For single-setpoint sources, the proxy reads and forwards `temperature` directly
+(with unit conversion when needed), including in native `auto`. It never advertises
+temperature-range controls for these sources and rejects range commands.
+
+For dual-setpoint sources:
+
 *   **Heat Mode**: Controls `target_temp_low`.
 *   **Cool Mode**: Controls `target_temp_high`.
-*   **Auto Mode**: Controls the midpoint of the range (moving both low and high to maintain the spread).
+*   **Auto Mode**: When the source also advertises `heat_cool`, presents it as `heat_cool` to preserve the existing HomeKit range display. Otherwise, preserves `auto` and controls the midpoint of the range.
 *   **Heat/Cool Mode**: Exposes both Low and High setpoints.
 
 ### Horizontal Vane (WideVane)
@@ -135,8 +187,8 @@ Native ESPHome entities declare their capabilities (Traits) statically. If an en
 ### The Solution: Dynamic Feature Masking
 This component uses the **Proxy Pattern**. It mirrors the state of your real ESPHome device but intercepts the `supported_features` flag before sending it to Home Assistant's frontend.
 
-*   **When in `HEAT` or `AUTO` mode:** The component masks the "Dual Setpoint" capability. Home Assistant believes the device only supports a single target and renders **one slider**.
-*   **When in `HEAT_COOL` mode:** The component reveals the "Dual Setpoint" capability. Home Assistant renders **two sliders**.
+*   **When in `HEAT` or `COOL` mode:** A dual-setpoint source is presented with one target control, mapped to the relevant range boundary.
+*   **When in `HEAT_COOL` mode:** A source supporting temperature ranges is presented with two target controls.
 *   **When a horizontal vane entity is configured:** The component adds `SWING_HORIZONTAL_MODE` to the features, making the horizontal swing selector appear in the climate UI.
 
 ### Fahrenheit Compatibility
