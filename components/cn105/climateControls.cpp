@@ -86,7 +86,13 @@ bool CN105Climate::processModeChange(const esphome::climate::ClimateCall& call) 
     }
 
     ESP_LOGD("control", "Mode change asked");
+    const auto previous_mode = this->mode;
     this->mode = *call.get_mode();
+    if (this->mode != previous_mode) {
+        ESP_LOGI("control", "changing mode to %s%s",
+            LOG_STR_ARG(climate_mode_to_string(this->mode)),
+            this->mode == climate::CLIMATE_MODE_HEAT_COOL ? " (hardware AUTO)" : "");
+    }
     this->controlMode();
     // Do NOT call controlTemperature() here unconditionally.
     // A mode-only change (e.g. switching to DRY) should not emit a SET temperature
@@ -227,7 +233,9 @@ bool CN105Climate::processTemperatureChange(const esphome::climate::ClimateCall&
         ESP_LOGD("control", "Processing without dual setpoint support...");
         if (call.get_target_temperature().has_value()) {
             this->setTargetTemperature(temp_single);
-            ESP_LOGI("control", "Setting heatpump setpoint : %.1f", this->getTargetTemperature());
+            if (this->getTargetTemperature() != this->currentSettings.temperature) {
+                ESP_LOGI("control", "setting heatpump setpoint : %.1f", this->getTargetTemperature());
+            }
         }
     }
 
@@ -482,45 +490,32 @@ void CN105Climate::controlTemperature() {
 
 
 void CN105Climate::controlMode() {
-
     switch (this->mode) {
     case climate::CLIMATE_MODE_COOL:
-        ESP_LOGI("control", "changing mode to COOL");
         this->setModeSetting("COOL");
         this->setPowerSetting("ON");
         break;
     case climate::CLIMATE_MODE_HEAT:
-        ESP_LOGI("control", "changing mode to HEAT");
         this->setModeSetting("HEAT");
         this->setPowerSetting("ON");
-
         break;
     case climate::CLIMATE_MODE_DRY:
-        ESP_LOGI("control", "changing mode to DRY");
         this->setModeSetting("DRY");
         this->setPowerSetting("ON");
-
         break;
-
     case climate::CLIMATE_MODE_HEAT_COOL:
-        ESP_LOGI("control", "changing mode to HEAT_COOL (hardware AUTO)");
         this->setModeSetting("AUTO");
         this->setPowerSetting("ON");
         break;
-
     case climate::CLIMATE_MODE_AUTO:
-        ESP_LOGI("control", "changing mode to AUTO");
         this->setModeSetting("AUTO");
         this->setPowerSetting("ON");
-
         break;
     case climate::CLIMATE_MODE_FAN_ONLY:
-        ESP_LOGI("control", "changing mode to FAN_ONLY");
         this->setModeSetting("FAN");
         this->setPowerSetting("ON");
         break;
     case climate::CLIMATE_MODE_OFF:
-        ESP_LOGI("control", "changing mode to OFF");
         this->setPowerSetting("OFF");
         break;
     default:

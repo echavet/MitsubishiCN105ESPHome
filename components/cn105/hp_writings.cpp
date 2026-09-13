@@ -386,7 +386,7 @@ void CN105Climate::publishWantedRunStatesStateToHA() {
 void CN105Climate::sendWantedSettingsDelegate() {
     this->wantedSettings.hasBeenSent = true;
     this->lastSend = CUSTOM_MILLIS;
-    ESP_LOGI(TAG, "sending wantedSettings..");
+    ESP_LOGI(TAG, "sending wantedSettings...");
     this->debugSettings("wantedSettings", wantedSettings);
     // and then we send the update packet
     uint8_t packet[PACKET_LEN] = {};

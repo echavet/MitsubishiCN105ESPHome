@@ -544,8 +544,8 @@ void CN105Climate::processCommand() {
 void CN105Climate::statusChanged(heatpumpStatus status) {
 
     if (status != currentStatus) {
-        this->debugStatus("received", status);
         this->debugStatus("current", currentStatus);
+        this->debugStatus("received", status);
 
 
         this->currentStatus.operating = status.operating;
