@@ -158,6 +158,22 @@ TEST(LookupTablesTest, PowerByteToString_On) {
     EXPECT_STREQ(lookupByteMapValue(POWER_MAP, POWER, 2, 0x01), "ON");
 }
 
+// ---- SUB_MODE Tests (issue #668: value 16 while climate is off) ----
+
+TEST(LookupTablesTest, SubModeByteToString_OffIs16) {
+    EXPECT_STREQ(lookupByteMapValue(SUB_MODE_MAP, SUB_MODE, 6, 16), "OFF");
+}
+
+TEST(LookupTablesTest, SubModeByteToString_Standby) {
+    EXPECT_STREQ(lookupByteMapValue(SUB_MODE_MAP, SUB_MODE, 6, 0x08), "STANDBY");
+}
+
+TEST(LookupTablesTest, SubModeUnknownFallsBackToIndex0) {
+    // Unknown bytes still fall back to index 0 ("NORMAL"); callers that can
+    // keep the previous value should use lookup_value_opt instead.
+    EXPECT_STREQ(lookupByteMapValue(SUB_MODE_MAP, SUB_MODE, 6, 0x20), "NORMAL");
+}
+
 // ---- Table Consistency Tests ----
 
 TEST(LookupTablesTest, ModeTableConsistency_AllBytesUnique) {

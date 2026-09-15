@@ -86,6 +86,19 @@ void CN105Climate::getAutoModeStateFromResponsePacket() {
     }
 }
 
+namespace {
+
+/// 0x09 status bytes can be model-specific. Keep previous value and log once
+/// at DEBUG so a repeating unknown (issue #668) does not WARN-spam every poll.
+void log_unknown_status_byte_once(const char* field, uint8_t byte_value) {
+    static cn105_protocol::unknown_lookup_cache seen;
+    if (cn105_protocol::first_unknown_lookup(seen, field, byte_value)) {
+        ESP_LOGD("Decoder", "Unknown %s byte 0x%02X — keeping previous value", field, byte_value);
+    }
+}
+
+}  // namespace
+
 void CN105Climate::getPowerFromResponsePacket() {
     ESP_LOGD("Decoder", "[0x09 is sub modes]");
 
@@ -96,7 +109,7 @@ void CN105Climate::getPowerFromResponsePacket() {
     if (stage_opt) {
         receivedSettings.stage = *stage_opt;
     } else {
-        ESP_LOGW("Decoder", "Unknown stage byte 0x%02X — keeping previous value", data[4]);
+        log_unknown_status_byte_once("stage", data[4]);
         receivedSettings.stage = this->currentSettings.stage
             ? this->currentSettings.stage
             : STAGE_MAP[0];  // default to "IDLE" when no prior value exists
@@ -106,7 +119,7 @@ void CN105Climate::getPowerFromResponsePacket() {
     if (sub_mode_opt) {
         receivedSettings.sub_mode = *sub_mode_opt;
     } else {
-        ESP_LOGW("Decoder", "Unknown sub_mode byte 0x%02X — keeping previous value", data[3]);
+        log_unknown_status_byte_once("sub_mode", data[3]);
         receivedSettings.sub_mode = this->currentSettings.sub_mode
             ? this->currentSettings.sub_mode
             : SUB_MODE_MAP[0];  // default to "NORMAL" when no prior value exists
@@ -116,7 +129,7 @@ void CN105Climate::getPowerFromResponsePacket() {
     if (auto_sub_mode_opt) {
         receivedSettings.auto_sub_mode = *auto_sub_mode_opt;
     } else {
-        ESP_LOGW("Decoder", "Unknown auto_sub_mode byte 0x%02X — keeping previous value", data[5]);
+        log_unknown_status_byte_once("auto_sub_mode", data[5]);
         receivedSettings.auto_sub_mode = this->currentSettings.auto_sub_mode
             ? this->currentSettings.auto_sub_mode
             : AUTO_SUB_MODE_MAP[0];  // default to "AUTO_OFF" when no prior value exists
