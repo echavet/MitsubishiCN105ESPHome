@@ -80,7 +80,13 @@ void CN105Climate::set_airflow_control_select(
         });
 
     this->airflow_control_select_->setCallbackFunction([this](const char* setting) {
-        if (strcmp(this->currentSettings.wideVane, lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 8, 0x80 & 0x0F)) == 0) {
+        // Guard against null wideVane before strcmp — crash fix for #704
+        // (wideVane is null before the heat pump sends its first settings packet)
+        const char* airflowControlMode = lookupByteMapValue(WIDEVANE_MAP, WIDEVANE, 8, 0x00);
+        bool isAirflowControlMode = this->currentSettings.wideVane != nullptr &&
+                                    strcmp(this->currentSettings.wideVane, airflowControlMode) == 0;
+
+        if (isAirflowControlMode) {
             ESP_LOGD("EVT", "airFlow -> Request for change of airflow control setting: %s", setting);
 
             this->setAirflowControlSetting(setting);
@@ -88,7 +94,10 @@ void CN105Climate::set_airflow_control_select(
             this->wantedRunStates.hasBeenSent = false;
             this->wantedRunStates.lastChange = CUSTOM_MILLIS;
         } else {
-            this->airflow_control_select_->publish_state(this->currentRunStates.airflow_control);
+            // Re-publish current state; guard against null (not yet received from heat pump)
+            if (this->currentRunStates.airflow_control != nullptr) {
+                this->airflow_control_select_->publish_state(this->currentRunStates.airflow_control);
+            }
         }
         });
 }
