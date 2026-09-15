@@ -203,6 +203,41 @@ inline std::optional<int> lookup_index_opt(const char* valuesMap[], int len, con
 }
 
 // ════════════════════════════════════════════════════════════════
+// Unknown-lookup diagnostics (log-once, no HVAC semantics)
+// ════════════════════════════════════════════════════════════════
+
+/// Small fixed cache of (label, value) pairs already reported as unknown.
+/// Capacity is tiny on purpose: ESP8266 RAM, and the #668 failure mode is the
+/// same miss repeating every poll cycle — not dozens of distinct unknowns.
+static constexpr int kUnknownLookupCacheSize = 8;
+
+struct unknown_lookup_cache {
+    const char* labels[kUnknownLookupCacheSize]{};
+    int values[kUnknownLookupCacheSize]{};
+    uint8_t size = 0;
+};
+
+/// Returns true the first time this (label, value) pair is recorded on `cache`.
+/// Later identical observations return false so callers can log once (DEBUG)
+/// instead of WARN-spamming every UART poll (#668).
+/// Label is compared by pointer (callers pass string literals).
+inline bool first_unknown_lookup(unknown_lookup_cache& cache, const char* label, int value) {
+    for (uint8_t i = 0; i < cache.size; i++) {
+        if (cache.labels[i] == label && cache.values[i] == value) {
+            return false;
+        }
+    }
+    if (cache.size >= kUnknownLookupCacheSize) {
+        // Cache full: suppress further logs rather than rotating (avoids re-spam).
+        return false;
+    }
+    cache.labels[cache.size] = label;
+    cache.values[cache.size] = value;
+    cache.size++;
+    return true;
+}
+
+// ════════════════════════════════════════════════════════════════
 // Grace window predicates (pure, testable)
 // ════════════════════════════════════════════════════════════════
 

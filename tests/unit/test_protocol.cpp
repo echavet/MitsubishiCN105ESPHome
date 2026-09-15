@@ -321,6 +321,74 @@ TEST(ProtocolLookupIndexOpt, StringNotFound) {
 }
 
 // ════════════════════════════════════════════════════════════════
+// SUB_MODE table — 0x10 is OFF (issue #668)
+// ════════════════════════════════════════════════════════════════
+
+TEST(ProtocolLookupOpt, SubModeNormal) {
+    auto result = lookup_value_opt(SUB_MODE_MAP, SUB_MODE, 6, 0x00);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_STREQ(*result, "NORMAL");
+}
+
+TEST(ProtocolLookupOpt, SubModeOffIs16) {
+    // 0x10 / decimal 16: observed on MFZ units when powered off (data[3] of 0x09).
+    // Mapping is evidence-backed; do not treat 16 as unknown.
+    auto result = lookup_value_opt(SUB_MODE_MAP, SUB_MODE, 6, 16);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_STREQ(*result, "OFF");
+}
+
+TEST(ProtocolLookupOpt, SubModeUnknownReturnsNullopt) {
+    // e.g. 0x20: keep previous value at the call site, do not invent a label.
+    auto result = lookup_value_opt(SUB_MODE_MAP, SUB_MODE, 6, 0x20);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST(ProtocolLookup, SubModeOffFallbackValue) {
+    EXPECT_STREQ(lookup_value(SUB_MODE_MAP, SUB_MODE, 6, 0x10), "OFF");
+}
+
+// ════════════════════════════════════════════════════════════════
+// first_unknown_lookup() — log-once helper for #668
+// ════════════════════════════════════════════════════════════════
+
+TEST(UnknownLookupLog, FirstObservationLogs) {
+    unknown_lookup_cache cache;
+    EXPECT_TRUE(first_unknown_lookup(cache, "submode", 16));
+}
+
+TEST(UnknownLookupLog, RepeatSamePairIsSilent) {
+    unknown_lookup_cache cache;
+    EXPECT_TRUE(first_unknown_lookup(cache, "submode", 16));
+    EXPECT_FALSE(first_unknown_lookup(cache, "submode", 16));
+    EXPECT_FALSE(first_unknown_lookup(cache, "submode", 16));
+}
+
+TEST(UnknownLookupLog, DifferentValueLogsAgain) {
+    unknown_lookup_cache cache;
+    EXPECT_TRUE(first_unknown_lookup(cache, "submode", 16));
+    EXPECT_TRUE(first_unknown_lookup(cache, "submode", 32));
+    EXPECT_FALSE(first_unknown_lookup(cache, "submode", 16));
+}
+
+TEST(UnknownLookupLog, DifferentLabelLogsAgain) {
+    unknown_lookup_cache cache;
+    EXPECT_TRUE(first_unknown_lookup(cache, "submode", 16));
+    EXPECT_TRUE(first_unknown_lookup(cache, "stage", 16));
+    EXPECT_FALSE(first_unknown_lookup(cache, "submode", 16));
+}
+
+TEST(UnknownLookupLog, CacheFullStopsLogging) {
+    unknown_lookup_cache cache;
+    for (int i = 0; i < kUnknownLookupCacheSize; i++) {
+        EXPECT_TRUE(first_unknown_lookup(cache, "submode", i)) << "i=" << i;
+    }
+    EXPECT_FALSE(first_unknown_lookup(cache, "submode", 99));
+    // Already-seen pairs stay silent even when the cache is full.
+    EXPECT_FALSE(first_unknown_lookup(cache, "submode", 0));
+}
+
+// ════════════════════════════════════════════════════════════════
 // MSZ-A24NA setpoint table
 // ════════════════════════════════════════════════════════════════
 

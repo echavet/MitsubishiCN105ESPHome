@@ -511,7 +511,12 @@ const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const uint
     if (defaultValue != nullptr) {
         return defaultValue;
     }
-    ESP_LOGW("lookup", "%s caution: value %d not found, returning value at index 0", debugInfo, byteValue);
+    // #668: unknown protocol bytes (e.g. submode 16 while the unit is off) used
+    // to ESP_LOGW on every poll. Keep the index-0 fallback, log once at DEBUG.
+    static cn105_protocol::unknown_lookup_cache unknown_value_logs;
+    if (cn105_protocol::first_unknown_lookup(unknown_value_logs, debugInfo, byteValue)) {
+        ESP_LOGD("lookup", "%s: value %d not found, returning value at index 0", debugInfo, byteValue);
+    }
     return valuesMap[0];
 }
 int CN105Climate::lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo) {
@@ -522,7 +527,10 @@ int CN105Climate::lookupByteMapValue(const int valuesMap[], const uint8_t byteMa
         if (byteMap[i] == byteValue) { found = true; break; }
     }
     if (!found) {
-        ESP_LOGW("lookup", "%s caution: value %d not found, returning value at index 0", debugInfo, byteValue);
+        static cn105_protocol::unknown_lookup_cache unknown_int_value_logs;
+        if (cn105_protocol::first_unknown_lookup(unknown_int_value_logs, debugInfo, byteValue)) {
+            ESP_LOGD("lookup", "%s: value %d not found, returning value at index 0", debugInfo, byteValue);
+        }
     }
     return result;
 }
