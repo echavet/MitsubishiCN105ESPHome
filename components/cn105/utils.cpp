@@ -511,8 +511,8 @@ const char* CN105Climate::lookupByteMapValue(const char* valuesMap[], const uint
     if (defaultValue != nullptr) {
         return defaultValue;
     }
-    // #668: unknown protocol bytes (e.g. submode 16 while the unit is off) used
-    // to ESP_LOGW on every poll. Keep the index-0 fallback, log once at DEBUG.
+    // #668: leftover lookupByteMapValue callers used to ESP_LOGW every poll on
+    // a miss (historical submode path). Keep the index-0 fallback; log once at DEBUG.
     static cn105_protocol::unknown_lookup_cache unknown_value_logs;
     if (cn105_protocol::first_unknown_lookup(unknown_value_logs, debugInfo, byteValue)) {
         ESP_LOGD("lookup", "%s: value %d not found, returning value at index 0", debugInfo, byteValue);

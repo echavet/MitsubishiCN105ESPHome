@@ -209,7 +209,7 @@ inline std::optional<int> lookup_index_opt(const char* valuesMap[], int len, con
 /// Small fixed cache of (label, value) pairs already reported as unknown.
 /// Capacity is tiny on purpose: ESP8266 RAM, and the #668 failure mode is the
 /// same miss repeating every poll cycle — not dozens of distinct unknowns.
-static constexpr int kUnknownLookupCacheSize = 8;
+inline constexpr int kUnknownLookupCacheSize = 8;
 
 struct unknown_lookup_cache {
     const char* labels[kUnknownLookupCacheSize]{};

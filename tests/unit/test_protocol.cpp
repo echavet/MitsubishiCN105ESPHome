@@ -388,6 +388,17 @@ TEST(UnknownLookupLog, CacheFullStopsLogging) {
     EXPECT_FALSE(first_unknown_lookup(cache, "submode", 0));
 }
 
+TEST(UnknownLookupLog, DistinctPointersWithSameTextAreDistinct) {
+    // Documented contract: labels are compared by pointer, not strcmp.
+    // Production callers pass string literals from one TU.
+    unknown_lookup_cache cache;
+    char a[] = "submode";
+    char b[] = "submode";
+    ASSERT_NE(static_cast<const char*>(a), static_cast<const char*>(b));
+    EXPECT_TRUE(first_unknown_lookup(cache, a, 16));
+    EXPECT_TRUE(first_unknown_lookup(cache, b, 16));
+}
+
 // ════════════════════════════════════════════════════════════════
 // MSZ-A24NA setpoint table
 // ════════════════════════════════════════════════════════════════
