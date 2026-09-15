@@ -1,0 +1,29 @@
+# CN105 climate entity used by the meta-thermostat.
+# The entity id must remain `splitunit` (referenced from the other common files).
+# Adjust `supports:` and optional sensors for your indoor unit.
+# See the main README climate example for the full option list.
+platform: cn105
+id: splitunit
+name: "${friendly_name}"
+icon: mdi:heat-pump
+visual:
+  min_temperature: 16
+  max_temperature: 31
+  temperature_step:
+    target_temperature: 0.5
+    current_temperature: 0.5
+remote_temperature_timeout: 30min
+update_interval: 2s
+debounce_delay: 100ms
+vertical_vane_select:
+  name: Vertical Vane
+horizontal_vane_select:
+  name: Horizontal Vane
+  disabled_by_default: true
+# Dual setpoint on this entity stays off: the ESPHome `thermostat` in
+# climate-common-meta-thermostat.yaml owns the comfort-band UI.
+supports:
+  dual_setpoint: false
+  mode: [AUTO, COOL, HEAT, DRY, FAN_ONLY]
+  fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
+  swing_mode: ["OFF", VERTICAL]

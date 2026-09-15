@@ -9,6 +9,8 @@ This example utilizes a number of advanced ESPHome features, and includes experi
 - Attempts to guess the fan CFM based on the indoor unit model and a lookup table with values from the service manual.
 - If it has both, calculates actual thermal power transfer.
 
+CN105 is on GPIO43/GPIO44 (not UART0), so the default logger UART is usually fine. If you move CN105 onto UART0, set `logger.hardware_uart: UART1` (or `USB_CDC` on USB-serial S3 boards). See the main README and issue #725.
+
 For more discussion on the measurement aspects, see this discussion: https://github.com/echavet/MitsubishiCN105ESPHome/discussions/228
 
 To use in a more simple configuration, simply remove the lines for the `heatpump-intake-sensors.yaml` and `heatpump-fanspeeds.yaml` packages.

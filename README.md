@@ -41,7 +41,7 @@ This project maintains all functionalities of the original [geoffdavis](https://
 
 ## Requirements
 
-- [ESPHome](https://esphome.io/) - Minimum version 1.18.0, installed independently or as an add-on in HomeAssistant
+- [ESPHome](https://esphome.io/) — **2025.7 or later**. ESPHome **2025.11+** is recommended (native `ClimateTraits` feature flags and `FixedVector` select options). 2025.7–2025.10 remain buildable via compile-time API shims (see issue #733). Install independently or as a Home Assistant add-on.
 
 ## Supported Microcontrollers
 
@@ -170,6 +170,17 @@ uart:
   rx_pin: 3
 ```
 
+> [!IMPORTANT]
+> **Logger UART vs CN105 UART.** ESPHome's `logger:` uses UART0 by default. If CN105 is wired to the same pins (typical ESP8266 `GPIO1`/`GPIO3`, and several ESP32 boards such as the M5Stack ATOM Lite), serial logs collide with heat-pump traffic and the unit looks “wired correctly but dead”. Move the logger off UART0:
+>
+> ```yaml
+> logger:
+>   hardware_uart: UART1  # ESP8266 *and* ESP32 when UART0 is used by CN105
+>   level: INFO
+> ```
+>
+> On ESP32-S3 boards that log over USB, `hardware_uart: USB_CDC` (often with `baud_rate: 0`) is the usual alternative. See issue #725.
+
 ### Step 4: Configure the climate component
 
 Add these sections to load the external component, setup logging, and enable the climate entity.
@@ -188,7 +199,7 @@ climate:
 
 # Default logging level
 logger:
-  #  hardware_uart: UART1 # Uncomment on ESP8266 devices
+  # hardware_uart: UART1  # Uncomment on ESP8266 *and* ESP32 if UART0 is used by CN105 (see #725)
   level: INFO
 ```
 
@@ -340,7 +351,7 @@ This firmware supports detailed log granularity for troubleshooting. Below is th
 
 ```yaml
 logger:
-  # hardware_uart: UART1 # Uncomment on ESP8266 devices
+  # hardware_uart: UART1  # Uncomment on ESP8266 *and* ESP32 if UART0 is used by CN105 (see #725)
   level: INFO
   logs:
     EVT_SETS: INFO
@@ -481,7 +492,7 @@ climate:
 
 logger:
 
-# hardware_uart: UART1 # Uncomment on ESP8266 devices
+# hardware_uart: UART1  # Uncomment on ESP8266 *and* ESP32 if UART0 is used by CN105 (see #725)
 
 level: INFO
 
@@ -569,7 +580,7 @@ captive_portal:
 
 # Enable logging
 logger:
-  #  hardware_uart: UART1 # Uncomment on ESP8266 devices
+  # hardware_uart: UART1  # Uncomment on ESP8266 *and* ESP32 if UART0 is used by CN105 (see #725)
   level: INFO
   logs:
     EVT_SETS: INFO

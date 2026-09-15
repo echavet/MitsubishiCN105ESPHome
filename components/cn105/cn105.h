@@ -1,5 +1,6 @@
 #pragma once
 #include "Globals.h"
+#include "esphome_compat.h"
 #include "cn105_protocol.h"
 #include "frame_parser.h"
 #include "esphome/components/uart/uart.h"

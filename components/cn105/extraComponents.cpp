@@ -52,13 +52,10 @@ void CN105Climate::set_horizontal_vane_select(
         this->horizontal_vane_options_strings_.assign(std::begin(WIDEVANE_MAP), std::end(WIDEVANE_MAP));
     }
 
-    // Build FixedVector of const char* for set_options
-    FixedVector<const char*> fixedOptions;
-    fixedOptions.init(this->horizontal_vane_options_strings_.size());
-    for (const auto& str : this->horizontal_vane_options_strings_) {
-        fixedOptions.push_back(str.c_str());
-    }
-    this->horizontal_vane_select_->traits.set_options(fixedOptions);
+    // SelectTraits::set_options takes FixedVector on ESPHome 2025.11+ and
+    // std::vector<std::string> on older releases (#733).
+    cn105_set_select_options(this->horizontal_vane_select_->traits,
+                             this->horizontal_vane_options_strings_);
 
     this->horizontal_vane_select_->setCallbackFunction([this](const char* setting) {
         ESP_LOGD("EVT", "wideVane.control() -> Demande un chgt de rÃ©glage de la wideVane: %s", setting);

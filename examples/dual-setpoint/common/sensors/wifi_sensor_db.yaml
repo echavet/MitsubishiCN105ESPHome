@@ -1,0 +1,6 @@
+platform: wifi_signal
+name: WiFi Signal dBm
+id: wifi_signal_db
+update_interval: 60s
+unit_of_measurement: dBm
+entity_category: diagnostic

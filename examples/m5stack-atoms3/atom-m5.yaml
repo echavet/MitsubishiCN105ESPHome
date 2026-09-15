@@ -29,7 +29,7 @@ debug:
 
 # Enable logging
 logger:
-  #hardware_uart: USB_CDC
+  #hardware_uart: USB_CDC  # USB serial on S3; use UART1 if CN105 is on UART0 (see #725)
   baud_rate: 0
   level: DEBUG
   logs:

@@ -10,5 +10,5 @@ uart:
 
 # Default logging level
 logger:
-  hardware_uart: UART1 # Uncomment on ESP8266 devices
+  hardware_uart: UART1  # UART0 is used by CN105 on this ESP8266 board
   level: INFO

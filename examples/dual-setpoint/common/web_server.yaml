@@ -1,0 +1,3 @@
+# Local web interface — https://esphome.io/components/web_server/
+web_server:
+  port: 80

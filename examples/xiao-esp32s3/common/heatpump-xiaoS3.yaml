@@ -23,6 +23,8 @@ uart:
 
   # Enable logging
 logger:
+  # hardware_uart: UART1  # Uncomment if CN105 uses UART0 (ESP8266 and some ESP32 boards, e.g. ATOM Lite)
+  # hardware_uart: USB_CDC  # ESP32-S3 USB serial alternative
   level: INFO
   logs:
     EVT_SETS : INFO

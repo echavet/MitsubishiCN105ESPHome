@@ -1,0 +1,7 @@
+platform: wifi_info
+ip_address:
+  name: IP Address
+ssid:
+  name: Connected SSID
+mac_address:
+  name: MAC Address
