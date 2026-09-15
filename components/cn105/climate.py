@@ -69,6 +69,38 @@ AUTO_LOAD = [
 ]
 DEPENDENCIES = ["uart"]  # Garder uart ici aussi
 
+
+def _esphome_version_tuple():
+    """Parse ESPHome's version for API shims (issue #733)."""
+    version_str = None
+    try:
+        from esphome.const import __version__ as version_str
+    except ImportError:
+        try:
+            import esphome as _esphome
+
+            version_str = getattr(_esphome, "__version__", None)
+        except ImportError:
+            version_str = None
+    if not version_str:
+        # Unknown tree: emit the current (2025.11+) ClimateTraits API.
+        return (2026, 5, 0)
+    core = str(version_str).split("-", 1)[0]
+    parts = []
+    for part in core.split(".")[:3]:
+        try:
+            parts.append(int(part))
+        except ValueError:
+            parts.append(0)
+    while len(parts) < 3:
+        parts.append(0)
+    return tuple(parts)
+
+
+# Feature flags / FixedVector: ESPHome 2025.11.0. Old supports_* accessors
+# were removed in 2026.5.0. 2025.7.x (issue #733) needs the legacy setters.
+_HAS_CLIMATE_FEATURE_FLAGS = _esphome_version_tuple() >= (2025, 11, 0)
+
 CONF_SUPPORTS = "supports"
 CONF_SUPPORTS_HORIZONTAL_VANE_MODE = "horizontal_vane_mode"
 CONF_HORIZONTAL_VANES = "horizontal_vanes"
@@ -523,15 +555,16 @@ def to_code(config):
         # Note: this enables global dual setpoint support in HA.
         yaml_dual = supports.get(CONF_DUAL_SETPOINT, False)
 
-        # Use the C++ constant directly via RawExpression
-        dual_flag = cg.RawExpression(
-            "climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE"
-        )
-
         if yaml_dual:
-            cg.add(traits.add_feature_flags(dual_flag))
+            if _HAS_CLIMATE_FEATURE_FLAGS:
+                dual_flag = cg.RawExpression(
+                    "climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE"
+                )
+                cg.add(traits.add_feature_flags(dual_flag))
+            else:
+                cg.add(traits.set_supports_two_point_target_temperature(True))
 
-        # Note: If yaml_dual is False, we simply do NOT add the dual_flag.
+        # Note: If yaml_dual is False, we simply do NOT set the dual-setpoint trait.
 
         # Opt-in: persist the HEAT_COOL band (mode + low/high) to flash and restore
         # it on boot, so a reboot/OTA doesn't drop the unit back to hardware AUTO.

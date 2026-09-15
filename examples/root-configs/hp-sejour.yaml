@@ -22,7 +22,7 @@ mqtt:
 
 # Enable logging
 logger:  
-  hardware_uart: UART1
+  hardware_uart: UART1  # CN105 uses UART0 (GPIO1/3) on this ESP8266 board
   level: INFO
   logs:
     EVT_SETS : INFO

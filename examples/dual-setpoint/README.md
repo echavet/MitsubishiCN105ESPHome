@@ -16,22 +16,25 @@ This example demonstrates how to implement intelligent dual setpoint climate con
 ## 📁 File Structure
 
 ```
-example-dual setpoint/
+examples/dual-setpoint/
 ├── README.md                              # This documentation
-├── living-room-split-unit.yaml           # Main device configuration
-├── climate-common-meta-thermostat.yaml  # Dual setpoint thermostat logic
-├── climate-common-non-climate.yaml       # Hardware and sensor configuration
-└── common/                                # Shared configuration files
-    ├── ota.yaml                          # Over-the-air updates
-    ├── web_server.yaml                   # Web interface
-    ├── time.yaml                         # Time synchronization
-    ├── wifi.yaml                         # WiFi configuration
-    └── sensors/                          # Sensor configurations
+├── living-room-split-unit.yaml            # Main device configuration
+└── common/                                # Shared packages included by the main YAML
+    ├── ota.yaml                           # Over-the-air updates
+    ├── web_server.yaml                    # Web interface
+    ├── time.yaml                          # Time synchronization
+    ├── wifi.yaml                          # WiFi configuration
+    ├── climate-common-non-climate.yaml    # Hardware, UART, API, sensors, logger
+    ├── climate-common-meta-thermostat.yaml  # Dual setpoint thermostat logic
+    ├── climate-common-everything-but-office.yaml  # CN105 climate entity (id: splitunit)
+    └── sensors/
         ├── wifi_text_sensors.yaml
-        └── version_text_sensors.yaml
+        ├── version_text_sensors.yaml
+        ├── wifi_sensor_db.yaml
+        └── wifi_sensor_percent.yaml
 ```
 
-This example contains three main YAML configuration files that work together to create a complete dual setpoint climate control system for Mitsubishi CN105 heat pumps.
+Copy the **entire** `examples/dual-setpoint/` folder (main YAML + `common/`) into your ESPHome config directory so the `!include common/...` paths resolve. The previous layout listed a `common/` folder that was missing from git (issue #667).
 
 ## 🔧 Hardware Requirements
 
@@ -63,11 +66,14 @@ substitutions:
   remote_humid_sensor: sensor.living_room_average_humidity
 ```
 
-**Configuration Includes:**
-- `climate-common-non-climate.yaml` - Hardware and sensor configuration
-- `climate-common-meta-thermostat.yaml` - Dual setpoint thermostat logic
+**Configuration Includes** (`packages:` in `living-room-split-unit.yaml`):
+- `common/climate-common-non-climate.yaml` - Hardware and sensor configuration
+- `common/climate-common-meta-thermostat.yaml` - Dual setpoint thermostat logic
+- `common/climate-common-everything-but-office.yaml` - CN105 climate entity (`id: splitunit`)
+- `common/ota.yaml`, `common/web_server.yaml`, `common/time.yaml`, `common/wifi.yaml`
+- `common/sensors/` - WiFi / version text and numeric sensors
 
-### 2. `climate-common-meta-thermostat.yaml` - Dual Setpoint Logic
+### 2. `common/climate-common-meta-thermostat.yaml` - Dual Setpoint Logic
 
 This file implements the intelligent dual setpoint thermostat with the following features:
 
@@ -100,7 +106,7 @@ min_cooling_off_time: 300s      # 5 minutes between cooling cycles
 min_cooling_run_time: 600s      # 10 minutes minimum cooling runtime
 ```
 
-### 3. `climate-common-non-climate.yaml` - Hardware Configuration
+### 3. `common/climate-common-non-climate.yaml` - Hardware Configuration
 
 This file configures the underlying hardware and sensors:
 
@@ -140,7 +146,7 @@ Before you start, make sure you have:
 
 - ✅ **ESPHome installed and configured**
   - If you don't have ESPHome, install it first: https://esphome.io/guides/installing_esphome.html
-  - You need ESPHome version 2023.12.0 or later
+  - You need ESPHome version 2025.7.0 or later (2025.11+ recommended)
   - ESPHome can be installed via Home Assistant add-on, Docker, or Python pip
 
 - ✅ **Home Assistant running** (with ESPHome integration configured)
@@ -216,21 +222,38 @@ GND           →   Other side of button
    - If using Docker: Usually in your Docker volume
    - If using standalone: Wherever you installed ESPHome
 
-2. **Copy all three YAML files** to your ESPHome config directory:
+2. **Copy the whole `examples/dual-setpoint/` folder** into your ESPHome config directory (keep `common/` next to `living-room-split-unit.yaml`):
    ```
    your-esphome-config/
    ├── living-room-split-unit.yaml
-   ├── climate-common-meta-thermostat.yaml
-   └── climate-common-non-climate.yaml
+   └── common/
+       ├── ota.yaml
+       ├── web_server.yaml
+       ├── time.yaml
+       ├── wifi.yaml
+       ├── climate-common-non-climate.yaml
+       ├── climate-common-meta-thermostat.yaml
+       ├── climate-common-everything-but-office.yaml
+       └── sensors/
+           ├── wifi_text_sensors.yaml
+           ├── version_text_sensors.yaml
+           ├── wifi_sensor_db.yaml
+           └── wifi_sensor_percent.yaml
    ```
-   > **⚠️ Important**: All three files must be in the SAME directory!
+   > **⚠️ Important**: `living-room-split-unit.yaml` and the `common/` directory must stay together. Do not copy only the three YAML files at the top level — the includes will fail (issue #667).
+
+   When this folder is **not** inside a clone of MitsubishiCN105ESPHome, edit `common/climate-common-non-climate.yaml` and replace the local `external_components` source with:
+   ```yaml
+   external_components:
+     - source: github://echavet/MitsubishiCN105ESPHome
+   ```
 
 3. **Verify the files are there:**
    ```bash
    # If using command line:
-   ls -la /path/to/esphome/config/
-   # You should see all three .yaml files
+   ls -la /path/to/esphome/config/living-room-split-unit.yaml /path/to/esphome/config/common/
    ```
+   You should see `living-room-split-unit.yaml` plus the `common/` directory.
 
 #### Step 3.2: Update Substitutions (REQUIRED!)
 
@@ -318,11 +341,12 @@ GND           →   Other side of button
 
 Before compiling, double-check:
 
-- ✅ All three YAML files are in the same directory
+- ✅ `living-room-split-unit.yaml` and the `common/` folder are in the same directory
 - ✅ `substitutions` section has YOUR sensor entity IDs (not the example ones)
 - ✅ `secrets.yaml` exists and has YOUR WiFi credentials
 - ✅ Sensor entity IDs match EXACTLY what's in Home Assistant
 - ✅ No typos in entity IDs (they're case-sensitive!)
+- ✅ If CN105 is wired to UART0, `logger.hardware_uart` is set to `UART1` (ESP8266 and ESP32; see issue #725)
 
 #### Step 3.5: Compile and Upload
 
@@ -454,7 +478,7 @@ Before compiling, double-check:
 
 **Problem: Compilation errors**
 - ✅ Check YAML syntax (indentation matters!)
-- ✅ Verify all three files are in the same directory
+- ✅ Verify `living-room-split-unit.yaml` sits next to the `common/` folder
 - ✅ Check that secrets.yaml exists and has all required values
 - ✅ Look at the error message - it usually tells you what's wrong
 
@@ -760,7 +784,7 @@ substitutions:
 
 4. **Verify baud rate:**
    - Should be 2400 (set automatically in config)
-   - Check `climate-common-non-climate.yaml`:
+   - Check `common/climate-common-non-climate.yaml`:
      ```yaml
      uart:
        baud_rate: 2400  # Must be 2400 for CN105
@@ -790,12 +814,10 @@ substitutions:
    - Check for missing colons (`:`) or dashes (`-`)
    - Use a YAML validator: https://www.yamllint.com/
 
-2. **Verify all files exist:**
+2. **Verify the include tree exists:**
    ```bash
-   # Check all three files are in the same directory:
-   ls -la living-room-split-unit.yaml
-   ls -la climate-common-meta-thermostat.yaml
-   ls -la climate-common-non-climate.yaml
+   ls -la living-room-split-unit.yaml common/
+   ls -la common/climate-common-non-climate.yaml common/climate-common-meta-thermostat.yaml common/climate-common-everything-but-office.yaml
    ```
 
 3. **Check secrets.yaml:**
@@ -805,7 +827,7 @@ substitutions:
 
 4. **Check for missing includes:**
    - If error says "file not found", check include paths
-   - All files should be in same directory (no subdirectories needed)
+   - `living-room-split-unit.yaml` must sit next to the `common/` directory
 
 5. **Read the error message:**
    - ESPHome error messages are usually helpful
@@ -862,7 +884,7 @@ substitutions:
 
 2. **Check temperature conversion:**
    - If sensor reports in Fahrenheit, it's converted to Celsius
-   - Check `climate-common-non-climate.yaml`:
+   - Check `common/climate-common-non-climate.yaml`:
      ```yaml
      filters:
        - lambda: return (x - 32) * (5.0/9.0);  # Converts F to C
@@ -883,7 +905,7 @@ substitutions:
 
 If you need more information, enable debug logging:
 
-1. **Edit `climate-common-non-climate.yaml`:**
+1. **Edit `common/climate-common-non-climate.yaml`:**
 
 2. **Find the `logger:` section:**
 

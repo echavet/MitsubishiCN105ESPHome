@@ -43,11 +43,8 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
         [this]() -> CN105Climate* { return this; }
     ) {
 
-    // Enables feature flags via the modern API (avoids deprecated setters).
-    this->traits_.add_feature_flags(
-        climate::CLIMATE_SUPPORTS_ACTION |
-        climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE
-    );
+    // Current temperature + action via version-shimmed ClimateTraits API (#733).
+    cn105_traits_add_current_temp_and_action(this->traits_);
     // supports_two_point_target_temperature will be defined in setup() depending on the supported modes
     this->traits_.set_visual_min_temperature(ESPMHP_MIN_TEMPERATURE);
     this->traits_.set_visual_max_temperature(ESPMHP_MAX_TEMPERATURE);

@@ -42,7 +42,7 @@ void CN105Climate::setup() {
     // We start the sequence in loop() to avoid missing the first OTA logs.
 
     // Initialize the internal flag based on the static configuration provided by YAML/Python
-    this->supports_dual_setpoint_ = this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE);
+    this->supports_dual_setpoint_ = cn105_traits_requires_two_point(this->traits_);
     ESP_LOGI(TAG, "Dual setpoint support configured: %s", this->supports_dual_setpoint_ ? "YES" : "NO");
     ESP_LOGI(TAG, "Horizontal vanes configured: %d", this->horizontal_vanes_);
 

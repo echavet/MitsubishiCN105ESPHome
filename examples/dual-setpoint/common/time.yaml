@@ -1,0 +1,4 @@
+# Time sync from Home Assistant — https://esphome.io/components/time/
+time:
+  - platform: homeassistant
+    id: ha_time

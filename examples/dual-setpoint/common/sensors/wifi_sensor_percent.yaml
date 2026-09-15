@@ -1,0 +1,10 @@
+platform: wifi_signal
+name: WiFi Signal Percent
+update_interval: 60s
+filters:
+  - lambda: return (x + 100.0) * 2.0;
+  - clamp:
+      min_value: 0
+      max_value: 100
+unit_of_measurement: "%"
+entity_category: diagnostic

@@ -76,9 +76,12 @@ button:
 # which provides the climate control functionality for Mitsubishi heat pumps.
 
 external_components:
+  # Local path when compiling from a clone of this repository.
+  # When copying this example into a standalone ESPHome config, switch to:
+  #   - source: github://echavet/MitsubishiCN105ESPHome
   - source:
       type: local
-      path: ../../components
+      path: ../../../components
 
 # =============================================================================
 # UART COMMUNICATION
@@ -200,6 +203,8 @@ light:
 # debugging information with performance and log clarity.
 
 logger:
+  # hardware_uart: UART1  # Uncomment on ESP8266 *and* ESP32 if UART0 is used by CN105 (see #725)
+  # hardware_uart: USB_CDC  # ESP32-S3 USB serial alternative
   level: INFO                        # Default log level
   logs:
     # System and network logging

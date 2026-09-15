@@ -19,7 +19,7 @@ esp8266:
 
 # Enable logging
 logger:  
-  hardware_uart: UART1
+  hardware_uart: UART1  # CN105 uses UART0 (GPIO1/3); required on ESP8266 and ESP32 in this situation (#725)
   level: DEBUG
   logs:
     CN105Climate: DEBUG    

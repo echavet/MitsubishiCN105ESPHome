@@ -1,0 +1,3 @@
+# Over-the-air updates — https://esphome.io/components/ota/esphome/
+ota:
+  platform: esphome

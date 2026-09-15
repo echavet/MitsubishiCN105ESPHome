@@ -1,0 +1,9 @@
+# WiFi — secrets must match examples/dual-setpoint/README.md
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} Fallback"
+    password: !secret wifi_password
+
+captive_portal:

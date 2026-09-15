@@ -182,7 +182,7 @@ bool CN105Climate::processTemperatureChange(const esphome::climate::ClimateCall&
     bool tempHasValue = (call.get_target_temperature_low().has_value() ||
         call.get_target_temperature_high().has_value() || call.get_target_temperature().has_value());
     /*
-    bool tempHasValue = this->traits_.get_supports_two_point_target_temperature() ?
+    bool tempHasValue = cn105_traits_requires_two_point(this->traits_) ?
         (
             call.get_target_temperature_low().has_value() ||
             call.get_target_temperature_high().has_value() ||
@@ -211,7 +211,7 @@ bool CN105Climate::processTemperatureChange(const esphome::climate::ClimateCall&
         temp_single = this->fahrenheitSupport_.normalizeUiTemperatureToHeatpumpTemperature(*call.get_target_temperature());
     }
 
-    if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+    if (cn105_traits_requires_two_point(this->traits_)) {
         ESP_LOGD("control", "Processing with dual setpoint support...");
         if (call.get_target_temperature_low().has_value() && call.get_target_temperature_high().has_value()) {
             this->handleDualSetpointBoth(temp_low, temp_high);
@@ -388,7 +388,7 @@ void CN105Climate::controlTemperature() {
         // Mode HEAT_COOL (new): displays 2 sliders
         // BUT sends AUTO command to Mitsubishi hardware
         // with internal deadband logic
-        if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+        if (cn105_traits_requires_two_point(this->traits_)) {
             if ((!std::isnan(currentSettings.temperature)) && (currentSettings.temperature > 0)) {
                 // Initialize if values are missing
                 if (std::isnan(this->getTargetTemperatureLow())) {
@@ -424,7 +424,7 @@ void CN105Climate::controlTemperature() {
         // But for Mitsu AUTO, a single setpoint matters.
         setting = this->getTargetTemperature();
         // If forced to dual point by global trait, take the median
-        if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+        if (cn105_traits_requires_two_point(this->traits_)) {
             if (!std::isnan(this->getTargetTemperatureLow()) && !std::isnan(this->getTargetTemperatureHigh())) {
                 setting = (this->getTargetTemperatureLow() + this->getTargetTemperatureHigh()) / 2.0f;
             }
@@ -434,7 +434,7 @@ void CN105Climate::controlTemperature() {
 
     case climate::CLIMATE_MODE_HEAT:
         // Mode HEAT : using low target temperature
-        if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+        if (cn105_traits_requires_two_point(this->traits_)) {
             setting = this->getTargetTemperatureLow();
         } else {
             setting = this->getTargetTemperature();
@@ -443,7 +443,7 @@ void CN105Climate::controlTemperature() {
         break;
     case climate::CLIMATE_MODE_COOL:
         // Mode COOL : using high target temperature
-        if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+        if (cn105_traits_requires_two_point(this->traits_)) {
             setting = this->getTargetTemperatureHigh();
         } else {
             setting = this->getTargetTemperature();
@@ -452,7 +452,7 @@ void CN105Climate::controlTemperature() {
         break;
     case climate::CLIMATE_MODE_DRY:
         // Mode DRY : using high target temperature
-        if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+        if (cn105_traits_requires_two_point(this->traits_)) {
             setting = this->getTargetTemperatureHigh();
         } else {
             setting = this->getTargetTemperature();
@@ -461,7 +461,7 @@ void CN105Climate::controlTemperature() {
         break;
     default:
         // Other modes : use median temperature
-        if (this->traits_.has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+        if (cn105_traits_requires_two_point(this->traits_)) {
             setting = (this->getTargetTemperatureLow() + this->getTargetTemperatureHigh()) / 2.0f;
         } else {
             setting = this->getTargetTemperature();
@@ -579,7 +579,7 @@ void CN105Climate::setActionIfOperatingAndCompressorIsActiveTo(climate::ClimateA
 //inside the below we could implement an internal only HEAT_COOL doing the math with an offset or something
 void CN105Climate::updateAction() {
     ESP_LOGV(TAG, "updating action back to espHome...");
-    if (this->traits().has_feature_flags(climate::CLIMATE_REQUIRES_TWO_POINT_TARGET_TEMPERATURE)) {
+    if (cn105_traits_requires_two_point(this->traits())) {
         this->sanitizeDualSetpoints();
     }
     switch (this->mode) {
@@ -659,7 +659,7 @@ void CN105Climate::updateAction() {
 }
 
 climate::ClimateTraits CN105Climate::traits() {
-    //ESP_LOGD(LOG_SETTINGS_TAG, "traits() called (dual: %d)", traits_.get_supports_two_point_target_temperature());
+    //ESP_LOGD(LOG_SETTINGS_TAG, "traits() called (dual: %d)", cn105_traits_requires_two_point(traits_));
     return traits_;
 }
 
