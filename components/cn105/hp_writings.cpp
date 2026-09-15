@@ -14,13 +14,15 @@ void CN105Climate::sendFirstConnectionPacket() {
         this->setHeatpumpConnected(false);
         uint8_t packet[CONNECT_LEN];
         memcpy(packet, CONNECT, CONNECT_LEN);
+        packet[3] = this->protocol_profile();
 
         // Choix du mode de handshake: standard (0x5A) ou installateur (0x5B)
-        packet[1] = this->installer_mode_effective_ ? 0x5B : 0x5A;
+        packet[1] = (this->installer_mode_effective_ && !this->lossnay_) ? 0x5B : 0x5A;
         // CONNECT a un checksum pré-calculé dans la constante; si on modifie l'octet commande, on doit le recalculer.
         packet[CONNECT_LEN - 1] = checkSum(packet, CONNECT_LEN - 1);
 
-        ESP_LOGI(LOG_CONN_TAG, "Envoi du paquet de connexion en mode %s (0x%02X)...", this->installer_mode_effective_ ? "Installateur" : "Standard", packet[1]);
+        ESP_LOGI(LOG_CONN_TAG, "Envoi du paquet de connexion en mode %s (0x%02X), profile 0x%02X...",
+            packet[1] == 0x5B ? "Installateur" : "Standard", packet[1], packet[3]);
 
         // Détails des octets en DEBUG sur le tag de connexion
         this->hpPacketDebug(packet, CONNECT_LEN, LOG_CONN_TAG);
@@ -37,7 +39,7 @@ void CN105Climate::sendFirstConnectionPacket() {
                 ESP_LOGE(LOG_CONN_TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
                 // Fallback automatique: si le mode installateur est demandé mais que la PAC ignore 0x5B,
                 // on retente une fois en mode standard (0x5A) pour préserver la connectivité.
-                if (this->installer_mode_ && this->installer_mode_effective_ && !this->installer_mode_fallback_done_) {
+                if (this->installer_mode_ && this->installer_mode_effective_ && !this->lossnay_ && !this->installer_mode_fallback_done_) {
                     this->installer_mode_effective_ = false;
                     this->installer_mode_fallback_done_ = true;
                     ESP_LOGW(LOG_CONN_TAG, "No reply to installer handshake (0x5B). Falling back to standard handshake (0x5A).");
@@ -77,6 +79,9 @@ void CN105Climate::prepareInfoPacket(uint8_t* packet, int length) {
     for (int i = 0; i < INFOHEADER_LEN && i < length; i++) {
         packet[i] = INFOHEADER[i];
     }
+    if (length > 3) {
+        packet[3] = this->protocol_profile();
+    }
 }
 
 void CN105Climate::prepareSetPacket(uint8_t* packet, int length) {
@@ -85,6 +90,9 @@ void CN105Climate::prepareSetPacket(uint8_t* packet, int length) {
 
     for (int i = 0; i < HEADER_LEN && i < length; i++) {
         packet[i] = HEADER[i];
+    }
+    if (length > 3) {
+        packet[3] = this->protocol_profile();
     }
 }
 
@@ -216,10 +224,21 @@ void CN105Climate::createPacket(uint8_t* packet) {
     //ESP_LOGD(TAG, "checking differences bw asked settings and current ones...");
     ESP_LOGD(TAG, "building packet for writing...");
 
+    if (this->lossnay_) {
+        this->applyLossnaySettingsToPacket(packet);
+        packet[21] = checkSum(packet, 21);
+        return;
+    }
+
     if (this->wantedSettings.power != nullptr) {
         ESP_LOGD(TAG, "power -> %s", getPowerSetting());
         int idx = lookupByteMapIndex(POWER_MAP, 2, getPowerSetting(), "power (write)");
-        if (idx >= 0) { packet[8] = POWER[idx]; packet[6] += CONTROL_PACKET_1[0]; } else { ESP_LOGW(TAG, "Ignoring invalid power setting while building packet"); }
+        if (idx >= 0) {
+            packet[8] = POWER[idx];
+            packet[6] += CONTROL_PACKET_1[0];
+        } else {
+            ESP_LOGW(TAG, "Ignoring invalid power setting while building packet");
+        }
     }
 
     if (this->wantedSettings.mode != nullptr) {
@@ -288,6 +307,42 @@ void CN105Climate::createPacket(uint8_t* packet) {
     packet[21] = chkSum;
 }
 
+void CN105Climate::applyLossnaySettingsToPacket(uint8_t* packet) {
+    std::optional<uint8_t> power;
+    std::optional<uint8_t> mode;
+    std::optional<uint8_t> fan;
+
+    if (this->wantedSettings.power != nullptr) {
+        ESP_LOGD(TAG, "Lossnay power -> %s", getPowerSetting());
+        const int idx = lookupByteMapIndex(POWER_MAP, 2, getPowerSetting(), "Lossnay power (write)");
+        if (idx >= 0) {
+            power = POWER[idx];
+        } else {
+            ESP_LOGW(TAG, "Ignoring invalid Lossnay power while building packet");
+        }
+    }
+    if (this->wantedSettings.mode != nullptr) {
+        ESP_LOGD(TAG, "Lossnay mode -> %s", getModeSetting());
+        const int idx = lookupByteMapIndex(LOSSNAY_MODE_MAP, 3, getModeSetting(), "Lossnay mode (write)");
+        if (idx >= 0) {
+            mode = LOSSNAY_MODE[idx];
+        } else {
+            ESP_LOGW(TAG, "Ignoring invalid Lossnay mode while building packet");
+        }
+    }
+    if (this->wantedSettings.fan != nullptr) {
+        ESP_LOGD(TAG, "Lossnay fan -> %s", getFanSpeedSetting());
+        const int idx = lookupByteMapIndex(LOSSNAY_FAN_MAP, 4, getFanSpeedSetting(), "Lossnay fan (write)");
+        if (idx >= 0) {
+            fan = LOSSNAY_FAN[idx];
+        } else {
+            ESP_LOGW(TAG, "Ignoring invalid Lossnay fan while building packet");
+        }
+    }
+
+    cn105_protocol::encode_lossnay_control(packet, power, mode, fan);
+}
+
 const char* CN105Climate::vaneSettingForPacket() const {
     if (this->wantedSettings.vane != nullptr) {
         return this->wantedSettings.vane;
@@ -321,7 +376,7 @@ void CN105Climate::publishWantedSettingsStateToHA() {
     }
 
 
-    if ((this->wantedSettings.vane != nullptr) || (this->wantedSettings.wideVane != nullptr)) {
+    if (!this->lossnay_ && ((this->wantedSettings.vane != nullptr) || (this->wantedSettings.wideVane != nullptr))) {
         if (this->wantedSettings.vane == nullptr) { // to prevent a nullpointer error
             this->wantedSettings.vane = this->currentSettings.vane;
         }
@@ -334,7 +389,7 @@ void CN105Climate::publishWantedSettingsStateToHA() {
 
     // HA Temp — only update if this SET includes an explicit temperature change;
     // otherwise the stale currentSettings.temperature would overwrite the UI.
-    if (this->wantedSettings.temperature != -1.0f) {
+    if (!this->lossnay_ && this->wantedSettings.temperature != -1.0f) {
         this->updateTargetTemperaturesFromSettings(this->getTemperatureSetting());
     }
 
@@ -476,18 +531,10 @@ void CN105Climate::buildAndSendRequestsInfoPackets() {
 
 void CN105Climate::createInfoPacket(uint8_t* packet, uint8_t code) {
     ESP_LOGD(TAG, "creating Info packet");
-    // add the header to the packet
-    for (int i = 0; i < INFOHEADER_LEN; i++) {
-        packet[i] = INFOHEADER[i];
-    }
+    prepareInfoPacket(packet, PACKET_LEN);
 
     // directly set requested info code (0x02, 0x03, 0x06, 0x09, 0x42, ...)
     packet[5] = code;
-
-    // pad the packet out
-    for (int i = 0; i < 15; i++) {
-        packet[i + 6] = 0x00;
-    }
 
     // add the checksum
     uint8_t chkSum = checkSum(packet, 21);
@@ -497,6 +544,11 @@ void CN105Climate::createInfoPacket(uint8_t* packet, uint8_t code) {
 
 void CN105Climate::sendRemoteTemperaturePacket() {
     // Build and send the remote temperature packet (0x07) without affecting watchdog/keep-alive timers
+
+    if (this->lossnay_) {
+        ESP_LOGW(LOG_REMOTE_TEMP, "Ignoring remote temperature write: Lossnay has no confirmed setpoint field");
+        return;
+    }
 
     // Debounce logic: avoid flooding the bus with identical temperature values
     // Only skip if: same temperature AND sent recently (within half of keep-alive interval, min 5s)
@@ -569,6 +621,12 @@ void CN105Climate::sendRemoteTemperature() {
 }
 
 void CN105Climate::sendWantedRunStates() {
+    if (this->lossnay_) {
+        ESP_LOGW(LOG_SET_RUN_STATE, "Ignoring run-state write: Lossnay auxiliary controls are not supported");
+        this->wantedRunStates.resetSettings();
+        return;
+    }
+
     uint8_t packet[PACKET_LEN] = {};
 
     prepareSetPacket(packet, PACKET_LEN);

@@ -42,6 +42,7 @@ jobs:
         version: [stable]
         variant: 
           - examples/root-configs/esp32-test
+          - examples/root-configs/lossnay-test
           - examples/root-configs/hp-debug
           - examples/root-configs/hp-sejour
           - examples/m5stack-atoms3/atom-m5

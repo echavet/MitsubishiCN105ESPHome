@@ -89,6 +89,24 @@ void CN105Climate::getAutoModeStateFromResponsePacket() {
 void CN105Climate::getPowerFromResponsePacket() {
     ESP_LOGD("Decoder", "[0x09 is sub modes]");
 
+    if (this->lossnay_) {
+        // In the Lossnay 0x09 payload, data[7] is a fixed 0x40 status byte.
+        // data[8] is the actual automatic-mode result; data[9] and data[10]
+        // repeat the selected fan speed in the captured operating states.
+        const auto actual_mode = cn105_protocol::decode_lossnay_actual_mode(data);
+        if (actual_mode) {
+            this->lossnay_actual_mode_ = *actual_mode;
+            this->lossnay_actual_mode_valid_ = true;
+            ESP_LOGD("Decoder", "[Lossnay actual mode: %s]", *actual_mode == 0x00 ? "HEAT_RECOVERY" : "BYPASS");
+        } else {
+            this->lossnay_actual_mode_valid_ = false;
+            ESP_LOGW("Decoder", "Unknown Lossnay actual mode byte 0x%02X", data[8]);
+        }
+        this->updateAction();
+        this->publish_state();
+        return;
+    }
+
     heatpumpSettings receivedSettings{};
 
     // Use std::optional lookups — keep previous value on unknown bytes
@@ -157,19 +175,25 @@ void CN105Climate::getSettingsFromResponsePacket() {
 
     receivedSettings.connected = true;
 
-    auto power_opt = cn105_protocol::lookup_value_opt(POWER_MAP, POWER, 2, data[3]);
+    const auto lossnay_settings = this->lossnay_
+        ? cn105_protocol::decode_lossnay_settings(data)
+        : cn105_protocol::LossnaySettingsBytes{};
+    const uint8_t power_byte = this->lossnay_ ? lossnay_settings.power : data[3];
+    auto power_opt = cn105_protocol::lookup_value_opt(POWER_MAP, POWER, 2, power_byte);
     if (power_opt) {
         receivedSettings.power = *power_opt;
     } else {
-        ESP_LOGW("Decoder", "Unknown power byte 0x%02X — keeping previous value", data[3]);
+        ESP_LOGW("Decoder", "Unknown power byte 0x%02X — keeping previous value", power_byte);
         receivedSettings.power = this->currentSettings.power
             ? this->currentSettings.power
             : POWER_MAP[0];  // default to "OFF" when no prior value exists
     }
 
-    receivedSettings.iSee = data[4] > 0x08 ? true : false;
-    uint8_t modeByte = receivedSettings.iSee ? (data[4] - 0x08) : data[4];
-    auto mode_opt = cn105_protocol::lookup_value_opt(MODE_MAP, MODE, 5, modeByte);
+    receivedSettings.iSee = this->lossnay_ ? false : (data[4] > 0x08);
+    uint8_t modeByte = this->lossnay_ ? lossnay_settings.mode : (receivedSettings.iSee ? (data[4] - 0x08) : data[4]);
+    auto mode_opt = this->lossnay_
+        ? cn105_protocol::lookup_value_opt(LOSSNAY_MODE_MAP, LOSSNAY_MODE, 3, modeByte)
+        : cn105_protocol::lookup_value_opt(MODE_MAP, MODE, 5, modeByte);
     if (mode_opt) {
         receivedSettings.mode = *mode_opt;
     } else {
@@ -183,34 +207,44 @@ void CN105Climate::getSettingsFromResponsePacket() {
     ESP_LOGD("Decoder", "[iSee  : %d]", receivedSettings.iSee);
     ESP_LOGD("Decoder", "[Mode  : %s]", receivedSettings.mode);
 
-    receivedSettings.temperature = this->decodeSettingsTemperature(data);
+    receivedSettings.temperature = this->lossnay_
+        ? this->currentSettings.temperature
+        : this->decodeSettingsTemperature(data);
 
     ESP_LOGD("Decoder", "[Temp °C: %f]", receivedSettings.temperature);
 
-    auto fan_opt = cn105_protocol::lookup_value_opt(FAN_MAP, FAN, 6, data[6]);
+    const uint8_t fan_byte = this->lossnay_ ? lossnay_settings.fan : data[6];
+    auto fan_opt = this->lossnay_
+        ? cn105_protocol::lookup_value_opt(LOSSNAY_FAN_MAP, LOSSNAY_FAN, 4, fan_byte)
+        : cn105_protocol::lookup_value_opt(FAN_MAP, FAN, 6, data[6]);
     if (fan_opt) {
         receivedSettings.fan = *fan_opt;
     } else {
-        ESP_LOGW("Decoder", "Unknown fan byte 0x%02X — keeping previous value", data[6]);
+        ESP_LOGW("Decoder", "Unknown fan byte 0x%02X — keeping previous value", fan_byte);
         receivedSettings.fan = this->currentSettings.fan
             ? this->currentSettings.fan
-            : FAN_MAP[0];  // default to "AUTO" when no prior value exists
+            : (this->lossnay_ ? LOSSNAY_FAN_MAP[0] : FAN_MAP[0]);
     }
     ESP_LOGD("Decoder", "[Fan: %s]", receivedSettings.fan);
 
-    auto vane_opt = cn105_protocol::lookup_value_opt(VANE_MAP, VANE, 7, data[7]);
-    if (vane_opt) {
-        receivedSettings.vane = *vane_opt;
+    if (this->lossnay_) {
+        receivedSettings.vane = this->currentSettings.vane;
+        receivedSettings.wideVane = this->currentSettings.wideVane;
     } else {
-        ESP_LOGW("Decoder", "Unknown vane byte 0x%02X — keeping previous value", data[7]);
-        receivedSettings.vane = this->currentSettings.vane
-            ? this->currentSettings.vane
-            : VANE_MAP[0];  // default to "AUTO" when no prior value exists
+        auto vane_opt = cn105_protocol::lookup_value_opt(VANE_MAP, VANE, 7, data[7]);
+        if (vane_opt) {
+            receivedSettings.vane = *vane_opt;
+        } else {
+            ESP_LOGW("Decoder", "Unknown vane byte 0x%02X — keeping previous value", data[7]);
+            receivedSettings.vane = this->currentSettings.vane
+                ? this->currentSettings.vane
+                : VANE_MAP[0];  // default to "AUTO" when no prior value exists
+        }
+        ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
     }
-    ESP_LOGD("Decoder", "[Vane: %s]", receivedSettings.vane);
 
     // --- START OF MODIFIED SECTION - Reverted widevane section back to more or less original state
-    if ((data[10] != 0) && (this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {    // wideVane is not always supported
+    if (!this->lossnay_ && (data[10] != 0) && (this->traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {    // wideVane is not always supported
         uint8_t wideVaneByte = data[10] & 0x0F;
         auto wideVane_opt = cn105_protocol::lookup_value_opt(WIDEVANE_MAP, WIDEVANE, 8, wideVaneByte);
         if (wideVane_opt) {
@@ -240,7 +274,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
     // percentage in data[12]. This value changes when the mode is switched
     // via the IR remote (e.g. COOL→70%, DRY→50%, HEAT→40%).
     // Not all models populate this byte — it may read 0x00 on unsupported units.
-    if (this->target_humidity_sensor_ != nullptr) {
+    if (!this->lossnay_ && this->target_humidity_sensor_ != nullptr) {
         uint8_t raw_humidity = data[12];
         if (raw_humidity > 0 && raw_humidity <= 100) {
             float humidity_pct = static_cast<float>(raw_humidity);
@@ -254,7 +288,7 @@ void CN105Climate::getSettingsFromResponsePacket() {
     }
 
     // --- AIRFLOW CONTROL START
-    if (this->airflow_control_select_ != nullptr) {
+    if (!this->lossnay_ && this->airflow_control_select_ != nullptr) {
         if (data[10] == 0x80) {
             if (receivedSettings.iSee) {
                 auto airflow_opt = cn105_protocol::lookup_value_opt(AIRFLOW_CONTROL_MAP, AIRFLOW_CONTROL, 3, data[14]);
@@ -364,10 +398,17 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
 
     // reset counter (because a reply indicates it is connected)
     this->nonResponseCounter = 0;
-    receivedStatus.operating = data[4];
-    // Some models (e.g. PAA/PUZ combo) seem to have some noise on the compressor frequency sensor, even when not in operation.
-    // To avoid reporting random values, set the compressor frequency to 0 when the heatpump is not operating.
-    receivedStatus.compressorFrequency = (data[4]) ? data[3] : 0;
+    if (this->lossnay_) {
+        // Lossnay reuses the packet for input power and energy, but does not
+        // expose the heat-pump compressor/operating fields.
+        receivedStatus.operating = false;
+        receivedStatus.compressorFrequency = 0;
+    } else {
+        receivedStatus.operating = data[4];
+        // Some models (e.g. PAA/PUZ combo) seem to have some noise on the compressor frequency sensor, even when not in operation.
+        // To avoid reporting random values, set the compressor frequency to 0 when the heatpump is not operating.
+        receivedStatus.compressorFrequency = (data[4]) ? data[3] : 0;
+    }
     receivedStatus.inputPower = convert_input_power_to_W(float((data[5] << 8) | data[6]));
     receivedStatus.kWh = convert_energy_usage_to_kWh(float((data[7] << 8) | data[8]));
 
@@ -508,22 +549,40 @@ void CN105Climate::processCommand() {
         this->getDataFromResponsePacket();
         break;
     case 0x7a:  // Connection success (User / standard)
+        if (this->lossnay_ && this->parser_.raw()[3] != LOSSNAY_PROFILE) {
+            ESP_LOGW(LOG_CONN_TAG, "Ignoring Lossnay handshake response with unexpected profile 0x%02X", this->parser_.raw()[3]);
+            break;
+        }
+        this->handleConnectionSuccess();
+        break;
     case 0x7b:  // Connection success (Installer / extended)
-        // Log en INFO sur le tag dÃÂ©diÃÂ©, dÃÂ©tails en DEBUG via hpPacketDebug
-        ESP_LOGI(LOG_CONN_TAG, "--> Heatpump did reply: connection success (%s, 0x%02X)! <--",
-            (this->parser_.command() == 0x7b) ? "Installer" : "User",
-            this->parser_.command());
-        this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
-        // isHeatpumpConnected_ replaced by FSM transition in setHeatpumpConnected()
-        this->setHeatpumpConnected(true);
-        // let's say that the last complete cycle was over now
-        this->loopCycle.lastCompleteCycleMs = CUSTOM_MILLIS;
-        this->currentSettings.resetSettings();      // each time we connect, we need to reset current setting to force a complete sync with ha component state and receievdSettings
-        this->currentRunStates.resetSettings();
+        if (this->lossnay_) {
+            ESP_LOGW(LOG_CONN_TAG, "Ignoring extended 0x7B handshake response for Lossnay");
+            break;
+        }
+        this->handleConnectionSuccess();
         break;
     default:
         break;
     }
+}
+
+void CN105Climate::handleConnectionSuccess() {
+    const bool installer = this->parser_.command() == 0x7b;
+    ESP_LOGI(
+        LOG_CONN_TAG,
+        "--> %s did reply: connection success (%s, 0x%02X)! <--",
+        this->lossnay_ ? "Lossnay" : "Heat pump",
+        installer ? "Installer" : "User",
+        this->parser_.command()
+    );
+    this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
+    this->setHeatpumpConnected(true);
+    this->loopCycle.lastCompleteCycleMs = CUSTOM_MILLIS;
+    // Reset cached settings so the first read after reconnect performs a full sync.
+    this->currentSettings.resetSettings();
+    this->currentRunStates.resetSettings();
+    this->lossnay_actual_mode_valid_ = false;
 }
 
 
@@ -581,15 +640,15 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
         checkFanSettings(settings);
     }
 
-    if (this->wantedSettings.vane == nullptr) { // to prevent overwriting a user demand
+    if (!this->lossnay_ && this->wantedSettings.vane == nullptr) { // to prevent overwriting a user demand
         checkVaneSettings(settings);
     }
 
-    if (this->wantedSettings.wideVane == nullptr) { // to prevent overwriting a user demand
+    if (!this->lossnay_ && this->wantedSettings.wideVane == nullptr) { // to prevent overwriting a user demand
         checkWideVaneSettings(settings);
     }
 
-    if (this->shouldApplyIncomingSetpoint(settings)) {
+    if (!this->lossnay_ && this->shouldApplyIncomingSetpoint(settings)) {
         this->updateTargetTemperaturesFromSettings(settings.temperature);
         this->currentSettings.temperature = settings.temperature;
     }
@@ -696,6 +755,10 @@ void CN105Climate::checkWideVaneSettings(heatpumpSettings& settings, bool update
     updateExtraSelectComponents(settings);
 }
 void CN105Climate::updateExtraSelectComponents(heatpumpSettings& settings) {
+    if (this->lossnay_) {
+        return;
+    }
+
     if (this->vertical_vane_select_ != nullptr) {
         if (this->hasChanged(this->vertical_vane_select_->current_option(), settings.vane, "select vane")) {
             ESP_LOGI(TAG, "vane setting (extra select component) changed");
@@ -747,57 +810,73 @@ void CN105Climate::checkFanSettings(heatpumpSettings& settings, bool updateCurre
 
 void CN105Climate::checkPowerAndModeSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
     // currentSettings.power== NULL is true when it is the first time we get en answer from hp
-    if (this->hasChanged(currentSettings.power, settings.power, "power") ||
-        this->hasChanged(currentSettings.mode, settings.mode, "mode")) {           // mode or power change ?
+    const bool power_changed = this->hasChanged(currentSettings.power, settings.power, "power");
+    const bool mode_changed = this->hasChanged(currentSettings.mode, settings.mode, "mode");
+    if (power_changed || mode_changed) {           // mode or power change ?
 
         ESP_LOGI(TAG, "power or mode changed");
         if (updateCurrentSettings) {
-            currentSettings.power = settings.power;
-            currentSettings.mode = settings.mode;
+            if (settings.power != nullptr) {
+                currentSettings.power = settings.power;
+            }
+            if (settings.mode != nullptr) {
+                currentSettings.mode = settings.mode;
+            }
         }
-        if (strcmp(settings.power, "ON") == 0) {
-            if (strcmp(settings.mode, "HEAT") == 0) {
-                // A dual-setpoint unit driven in HEAT_COOL runs the heat pump in
-                // hardware AUTO, and the unit reports its *active operating
-                // direction* ("HEAT" here) back in the settings packet. Letting
-                // that overwrite this->mode silently drops the user out of
-                // HEAT_COOL and collapses the dual band to a single setpoint
-                // (updateTargetTemperaturesFromSettings then runs single-setpoint).
-                // Keep HEAT_COOL; the operating direction is surfaced separately
-                // by the auto_sub_mode sensor.
-                if (!(this->supports_dual_setpoint_ &&
-                      this->mode == climate::CLIMATE_MODE_HEAT_COOL)) {
-                    this->mode = climate::CLIMATE_MODE_HEAT;
-                }
-            } else if (strcmp(settings.mode, "DRY") == 0) {
-                this->mode = climate::CLIMATE_MODE_DRY;
-            } else if (strcmp(settings.mode, "COOL") == 0) {
-                // Same as the HEAT branch: hardware AUTO reports "COOL" as the
-                // active operating direction; don't let it clobber HEAT_COOL.
-                if (!(this->supports_dual_setpoint_ &&
-                      this->mode == climate::CLIMATE_MODE_HEAT_COOL)) {
-                    this->mode = climate::CLIMATE_MODE_COOL;
-                }
-                /*if (cool_setpoint != currentSettings.temperature) {
-                    cool_setpoint = currentSettings.temperature;
-                    save(currentSettings.temperature, cool_storage);
-                }*/
-            } else if (strcmp(settings.mode, "FAN") == 0) {
-                this->mode = climate::CLIMATE_MODE_FAN_ONLY;
-            } else if (strcmp(settings.mode, "AUTO") == 0) {
-                // If we were in HEAT_COOL via HA, stay in HEAT_COOL even if HP says AUTO
-                if (this->mode != climate::CLIMATE_MODE_HEAT_COOL) {
-                    this->mode = climate::CLIMATE_MODE_AUTO;
-                }
-            } else {
-                ESP_LOGW(
-                    TAG,
-                    "Unknown climate mode value %s received from HeatPump",
-                    settings.mode
-                );
+
+        // Optimistic writes may contain only power or mode. Wait for the next
+        // complete settings response rather than dereferencing an omitted field.
+        if (settings.power == nullptr) {
+            return;
+        }
+
+        if (strcmp(settings.power, "ON") != 0) {
+            this->mode = climate::CLIMATE_MODE_OFF;
+            return;
+        }
+
+        if (settings.mode == nullptr) {
+            return;
+        }
+
+        if (strcmp(settings.mode, "HEAT") == 0) {
+            // A dual-setpoint unit driven in HEAT_COOL runs the heat pump in
+            // hardware AUTO, and the unit reports its *active operating
+            // direction* ("HEAT" here) back in the settings packet. Letting
+            // that overwrite this->mode silently drops the user out of
+            // HEAT_COOL and collapses the dual band to a single setpoint
+            // (updateTargetTemperaturesFromSettings then runs single-setpoint).
+            // Keep HEAT_COOL; the operating direction is surfaced separately
+            // by the auto_sub_mode sensor.
+            if (!(this->supports_dual_setpoint_ &&
+                  this->mode == climate::CLIMATE_MODE_HEAT_COOL)) {
+                this->mode = climate::CLIMATE_MODE_HEAT;
+            }
+        } else if (strcmp(settings.mode, "DRY") == 0) {
+            this->mode = climate::CLIMATE_MODE_DRY;
+        } else if (strcmp(settings.mode, "COOL") == 0) {
+            // Same as the HEAT branch: hardware AUTO reports "COOL" as the
+            // active operating direction; don't let it clobber HEAT_COOL.
+            if (!(this->supports_dual_setpoint_ &&
+                  this->mode == climate::CLIMATE_MODE_HEAT_COOL)) {
+                this->mode = climate::CLIMATE_MODE_COOL;
+            }
+            /*if (cool_setpoint != currentSettings.temperature) {
+                cool_setpoint = currentSettings.temperature;
+                save(currentSettings.temperature, cool_storage);
+            }*/
+        } else if (strcmp(settings.mode, "FAN") == 0) {
+            this->mode = climate::CLIMATE_MODE_FAN_ONLY;
+        } else if (strcmp(settings.mode, "AUTO") == 0) {
+            if (this->lossnay_ && this->mode != climate::CLIMATE_MODE_AUTO) {
+                this->lossnay_actual_mode_valid_ = false;
+            }
+            // If we were in HEAT_COOL via HA, stay in HEAT_COOL even if HP says AUTO
+            if (this->mode != climate::CLIMATE_MODE_HEAT_COOL) {
+                this->mode = climate::CLIMATE_MODE_AUTO;
             }
         } else {
-            this->mode = climate::CLIMATE_MODE_OFF;
+            ESP_LOGW(TAG, "Unknown climate mode value %s received from CN105 device", settings.mode);
         }
     }
 }

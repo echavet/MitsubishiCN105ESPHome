@@ -272,12 +272,14 @@ namespace esphome {
         // DÃÂ©lai de grÃÂ¢ce configurable avant d'envoyer CONNECT (pour laisser le flux OTA s'attacher)
         void set_connection_bootstrap_delay(uint32_t delay_ms) { this->conn_bootstrap_delay_ms_ = delay_ms; }
 
+        void set_lossnay(bool value) { this->lossnay_ = value; }
+
         // Mode installateur: utilise un handshake CONNECT ÃÂ©tendu (0x5B) au lieu du standard (0x5A)
         void set_installer_mode(bool mode) {
             // Mode demandÃÂ© via YAML
             this->installer_mode_ = mode;
             // Mode effectivement utilisÃÂ©: peut tomber en fallback vers standard si la PAC ignore 0x5B
-            this->installer_mode_effective_ = mode;
+            this->installer_mode_effective_ = mode && !this->lossnay_;
             this->installer_mode_fallback_done_ = false;
         }
 
@@ -381,6 +383,8 @@ namespace esphome {
 
     private:
         void force_low_level_uart_reinit();
+        void handleConnectionSuccess();
+        uint8_t protocol_profile() const { return this->lossnay_ ? LOSSNAY_PROFILE : HEATPUMP_PROFILE; }
         int uart_port_ = -1;
         const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
         int lookupByteMapValue(const int valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "");
@@ -423,6 +427,7 @@ namespace esphome {
 
         // Composed method helpers — packet building
         void applyVaneToPacket(uint8_t* packet);
+        void applyLossnaySettingsToPacket(uint8_t* packet);
         const char* vaneSettingForPacket() const;
 
         //void statusChanged();
@@ -548,6 +553,10 @@ namespace esphome {
         bool installer_mode_{ false };
         bool installer_mode_effective_{ false };
         bool installer_mode_fallback_done_{ false };
+        bool lossnay_{ false };
+        uint8_t lossnay_actual_mode_{ 0x00 };
+        bool lossnay_actual_mode_valid_{ false };
+        bool lossnay_target_warning_logged_{ false };
         bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (nÃÂ©cessite conversion ÃÂ3.412)
         bool supports_dual_setpoint_ = false;
         int horizontal_vanes_{ 1 }; // Kept for legacy logging if needed, or can be removed if unused.

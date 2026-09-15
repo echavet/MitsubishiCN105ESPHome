@@ -122,7 +122,7 @@ void CN105Climate::registerInfoRequests() {
     InfoRequest r_hvac_opts("hvac_options", "HVAC options", 0x42, 3, 500);
     r_hvac_opts.canSend = [this](const CN105Climate& self) {
         (void)self;
-        return (this->air_purifier_switch_ != nullptr || this->night_mode_switch_ != nullptr || this->circulator_switch_ != nullptr);
+        return !this->lossnay_ && (this->air_purifier_switch_ != nullptr || this->night_mode_switch_ != nullptr || this->circulator_switch_ != nullptr);
         };
     r_hvac_opts.onResponse = [this](CN105Climate& self) { (void)self; this->getHVACOptionsFromResponsePacket(); };
     scheduler_.register_request(r_hvac_opts);
@@ -144,7 +144,11 @@ void CN105Climate::registerHardwareSettingsRequests() {
     uint32_t interval = 0;
     bool is_enabled = false;
 
-    if (!this->hardware_settings_.empty()) {
+    if (this->lossnay_ && !this->hardware_settings_.empty()) {
+        ESP_LOGW(LOG_FUNCTIONS_TAG, "Lossnay hardware settings are unsupported; disabling 0x20/0x22 requests");
+    }
+
+    if (!this->lossnay_ && !this->hardware_settings_.empty()) {
         ESP_LOGI(LOG_FUNCTIONS_TAG, "Registering function settings requests (0x20/0x22) with interval %" PRIu32 " ms", this->hardware_settings_interval_ms_);
         interval = this->hardware_settings_interval_ms_;
         is_enabled = true;

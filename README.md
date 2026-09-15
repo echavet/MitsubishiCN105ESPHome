@@ -1,12 +1,12 @@
 # Mitsubishi CN105 ESPHome
 
-This project is a firmware for ESP32 microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump through Home Assistant, a web interface, or any MQTT client.
+This project is a firmware for ESP32 microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump or Lossnay through Home Assistant, a web interface, or any MQTT client.
 
 It uses the ESPHome framework and is compatible with the Arduino framework and ESP-IDF.
 
 This component version is an adaptation of [geoffdavis's esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump). Its purpose is to integrate the Mitsubishi heat pump protocol (enabled by the [SwiCago library](https://github.com/SwiCago/HeatPump)) directly into the ESPHome component classes for a more seamless integration.
 
-The intended use case is for owners of a Mitsubishi Electric heat pump or air conditioner that includes a CN105 communication port to directly control their air handler or indoor unit using local communication through a web browser, or most commonly, the [HomeAssistant](https://www.home-assistant.io/) home automation platform. Installation requires a WiFi capable ESP32 or ESP8266 device, a bidirectional logic level shifter, and a 5-pin plug to connect to the heat pump indoor unit. ESPHome is used to load the custom firmware onto the device, and the web browser or HomeAssistant software is used to send temperature setpoints, external temperature references, and settings to the heat pump. Installation requires basic soldering skills, and basic skills in flashing a firmware to a microcontroller (though ESPHome makes this as painless as possible).
+The intended use case is for owners of a Mitsubishi Electric heat pump, air conditioner, or Lossnay that includes a CN105 communication port to directly control their air handler or indoor unit using local communication through a web browser, or most commonly, the [HomeAssistant](https://www.home-assistant.io/) home automation platform. Installation requires a WiFi capable ESP32 or ESP8266 device, a bidirectional logic level shifter, and a 5-pin plug to connect to the heat pump indoor unit. ESPHome is used to load the custom firmware onto the device, and the web browser or HomeAssistant software is used to send temperature setpoints, external temperature references, and settings to the heat pump. Installation requires basic soldering skills, and basic skills in flashing a firmware to a microcontroller (though ESPHome makes this as painless as possible).
 
 The benefits include fully local control over your heat pump system, without reliance on a vendor network. Additional visibility, finer control, and even improved energy efficiency and comfort are possible when utilizing the remote temperature features.
 
@@ -27,6 +27,7 @@ The benefits include fully local control over your heat pump system, without rel
 - Enhanced UART communication with the Heatpump to eliminate delays in the ESPHome loop(), which was a limitation of the original [SwiCago library](https://github.com/SwiCago/HeatPump).
 - Byte-by-byte reading within the loop() function ensures no data loss or lag, as the component continuously reads without blocking ESPHome.
 - UART writes are followed by non-blocking reads. The responses are accumulated byte-by-byte in the loop() method and processed when complete, allowing command stacking without delays for a more responsive UI.
+- Support for Lossnay heat recovery ventilation systems
 
 ### Retained Features
 
@@ -83,6 +84,10 @@ Units tested by project contributors include:
 - `SEZ-KD25VAQ`
 - `SEZ-M50DAL`
 - `MSZ-A24NA` (See `msz_a24na_setpoint_table` and `fahrenheit_compatibility`)
+
+Known working Lossnay units using `lossnay: true`:
+
+- `LGH-50RVS-E`
 
 ## Usage
 
@@ -329,6 +334,22 @@ climate:
       # Defaults to all options: ["←←", "←", "|", "→", "→→", "←→", "SWING", "AIRFLOW CONTROL"]
       # Example to hide "←→" and "AIRFLOW CONTROL" if not supported by your unit:
       horizontal_vane_mode: ["←←", "←", "|", "→", "→→", SWING]
+```
+
+#### Lossnay example
+
+Lossnay ventilation units can use the same component with the explicit `lossnay: true` option. Heat Recovery is exposed as `heat`, Bypass as `fan_only`, and Automatic as `auto`. Lossnay does not have a target temperature, swing, vane, compressor, or auxiliary-control packet. Target-temperature changes remain visible only for climate-entity compatibility and are ignored.
+
+```yaml
+climate:
+  - platform: cn105
+    id: lossnay
+    name: Lossnay
+    uart_id: uart_lossnay
+    lossnay: true
+    supports:
+      mode: [AUTO, HEAT, FAN_ONLY]
+      fan_mode: [LOW, MEDIUM, MIDDLE, HIGH]
 ```
 
 > [!TIP]
