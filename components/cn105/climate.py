@@ -147,6 +147,7 @@ CONF_REMOTE_TEMPERATURE_CONTROL_SENSOR = "remote_temperature_control_sensor"
 #CONF_REMOTE_TEMPERATURE_MARGIN = "remote_temperature_margin"
 CONF_TEMPERATURE_MARGIN = "temperature_margin"
 CONF_POWER_UNIT_IS_BTU = "power_unit_is_btu"
+CONF_REPORT_WHEN_IDLE = "report_when_idle"
 
 # Support explicite du DUAL setpoint via YAML
 CONF_DUAL_SETPOINT = "dual_setpoint"
@@ -277,7 +278,10 @@ COMPRESSOR_FREQUENCY_SENSOR_SCHEMA = sensor.sensor_schema(
     device_class=DEVICE_CLASS_FREQUENCY,
     state_class=STATE_CLASS_MEASUREMENT,
     accuracy_decimals=1,
-).extend({cv.GenerateID(CONF_ID): cv.declare_id(CompressorFrequencySensor)})
+).extend({
+    cv.GenerateID(CONF_ID): cv.declare_id(CompressorFrequencySensor),
+    cv.Optional(CONF_REPORT_WHEN_IDLE, default=True): cv.boolean
+})
 INPUT_POWER_SENSOR_SCHEMA = sensor.sensor_schema(
     InputPowerSensor,
     unit_of_measurement=UNIT_WATT,
@@ -637,6 +641,7 @@ def to_code(config):
             conf_item["force_update"] = False
         sensor_var = yield sensor.new_sensor(conf_item)
         cg.add(var.set_compressor_frequency_sensor(sensor_var))
+        cg.add(var.set_compressor_frequency_report_when_idle(conf_item[CONF_REPORT_WHEN_IDLE]))
 
     if CONF_INPUT_POWER_SENSOR in config:
         conf_item = config[CONF_INPUT_POWER_SENSOR]

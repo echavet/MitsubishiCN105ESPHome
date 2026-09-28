@@ -378,9 +378,11 @@ void CN105Climate::getOperatingAndCompressorFreqFromResponsePacket() {
     // reset counter (because a reply indicates it is connected)
     this->nonResponseCounter = 0;
     receivedStatus.operating = data[4];
-    // Some models (e.g. PAA/PUZ combo) seem to have some noise on the compressor frequency sensor, even when not in operation.
-    // To avoid reporting random values, set the compressor frequency to 0 when the heatpump is not operating.
-    receivedStatus.compressorFrequency = (data[4]) ? data[3] : 0;
+    // By default the raw compressor frequency is reported, because with multi-head systems the shared outdoor
+    // compressor may be running even when this indoor unit is not.
+    // Some models (e.g. PAA/PUZ combo) report noise on this byte while not operating; set report_when_idle: false
+    // to force the frequency to 0 whenever this unit is not operating.
+    receivedStatus.compressorFrequency = (this->compressor_frequency_report_when_idle_ || (data[4] > 0)) ? data[3] : 0;
     receivedStatus.inputPower = convert_input_power_to_W(float((data[5] << 8) | data[6]));
     receivedStatus.kWh = convert_energy_usage_to_kWh(float((data[7] << 8) | data[8]));
 
