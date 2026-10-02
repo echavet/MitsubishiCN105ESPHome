@@ -280,7 +280,7 @@ COMPRESSOR_FREQUENCY_SENSOR_SCHEMA = sensor.sensor_schema(
     accuracy_decimals=1,
 ).extend({
     cv.GenerateID(CONF_ID): cv.declare_id(CompressorFrequencySensor),
-    cv.Optional(CONF_REPORT_WHEN_IDLE, default=True): cv.boolean
+    cv.Optional(CONF_REPORT_WHEN_IDLE): cv.boolean
 })
 INPUT_POWER_SENSOR_SCHEMA = sensor.sensor_schema(
     InputPowerSensor,
@@ -641,7 +641,8 @@ def to_code(config):
             conf_item["force_update"] = False
         sensor_var = yield sensor.new_sensor(conf_item)
         cg.add(var.set_compressor_frequency_sensor(sensor_var))
-        cg.add(var.set_compressor_frequency_report_when_idle(conf_item[CONF_REPORT_WHEN_IDLE]))
+        if CONF_REPORT_WHEN_IDLE in conf_item:
+            cg.add(var.set_compressor_frequency_report_when_idle(conf_item[CONF_REPORT_WHEN_IDLE]))
 
     if CONF_INPUT_POWER_SENSOR in config:
         conf_item = config[CONF_INPUT_POWER_SENSOR]

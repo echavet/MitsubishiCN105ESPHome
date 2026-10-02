@@ -60,6 +60,18 @@ void CN105Climate::loop() {
     // Bootstrap connection CN105 (UART + CONNECT) from loop()
     this->maybe_start_connection_();
 
+    // Inform user about report_when_idle property if not configured, but only if compressor frequency sensor is configured.
+    // Wait for UART to be ready so log messages appear via OTA update.
+    if (!this->compressor_frequency_report_when_idle_warning_shown_ &&
+        (this->compressor_frequency_sensor_ != nullptr) &&
+        (this->isUARTReady_())) {
+        ESP_LOGW("Decoder",
+            "Compressor frequency sensor configured in YAML without report_when_idle property. "
+            "It is recommended to set true for multi-head systems sharing an outdoor unit, "
+            "false for models with a noisy readings such as PAA/PUZ.");
+        this->compressor_frequency_report_when_idle_warning_shown_ = true;
+    }
+
     // As long as the connection is not successful, we do not launch ANY cycle/write (otherwise it short-circuits the delay).
     // We still continue to read/process the input in order to detect 0x7A/0x7B (connection success).
     const bool can_talk_to_hp = this->isHeatpumpConnected();

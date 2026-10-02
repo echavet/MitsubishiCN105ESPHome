@@ -138,7 +138,8 @@ namespace esphome {
         HVACOptionSwitch* circulator_switch_ = nullptr;
         std::vector<HardwareSettingSelect*> hardware_settings_;
         uint32_t hardware_settings_interval_ms_{ 86400000 };  // Default 24h
-        bool compressor_frequency_report_when_idle_{ true };
+        bool compressor_frequency_report_when_idle_{ false };
+        bool compressor_frequency_report_when_idle_warning_shown_{ false };
 
         // The value of the code and value for the functions set.
         int functions_code_;
