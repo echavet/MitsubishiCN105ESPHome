@@ -74,6 +74,7 @@ namespace esphome {
         void set_horizontal_vane_select(VaneOrientationSelect* horizontal_vane_select, const std::vector<std::string>& options = {});
         void set_airflow_control_select(VaneOrientationSelect* airflow_control_select);
         void set_compressor_frequency_sensor(esphome::sensor::Sensor* compressor_frequency_sensor);
+        void set_compressor_frequency_report_when_idle(bool value);
         void set_target_humidity_sensor(esphome::sensor::Sensor* target_humidity_sensor);
         void set_input_power_sensor(esphome::sensor::Sensor* input_power_sensor);
         void set_kwh_sensor(esphome::sensor::Sensor* kwh_sensor);
@@ -137,6 +138,8 @@ namespace esphome {
         HVACOptionSwitch* circulator_switch_ = nullptr;
         std::vector<HardwareSettingSelect*> hardware_settings_;
         uint32_t hardware_settings_interval_ms_{ 86400000 };  // Default 24h
+        bool compressor_frequency_report_when_idle_{ false };
+        bool compressor_frequency_report_when_idle_warning_shown_{ false };
 
         // The value of the code and value for the functions set.
         int functions_code_;

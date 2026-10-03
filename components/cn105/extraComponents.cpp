@@ -104,6 +104,12 @@ void CN105Climate::set_compressor_frequency_sensor(
     this->compressor_frequency_sensor_ = compressor_frequency_sensor;
 }
 
+void CN105Climate::set_compressor_frequency_report_when_idle(bool value) {
+    this->compressor_frequency_report_when_idle_ = value;
+    // Prevent warning since property in YAML.
+    this->compressor_frequency_report_when_idle_warning_shown_ = true;
+}
+
 void CN105Climate::set_target_humidity_sensor(
     sensor::Sensor* target_humidity_sensor) {
     this->target_humidity_sensor_ = target_humidity_sensor;
