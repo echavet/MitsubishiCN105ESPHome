@@ -1,4 +1,5 @@
 #include "cn105.h"
+#include "climate_action.h"
 #include "Globals.h"
 
 #include <algorithm>
@@ -583,91 +584,82 @@ void CN105Climate::updateAction() {
         this->sanitizeDualSetpoints();
     }
 
-    // Defrosting is a transient action while a heating-capable HVAC mode remains
-    // selected. Report it before deriving the normal action from that mode.
-#if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 3, 0)
-    if ((this->mode == climate::CLIMATE_MODE_HEAT ||
-         this->mode == climate::CLIMATE_MODE_HEAT_COOL ||
-         this->mode == climate::CLIMATE_MODE_AUTO) &&
-        this->currentSettings.sub_mode != nullptr &&
-        strcmp(this->currentSettings.sub_mode, "DEFROST") == 0) {
-        this->action = climate::CLIMATE_ACTION_DEFROSTING;
-        ESP_LOGD(TAG, "Climate mode is: %i", this->mode);
-        ESP_LOGD(TAG, "Climate action is: %i", this->action);
-        return;
-    }
-#endif
-
-    switch (this->mode) {
-    case climate::CLIMATE_MODE_HEAT:
-        //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_HEATING);       
-        this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
-        break;
-    case climate::CLIMATE_MODE_COOL:
-        //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_COOLING);
-        this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
-        break;
-    case climate::CLIMATE_MODE_HEAT_COOL:
-        if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
-            this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
-            // Logique Deadband pour HEAT_COOL
-            if (this->getCurrentTemperature() >= this->getTargetTemperatureHigh()) {
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
-            } else if (this->getCurrentTemperature() <= this->getTargetTemperatureLow()) {
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
+    // Defrosting overrides the normal action while a heating-capable mode is selected.
+    if (const auto sub_mode_action = cn105_climate::action_from_sub_mode(
+            this->mode, this->currentSettings.sub_mode)) {
+        this->action = *sub_mode_action;
+    } else {
+        switch (this->mode) {
+        case climate::CLIMATE_MODE_HEAT:
+            //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_HEATING);
+            this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
+            break;
+        case climate::CLIMATE_MODE_COOL:
+            //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_COOLING);
+            this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
+            break;
+        case climate::CLIMATE_MODE_HEAT_COOL:
+            if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
+                this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
+                // Logique Deadband pour HEAT_COOL
+                if (this->getCurrentTemperature() >= this->getTargetTemperatureHigh()) {
+                    this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
+                } else if (this->getCurrentTemperature() <= this->getTargetTemperatureLow()) {
+                    this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
+                } else {
+                    this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
+                }
             } else {
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
             }
-        } else {
-            this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
+            break;
+
+        case climate::CLIMATE_MODE_AUTO:
+
+            if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
+                this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
+                // If the unit supports both heating and cooling
+                if (this->getCurrentTemperature() >= this->getTargetTemperatureHigh()) {
+                    this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
+                } else if (this->getCurrentTemperature() <= this->getTargetTemperatureLow()) {
+                    this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
+                } else {
+                    this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
+                }
+            } else if (this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
+                // If the unit only supports cooling
+                if (this->getCurrentTemperature() < this->getTargetTemperatureHigh()) {
+                    // If the temperature meets or exceeds the target, switch to fan-only mode
+                    this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
+                } else {
+                    // Otherwise, continue cooling
+                    this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
+                }
+            } else if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT)) {
+                // If the unit only supports heating
+                if (this->getCurrentTemperature() >= this->getTargetTemperatureLow()) {
+                    // If the temperature meets or exceeds the target, switch to fan-only mode
+                    this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
+                } else {
+                    // Otherwise, continue heating
+                    this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
+                }
+            } else {
+                ESP_LOGE(TAG, "AUTO mode is not supported by this unit");
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
+            }
+            break;
+
+        case climate::CLIMATE_MODE_DRY:
+            //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_DRYING);
+            this->setActionIfOperatingTo(climate::CLIMATE_ACTION_DRYING);
+            break;
+        case climate::CLIMATE_MODE_FAN_ONLY:
+            this->action = climate::CLIMATE_ACTION_FAN;
+            break;
+        default:
+            this->action = climate::CLIMATE_ACTION_OFF;
         }
-        break;
-
-    case climate::CLIMATE_MODE_AUTO:
-
-        if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
-            this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
-            // If the unit supports both heating and cooling
-            if (this->getCurrentTemperature() >= this->getTargetTemperatureHigh()) {
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
-            } else if (this->getCurrentTemperature() <= this->getTargetTemperatureLow()) {
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
-            } else {
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
-            }
-        } else if (this->traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
-            // If the unit only supports cooling
-            if (this->getCurrentTemperature() < this->getTargetTemperatureHigh()) {
-                // If the temperature meets or exceeds the target, switch to fan-only mode
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
-            } else {
-                // Otherwise, continue cooling
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
-            }
-        } else if (this->traits().supports_mode(climate::CLIMATE_MODE_HEAT)) {
-            // If the unit only supports heating
-            if (this->getCurrentTemperature() >= this->getTargetTemperatureLow()) {
-                // If the temperature meets or exceeds the target, switch to fan-only mode
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_IDLE);
-            } else {
-                // Otherwise, continue heating
-                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
-            }
-        } else {
-            ESP_LOGE(TAG, "AUTO mode is not supported by this unit");
-            this->setActionIfOperatingTo(climate::CLIMATE_ACTION_FAN);
-        }
-        break;
-
-    case climate::CLIMATE_MODE_DRY:
-        //this->setActionIfOperatingAndCompressorIsActiveTo(climate::CLIMATE_ACTION_DRYING);
-        this->setActionIfOperatingTo(climate::CLIMATE_ACTION_DRYING);
-        break;
-    case climate::CLIMATE_MODE_FAN_ONLY:
-        this->action = climate::CLIMATE_ACTION_FAN;
-        break;
-    default:
-        this->action = climate::CLIMATE_ACTION_OFF;
     }
 
     ESP_LOGD(TAG, "Climate mode is: %i", this->mode);
