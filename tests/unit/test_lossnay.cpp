@@ -1,7 +1,7 @@
 /// Unit coverage for the Lossnay-specific protocol maps and captured fields.
 #include <gtest/gtest.h>
 
-#include "cn105_protocol.h"
+#include "lossnay_profile_protocol.h"
 #include "cn105_types.h"
 
 #include <array>

@@ -561,6 +561,7 @@ CONFIG_SCHEMA = (
             ): REMOTE_TEMPERATURE_CONTROL_SENSOR_SCHEMA,
             #cv.Optional(CONF_REMOTE_TEMPERATURE_MARGIN, default=0.4): cv.positive_float,
             cv.Optional(CONF_POWER_UNIT_IS_BTU, default=False): cv.boolean,
+            # mode/fan_mode/swing_mode defaults depend on the profile and are applied in to_code.
             cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
                 {
                     cv.Optional(
@@ -597,9 +598,8 @@ CONFIG_SCHEMA = cv.All(CONFIG_SCHEMA, validate_lossnay_config)
 def to_code(config):
     uart_id_object = config[CONF_UART_ID]
     uart_var = yield cg.get_variable(uart_id_object)
-    var = cg.new_Pvariable(config[CONF_ID], uart_var)
+    var = cg.new_Pvariable(config[CONF_ID], uart_var, config[CONF_LOSSNAY])
 
-    cg.add(var.set_lossnay(config[CONF_LOSSNAY]))
     cg.add(var.set_installer_mode(config[CONF_INSTALLER_MODE]))
     cg.add(var.set_power_unit_is_btu(config[CONF_POWER_UNIT_IS_BTU]))
 

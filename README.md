@@ -350,7 +350,7 @@ climate:
 
 #### Lossnay example
 
-Lossnay ventilation units can use the same component with the explicit `lossnay: true` option. Heat Recovery is exposed as `heat`, Bypass as `fan_only`, and Automatic as `auto`. Lossnay does not have a target temperature, swing, vane, compressor, or auxiliary-control packet. Target-temperature changes remain visible only for climate-entity compatibility and are ignored.
+Lossnay ventilation units can use the same component with the explicit `lossnay: true` option. Heat Recovery is exposed as `heat`, Bypass as `fan_only`, and Automatic as `auto`. Lossnay does not have a target temperature, swing, vane, compressor, or auxiliary-control packet. ESPHome climate entities always expose a target temperature; their traits cannot disable it. Any target-temperature control shown in Home Assistant has no effect on Lossnay and its commands are ignored.
 
 ```yaml
 climate:

@@ -45,16 +45,7 @@ const char* CN105Climate::getIfNotNull(const char* what, const char* defaultValu
  * It returns the temperature setting.
  */
 float CN105Climate::calculateTemperatureSetting(float setting) {
-    if (this->use_msz_a24na_setpoint_table_) {
-        setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
-        return setting < 16.0f ? 16.0f : (setting > 31.0f ? 31.0f : setting);
-    }
-    if (!this->use_temperature_encoding_b_) {
-        return cn105_protocol::lookup_index(TEMP_MAP, 16, (int)(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
-    } else {
-        setting = std::round(2.0f * setting) / 2.0f;  // Round to the nearest half-degree.
-        return setting < 10 ? 10 : (setting > 31 ? 31 : setting);
-    }
+    return this->profile_->calculate_temperature_setting(setting);
 }
 
 /**
@@ -99,81 +90,6 @@ float CN105Climate::convert_energy_usage_to_kWh(float raw_energy_usage) {
  * It returns the temperature setting.
  */
 
-void CN105Climate::updateTargetTemperaturesFromSettings(float temperature) {
-    if (cn105_traits_requires_two_point(this->traits())) {
-
-        if (this->mode == climate::CLIMATE_MODE_HEAT) {
-            this->setTargetTemperatureLow(temperature);
-            if (std::isnan(this->getTargetTemperatureHigh())) {
-                this->setTargetTemperatureHigh(temperature);
-            }
-        } else if (this->mode == climate::CLIMATE_MODE_COOL) {
-            this->setTargetTemperatureHigh(temperature);
-            if (std::isnan(this->getTargetTemperatureLow())) {
-                this->setTargetTemperatureLow(temperature);
-            }
-        } else if (this->mode == climate::CLIMATE_MODE_DRY) {
-            this->setTargetTemperatureHigh(temperature);
-            if (std::isnan(this->getTargetTemperatureLow())) {
-                this->setTargetTemperatureLow(temperature);
-            }
-        } else if (this->mode == climate::CLIMATE_MODE_AUTO || this->mode == climate::CLIMATE_MODE_HEAT_COOL) {
-            // En AUTO/HEAT_COOL: si les deux bornes existent déjà, ne pas recentrer.
-            // In HEAT_COOL the transmitted setpoint is the deadband output
-            // clamp(current, low, high) — it carries no information about the
-            // band, so reconstructing the band from it corrupts the user's
-            // setpoints (issue #673: with fahrenheit_compatibility the
-            // non-idempotent table round-trip ratchets the band +0.5°C per
-            // pass until it parks 1.0°C above the requested values).
-            bool lowDefined = !std::isnan(this->getTargetTemperatureLow());
-            bool highDefined = !std::isnan(this->getTargetTemperatureHigh());
-
-            if (lowDefined && highDefined) {
-                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO keep dual setpoints [%.1f - %.1f], median %.1f",
-                    this->getTargetTemperatureLow(), this->getTargetTemperatureHigh(), temperature);
-            } else if (lowDefined && !highDefined) {
-                this->setTargetTemperatureHigh(this->getTargetTemperatureLow() + 2.0f);
-                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO fill missing high: [%.1f - %.1f]",
-                    this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
-            } else if (!lowDefined && highDefined) {
-                this->setTargetTemperatureLow(this->getTargetTemperatureHigh() - 2.0f);
-                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO fill missing low: [%.1f - %.1f]",
-                    this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
-            } else {
-                // aucune borne connue: initialiser autour de la médiane fournie
-                this->setTargetTemperatureLow(temperature - 2.0f);
-                this->setTargetTemperatureHigh(temperature + 2.0f);
-                ESP_LOGD(LOG_SETTINGS_TAG, "AUTO init dual setpoints [%.1f - %.1f], median %.1f",
-                    this->getTargetTemperatureLow(), this->getTargetTemperatureHigh(), temperature);
-            }
-
-            // Mémoriser dans currentSettings pour détection de glissement ultérieur
-            this->currentSettings.dual_low_target = this->getTargetTemperatureLow();
-            this->currentSettings.dual_high_target = this->getTargetTemperatureHigh();
-        } else {
-
-            if (std::isnan(this->getTargetTemperatureLow())) {
-                this->setTargetTemperatureLow(temperature);
-            }
-            if (std::isnan(this->getTargetTemperatureHigh())) {
-                this->setTargetTemperatureHigh(temperature);
-            }
-
-            float theoricalSetPoint = this->calculateTemperatureSetting((this->getTargetTemperatureLow() + this->getTargetTemperatureHigh()) / 2.0f);
-
-            if (theoricalSetPoint != temperature) {
-                float delta = (this->getTargetTemperatureHigh() - this->getTargetTemperatureLow()) / 2.0f;
-                this->setTargetTemperatureLow(theoricalSetPoint - delta);
-                this->setTargetTemperatureHigh(theoricalSetPoint + delta);
-            }
-
-        }
-    } else {
-        ESP_LOGD(LOG_SETTINGS_TAG, "SINGLE SETPOINT %.1f",
-            temperature);
-        this->setTargetTemperature(temperature);
-    }
-}
 
 void CN105Climate::debugSettings(const char* settingName, wantedHeatpumpSettings& settings) {
 #ifdef USE_ESP32
@@ -251,48 +167,6 @@ void CN105Climate::setCurrentTemperature(float temperature) {
     this->current_temperature = this->fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(temperature);
 }
 
-void CN105Climate::sanitizeDualSetpoints() {
-    if (!cn105_traits_requires_two_point(this->traits_)) {
-        return;
-    }
-    ESP_LOGD(LOG_DUAL_SP_TAG, "sanitizing dual setpoints...");
-    // Si une borne est NaN, la reconstruire à partir de l'autre borne ou d'une valeur raisonnable
-    bool lowIsNaN = std::isnan(this->getTargetTemperatureLow());
-    bool highIsNaN = std::isnan(this->getTargetTemperatureHigh());
-
-    if (lowIsNaN && highIsNaN) {
-        // Rien à faire si on n'a aucune info; essayer currentSettings.temperature si valide
-        if (!std::isnan(this->currentSettings.temperature) && this->currentSettings.temperature > 0) {
-            this->setTargetTemperatureLow(this->currentSettings.temperature - 2.0f);
-            this->setTargetTemperatureHigh(this->currentSettings.temperature + 2.0f);
-        } else {
-            ESP_LOGD(LOG_DUAL_SP_TAG, "No known temperature, using default values 18.0f - 22.0f");
-            this->setTargetTemperatureLow(18.0f);
-            this->setTargetTemperatureHigh(22.0f);
-        }
-
-        ESP_LOGD(LOG_DUAL_SP_TAG, "AUTO sanitized dual setpoints [%.1f - %.1f]",
-            this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
-
-        return;
-    }
-
-    if (lowIsNaN && !highIsNaN) {
-        // Reconstruire low à partir de high
-        this->setTargetTemperatureLow((this->mode == climate::CLIMATE_MODE_AUTO)
-            ? (this->getTargetTemperatureHigh() - 4.0f)
-            : this->getTargetTemperatureHigh()); // en HEAT/COOL, une seule consigne peut suffire
-    } else if (!lowIsNaN && highIsNaN) {
-        // Reconstruire high à partir de low
-        this->setTargetTemperatureHigh((this->mode == climate::CLIMATE_MODE_AUTO)
-            ? (this->getTargetTemperatureLow() + 4.0f)
-            : this->getTargetTemperatureLow());
-    }
-
-
-    ESP_LOGD(LOG_DUAL_SP_TAG, "AUTO sanitized dual setpoints [%.1f - %.1f]",
-        this->getTargetTemperatureLow(), this->getTargetTemperatureHigh());
-}
 
 void CN105Climate::debugClimate(const char* settingName) {
     ESP_LOGD(LOG_SETTINGS_TAG, "[%s]-> [mode: %s, target °C: %.1f, fan: %s, swing: %s]",
@@ -302,12 +176,6 @@ void CN105Climate::debugClimate(const char* settingName) {
         this->fan_mode.has_value() ? LOG_STR_ARG(climate_fan_mode_to_string(this->fan_mode.value())) : "-",
         LOG_STR_ARG(climate_swing_mode_to_string(this->swing_mode)));
 }
-
-
-
-
-
-
 
 void CN105Climate::debugSettings(const char* settingName, heatpumpSettings& settings) {
 #ifdef USE_ESP32
@@ -371,8 +239,6 @@ void CN105Climate::debugSettingsAndStatus(const char* settingName, heatpumpSetti
     this->debugSettings(settingName, settings);
     this->debugStatus(settingName, status);
 }
-
-
 
 void CN105Climate::hpPacketDebug(const uint8_t* packet, unsigned int length, const char* packetDirection, const char* log_prefix) {
     if (length < 5) {
@@ -461,31 +327,7 @@ void CN105Climate::hpPacketDebug(const uint8_t* packet, unsigned int length, con
         log_prefix, headerStr.c_str(), dataStr.c_str(), csStr.c_str(), fullLabel);
 }
 
-void CN105Climate::hpFunctionsDebug(uint8_t* packet, unsigned int length) {
-    if (length < 2) return; // Pas de données à décoder
 
-    std::string output;
-    output.reserve(length * 8); // Pré-allocation pour éviter les réallocations
-
-    char buffer[16];
-
-    // On commence à i=1 pour sauter l'octet de commande (0x20 ou 0x22)
-    for (unsigned int i = 1; i < length; i++) {
-        uint8_t byte = packet[i];
-
-        // Logique de décodage Mitsubishi (copiée de heatpumpFunctions)
-        int code = ((byte >> 2) & 0xff) + 100;
-        int value = byte & 3;
-
-        // Formatage "Code:Valeur" (ex: " 102:3")
-        snprintf(buffer, sizeof(buffer), " %d:%d", code, value);
-        output += buffer;
-    }
-
-    // Affichage avec le tag LOG_FUNCTIONS_TAG (défini dans cn105_types.h)
-    // Affiche par exemple : [FUNCTIONS] Decoded 20: 101:1 102:3 103:2 ...
-    ESP_LOGD(LOG_FUNCTIONS_TAG, "Decoded %02X:%s", packet[0], output.c_str());
-}
 
 int CN105Climate::lookupByteMapIndex(const int valuesMap[], int len, int lookupValue, const char* debugInfo) {
     int idx = cn105_protocol::lookup_index(valuesMap, len, lookupValue);

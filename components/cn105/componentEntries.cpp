@@ -14,10 +14,8 @@ using namespace esphome;
 void CN105Climate::setup() {
 
     ESP_LOGD(TAG, "Component initialization: setup call");
-    ESP_LOGI(TAG, "CN105 protocol profile: 0x%02X (%s)", this->protocol_profile(), this->lossnay_ ? "Lossnay" : "heat pump");
-    if (this->lossnay_ && this->installer_mode_) {
-        ESP_LOGW(TAG, "installer_mode is ignored for Lossnay; using the standard 0x5A handshake");
-    }
+    ESP_LOGI(TAG, "CN105 protocol profile: 0x%02X (%s)", this->profile_->id(), this->profile_->name());
+    if (this->installer_mode_) this->profile_->allow_operation(cn105::ProfileFeature::INSTALLER_MODE);
     this->boot_ms_ = CUSTOM_MILLIS;
     this->current_temperature = NAN;
     this->target_temperature = NAN;
@@ -51,7 +49,7 @@ void CN105Climate::setup() {
     ESP_LOGI(TAG, "Horizontal vanes configured: %d", this->horizontal_vanes_);
 
     // Restore a previously-saved HEAT_COOL band (opt-in) before the first settings read,
-    // so checkPowerAndModeSettings() keeps HEAT_COOL instead of falling back to AUTO.
+    // so the profile reconciliation keeps HEAT_COOL instead of falling back to AUTO.
     this->restore_setpoint_state_();
 }
 
@@ -90,8 +88,7 @@ void CN105Climate::loop() {
             this->checkPendingWantedRunStates();
         } else if ((this->isSetFunctions_) && (!this->loopCycle.isCycleRunning())) {
             this->isSetFunctions_ = false;
-            if (this->lossnay_) {
-                ESP_LOGW(LOG_FUNCTIONS_TAG, "Ignoring hardware-function operation: Lossnay auxiliary controls are not supported");
+            if (!this->profile_->allow_operation(cn105::ProfileFeature::AUXILIARY_CONTROLS)) {
                 this->isGetFunctions_ = false;
             } else {
                 this->setFunctions(this->functions);
@@ -104,9 +101,7 @@ void CN105Climate::loop() {
             } else { // we are not running a cycle
                 if (this->loopCycle.hasUpdateIntervalPassed(this->get_update_interval())) {
                     if (this->isGetFunctions_) {
-                        if (this->lossnay_) {
-                            ESP_LOGW(LOG_FUNCTIONS_TAG, "Ignoring hardware-function read: Lossnay auxiliary controls are not supported");
-                        } else {
+                        if (this->profile_->allow_operation(cn105::ProfileFeature::AUXILIARY_CONTROLS)) {
                             // Reactivate requests 0x20/0x22 and bypass interval timers.
                             // This must be done before starting a new cycle to prevent a race hazard of
                             // request 0x22 occurring before request 0x20.
