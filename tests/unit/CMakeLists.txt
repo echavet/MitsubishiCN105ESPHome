@@ -42,6 +42,7 @@ add_executable(cn105_tests
     test_setpoint_persistence.cpp
     test_mode_preservation.cpp
     test_vane_setpoint_persistence.cpp
+    test_climate_action.cpp
 )
 
 target_link_libraries(cn105_tests
@@ -53,3 +54,9 @@ target_link_libraries(cn105_tests
 enable_testing()
 include(GoogleTest)
 gtest_discover_tests(cn105_tests)
+
+# Compile the same production mapping without the newer DEFROSTING enum.
+add_executable(cn105_legacy_action_tests test_climate_action.cpp)
+target_compile_definitions(cn105_legacy_action_tests PRIVATE "ESPHOME_VERSION_CODE=VERSION_CODE(2026,2,0)")
+target_link_libraries(cn105_legacy_action_tests GTest::gtest_main)
+gtest_discover_tests(cn105_legacy_action_tests TEST_PREFIX "LegacyESPHome.")
