@@ -3,18 +3,8 @@
 /// single setpoint.
 /// Deps: localization.h (production), esphome_stubs.h
 ///
-/// Pattern: standalone reimplementation of the band logic around the PRODUCTION
-/// FahrenheitSupport class (same approach as test_calculate_temp.cpp), with
-/// `this->mode` replaced by a parameter. Mirrors:
-///   - the get/set target-temperature wrappers (utils.cpp): every store crosses
-///     HP→UI, every read crosses UI→HP through the Fahrenheit table;
-///   - calculateTemperatureSetting (utils.cpp, encoding B);
-///   - the HEAT_COOL deadband from controlTemperature (climateControls.cpp):
-///     in-band → transmitted setpoint = current room temperature;
-///   - updateTargetTemperaturesFromSettings (utils.cpp) dispatch, both the
-///     FIXED version (AUTO and HEAT_COOL preserve the band) and the PRE-FIX
-///     version (HEAT_COOL falls into the generic recentring else-branch) so the
-///     ratchet itself is demonstrated and pinned.
+/// Uses production temperature decisions and FahrenheitSupport with a small target-storage adapter.
+/// Only the historical pre-fix ratchet demonstration retains its former algorithm.
 ///
 /// Hardware-observed bug (issue #673, fahrenheit_compatibility "standard",
 /// encoding B): band 61/82°F crept to 62/83 then 63/84 (requested +1.0°C in two
@@ -23,19 +13,19 @@
 #include <cmath>
 #include "esphome_stubs.h"
 #include "localization.h"
+#include "heatpump_profile_protocol.h"
+using esphome::cn105::HeatPumpProtocol;
+using namespace esphome::climate;
 
 using esphome::FahrenheitMode;
 using esphome::FahrenheitSupport;
 
 namespace {
 
-enum class Mode { HEAT, COOL, DRY, AUTO, HEAT_COOL };
 
-// Mirror of calculateTemperatureSetting (utils.cpp), encoding B
-float calcSettingB(float s) {
-    s = std::round(2.0f * s) / 2.0f;
-    return s < 10.0f ? 10.0f : (s > 31.0f ? 31.0f : s);
-}
+
+// Production encoding-B rounding and clamping.
+float calcSettingB(float s) { return HeatPumpProtocol::calculate_temperature_setting(s, true); }
 
 struct BandSim {
     FahrenheitSupport fahr;
@@ -59,34 +49,40 @@ struct BandSim {
         setHigh(highHp);
     }
 
-    // Mirror of the controlTemperature HEAT_COOL deadband (climateControls.cpp)
+    // Production HEAT_COOL deadband.
     float deadband(float currentHp) {
         const float lo = getLow();
         const float hi = getHigh();
-        if (currentHp < lo) return lo;
-        if (currentHp > hi) return hi;
-        return currentHp;
+        return HeatPumpProtocol::deadband_setting(currentHp, lo, hi);
     }
 
-    // Mirror of updateTargetTemperaturesFromSettings (utils.cpp) — FIXED
+    // Production incoming-setpoint reconciliation.
     // dispatch: AUTO and HEAT_COOL both take the band-preserving branch.
-    void updateFromSettingsFixed(Mode mode, float temperature) {
-        updateFromSettings(mode, temperature, /*heatCoolPreserves=*/true);
+    float getTargetTemperatureLow() { return getLow(); }
+    float getTargetTemperatureHigh() { return getHigh(); }
+    void setTargetTemperatureLow(float value) { setLow(value); }
+    void setTargetTemperatureHigh(float value) { setHigh(value); }
+    void setTargetTemperature(float value) { single = value; }
+    float calculateTemperatureSetting(float value) { return calcSettingB(value); }
+    float single = NAN;
+
+    void updateFromSettingsFixed(ClimateMode mode, float temperature) {
+        HeatPumpProtocol::reconcile_target_temperatures(*this, mode, true, temperature);
     }
 
     // PRE-FIX dispatch: HEAT_COOL falls through to the recentring else-branch.
-    void updateFromSettingsPreFix(Mode mode, float temperature) {
+    void updateFromSettingsPreFix(ClimateMode mode, float temperature) {
         updateFromSettings(mode, temperature, /*heatCoolPreserves=*/false);
     }
 
 private:
-    void updateFromSettings(Mode mode, float temperature, bool heatCoolPreserves) {
+    void updateFromSettings(ClimateMode mode, float temperature, bool heatCoolPreserves) {
         const bool preserving =
-            (mode == Mode::AUTO) || (mode == Mode::HEAT_COOL && heatCoolPreserves);
-        if (mode == Mode::HEAT) {
+            (mode == CLIMATE_MODE_AUTO) || (mode == CLIMATE_MODE_HEAT_COOL && heatCoolPreserves);
+        if (mode == CLIMATE_MODE_HEAT) {
             setLow(temperature);
             if (std::isnan(getHigh())) setHigh(temperature);
-        } else if (mode == Mode::COOL || mode == Mode::DRY) {
+        } else if (mode == CLIMATE_MODE_COOL || mode == CLIMATE_MODE_DRY) {
             setHigh(temperature);
             if (std::isnan(getLow())) setLow(temperature);
         } else if (preserving) {
@@ -123,8 +119,8 @@ private:
 void runFixedPasses(BandSim& sim, float currentHp, int passes) {
     for (int i = 0; i < passes; ++i) {
         const float sent = calcSettingB(sim.deadband(currentHp));
-        sim.updateFromSettingsFixed(Mode::HEAT_COOL, sent);  // write path
-        sim.updateFromSettingsFixed(Mode::HEAT_COOL, sent);  // read path
+        sim.updateFromSettingsFixed(CLIMATE_MODE_HEAT_COOL, sent);  // write path
+        sim.updateFromSettingsFixed(CLIMATE_MODE_HEAT_COOL, sent);  // read path
     }
 }
 
@@ -214,7 +210,7 @@ TEST(DualSetpointRecenterTest, LegacyAuto_KeepsDefinedBand) {
     const float low0 = sim.getLow();
     const float high0 = sim.getHigh();
 
-    sim.updateFromSettingsFixed(Mode::AUTO, 21.0f);
+    sim.updateFromSettingsFixed(CLIMATE_MODE_AUTO, 21.0f);
 
     EXPECT_FLOAT_EQ(sim.getLow(), low0);
     EXPECT_FLOAT_EQ(sim.getHigh(), high0);
@@ -225,7 +221,7 @@ TEST(DualSetpointRecenterTest, Heat_AssignsLowDirectly) {
     sim.fahr.setUseFahrenheitSupportMode(FahrenheitMode::STANDARD);
     sim.userSetsBandF(61, 82);
 
-    sim.updateFromSettingsFixed(Mode::HEAT, 18.0f);  // unit reports 18.0C (65F)
+    sim.updateFromSettingsFixed(CLIMATE_MODE_HEAT, 18.0f);  // unit reports 18.0C (65F)
 
     EXPECT_NEAR(sim.getLow(), 18.0f, 1e-4f);
 }
@@ -234,7 +230,7 @@ TEST(DualSetpointRecenterTest, HeatCool_NaNBounds_InitializedAroundSetpoint) {
     BandSim sim;
     sim.fahr.setUseFahrenheitSupportMode(FahrenheitMode::OFF);
 
-    sim.updateFromSettingsFixed(Mode::HEAT_COOL, 21.0f);
+    sim.updateFromSettingsFixed(CLIMATE_MODE_HEAT_COOL, 21.0f);
 
     EXPECT_FLOAT_EQ(sim.getLow(), 19.0f);
     EXPECT_FLOAT_EQ(sim.getHigh(), 23.0f);
@@ -255,8 +251,8 @@ TEST(DualSetpointRecenterTest, PreFixDispatch_DemonstratesTheRatchet) {
     const float high0 = sim.getHigh();  // 27.5
 
     const float sent = calcSettingB(sim.deadband(18.5f));  // in-band → 18.5
-    sim.updateFromSettingsPreFix(Mode::HEAT_COOL, sent);   // write-path pass
-    sim.updateFromSettingsPreFix(Mode::HEAT_COOL, sent);   // read-path pass
+    sim.updateFromSettingsPreFix(CLIMATE_MODE_HEAT_COOL, sent);   // write-path pass
+    sim.updateFromSettingsPreFix(CLIMATE_MODE_HEAT_COOL, sent);   // read-path pass
 
     EXPECT_NEAR(sim.getLow(), low0 + 1.0f, 1e-3f);    // 61F → 63F
     EXPECT_NEAR(sim.getHigh(), high0 + 1.0f, 1e-3f);  // 82F → 84F

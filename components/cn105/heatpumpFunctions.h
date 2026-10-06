@@ -1,5 +1,5 @@
 #pragma once
-#include "Globals.h"
+#include <cstdint>
 
 
 
@@ -28,8 +28,8 @@ public:
     bool isValid() const;
 
     // data must be 15 bytes
-    void setData1(uint8_t* data);
-    void setData2(uint8_t* data);
+    void setData1(const uint8_t* data);
+    void setData2(const uint8_t* data);
     void getData1(uint8_t* data) const;
     void getData2(uint8_t* data) const;
 

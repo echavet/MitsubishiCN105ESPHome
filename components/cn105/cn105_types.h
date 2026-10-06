@@ -38,6 +38,7 @@ static const int PACKET_TYPE_DEFAULT = 99;
 
 static const int CONNECT_LEN = 8;
 static const uint8_t CONNECT[CONNECT_LEN] = { 0xfc, 0x5a, 0x01, 0x30, 0x02, 0xca, 0x01, 0xa8 };
+static const uint8_t HEATPUMP_PROFILE = 0x30;
 static const int HEADER_LEN = 8;
 static const uint8_t HEADER[HEADER_LEN] = { 0xfc, 0x41, 0x01, 0x30, 0x10, 0x01, 0x00, 0x00 };
 
@@ -307,4 +308,3 @@ struct wantedHeatpumpRunStates : heatpumpRunStates {
         return *this;
     }
 };
-

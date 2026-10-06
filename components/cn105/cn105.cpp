@@ -28,8 +28,9 @@ void CN105Climate::transition_to_(DriverState next) {
 }
 
 
-CN105Climate::CN105Climate(uart::UARTComponent* uart) :
+CN105Climate::CN105Climate(uart::UARTComponent* uart, bool lossnay) :
     UARTDevice(uart),
+    profile_(cn105::make_protocol_profile(*this, lossnay)),
     scheduler_(
         // send callback: send a packet via buildAndSendInfoPacket
         [this](uint8_t code) { this->buildAndSendInfoPacket(code); },
@@ -52,8 +53,6 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
 
     // state_ is initialized to BOOT in the header
-    this->use_temperature_encoding_b_ = false;
-    this->wideVaneAdj = false;
     this->functions = heatpumpFunctions();
     this->autoUpdate = false;
     this->firstRun = true;
@@ -119,7 +118,7 @@ void CN105Climate::registerInfoRequests() {
     InfoRequest r_hvac_opts("hvac_options", "HVAC options", 0x42, 3, 500);
     r_hvac_opts.canSend = [this](const CN105Climate& self) {
         (void)self;
-        return (this->air_purifier_switch_ != nullptr || this->night_mode_switch_ != nullptr || this->circulator_switch_ != nullptr);
+        return this->profile_->supports(cn105::ProfileFeature::AUXILIARY_CONTROLS) && (this->air_purifier_switch_ != nullptr || this->night_mode_switch_ != nullptr || this->circulator_switch_ != nullptr);
         };
     r_hvac_opts.onResponse = [this](CN105Climate& self) { (void)self; this->getHVACOptionsFromResponsePacket(); };
     scheduler_.register_request(r_hvac_opts);
@@ -141,7 +140,8 @@ void CN105Climate::registerHardwareSettingsRequests() {
     uint32_t interval = 0;
     bool is_enabled = false;
 
-    if (!this->hardware_settings_.empty()) {
+
+    if (this->profile_->supports(cn105::ProfileFeature::AUXILIARY_CONTROLS) && !this->hardware_settings_.empty()) {
         ESP_LOGI(LOG_FUNCTIONS_TAG, "Registering function settings requests (0x20/0x22) with interval %" PRIu32 " ms", this->hardware_settings_interval_ms_);
         interval = this->hardware_settings_interval_ms_;
         is_enabled = true;
@@ -150,55 +150,28 @@ void CN105Climate::registerHardwareSettingsRequests() {
         ESP_LOGI(LOG_FUNCTIONS_TAG, "Registering function settings requests (0x20/0x22), disabled");
     }
 
-    // Helper Lambda: Checks for incompatibility and disables everything if necessary.
+    // Payload acceptance belongs to the profile; request lifetime belongs to the driver.
     auto check_and_disable = [](CN105Climate& self, uint8_t code) -> bool {
-        if (self.data[0] != code) return false;
-
-        bool all_zeros = true;
-        // On some units (e.g. SEZ), codes may be present with a value of zero as long as the session
-        // is not in installer mode. The presence of the byte (code+value) just validate the support.
-        for (int i = 1; i < self.parser_.data_length(); i++) {
-            if (self.data[i] != 0) {
-                all_zeros = false;
-                break;
-            }
-        }
-
-        if (all_zeros) {
-            ESP_LOGW(LOG_FUNCTIONS_TAG, "Response 0x%02X contains only zeros. Feature not supported by unit. Disabling.", code);
-
-            // 1. Do activate the request via the scheduler.
+        if (!self.profile_->decode_functions(code, self.data, self.parser_.data_length())) {
+            ESP_LOGW(LOG_FUNCTIONS_TAG, "Profile declined functions response 0x%02X. Disabling.", code);
             self.scheduler_.disable_request(code);
-
-            // 2. Mark graphics components as failed (unavailable).
-            ESP_LOGD(LOG_FUNCTIONS_TAG, "Marking Hardware Setting Selects as failed.");
-            for (auto* setting : self.hardware_settings_) {
-                setting->set_enabled(false);
-            }
-
+            for (auto* setting : self.hardware_settings_) setting->set_enabled(false);
             return false;
         }
-
-        // If no hardware settings are defined in YAML this was a manual request
-        // that is expected to run once, disable future requests.
-        if (self.hardware_settings_.empty()) {
-            self.scheduler_.disable_request(code);
-        }
-
+        // A manual request without configured selectors runs only once.
+        if (self.hardware_settings_.empty()) self.scheduler_.disable_request(code);
         return true;
-        };
+    };
 
     // --- Part 1 (0x20) ---
     InfoRequest r_funcs1("functions1", "Functions Part 1", 0x20, 3, 0, interval, LOG_FUNCTIONS_TAG);
     r_funcs1.onResponse = [this, check_and_disable](CN105Climate& self) {
         // Log the raw packet and decoded pairs even if the unit returns all zeros
         self.hpPacketDebug(self.data, self.parser_.data_length(), "RX 0x20");
-        self.hpFunctionsDebug(self.data, self.parser_.data_length());
         if (check_and_disable(self, 0x20)) {
-            self.functions.setData1(&self.data[1]);
             ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 1 (via InfoRequest)");
         }
-        };
+    };
     scheduler_.register_request(r_funcs1);
     if (!is_enabled) {
         scheduler_.disable_request(0x20);
@@ -209,13 +182,11 @@ void CN105Climate::registerHardwareSettingsRequests() {
     r_funcs2.onResponse = [this, check_and_disable](CN105Climate& self) {
         // Log the raw packet and decoded pairs even if the unit returns all zeros
         self.hpPacketDebug(self.data, self.parser_.data_length(), "RX 0x22");
-        self.hpFunctionsDebug(self.data, self.parser_.data_length());
         if (check_and_disable(self, 0x22)) {
-            self.functions.setData2(&self.data[1]);
             ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 2 (via InfoRequest)");
             self.functionsArrived();
         }
-        };
+    };
     scheduler_.register_request(r_funcs2);
     if (!is_enabled) {
         scheduler_.disable_request(0x22);
