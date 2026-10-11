@@ -2,6 +2,7 @@
 #include "cn105_protocol.h"
 #include "cn105_types.h"
 #include "heatpumpFunctions.h"
+#include "localization.h"
 #include <cmath>
 #include "esphome/components/climate/climate_mode.h"
 
@@ -77,6 +78,9 @@ struct HeatPumpProtocol {
         return true;
     }
     static bool accepts_remote_temperature(float setting) { return !std::isnan(setting); }
+    static float normalize_remote_temperature(float setting, FahrenheitSupport& fahrenheit) {
+        return setting > 0 ? fahrenheit.normalizeUiTemperatureToHeatpumpTemperature(setting) : setting;
+    }
     static bool can_control_airflow(const heatpumpSettings& current) {
         return current.wideVane != nullptr && std::strcmp(current.wideVane, WIDEVANE_MAP[7]) == 0;
     }
