@@ -151,10 +151,27 @@ TEST(HeatPumpProfile, RemoteTemperatureEncodingAndInternalSensorFallback) {
     HeatPumpProtocol::encode_remote_temperature(internal, 0);
     EXPECT_EQ(remote[5], 7);
     EXPECT_EQ(remote[6], 1);
-    EXPECT_EQ(remote[7], 27);
+    EXPECT_EQ(remote[7], 26);
     EXPECT_EQ(remote[8], 171);
     EXPECT_EQ(internal[6], 0);
     EXPECT_EQ(internal[8], 0x80);
+}
+
+TEST(HeatPumpProfile, RemoteTemperatureRoundTripsThroughRoomStatus) {
+    using esphome::cn105::CommonProtocol;
+    for (float t = 10.0f; t <= 31.5f; t += 0.5f) {
+        uint8_t remote[22]{};
+        HeatPumpProtocol::encode_remote_temperature(remote, t);
+
+        uint8_t room_data[16]{};
+        room_data[6] = remote[8];  // Encoding B byte echoed in 0x03 room status
+        auto status = CommonProtocol::decode_room_status(room_data, {});
+        EXPECT_FLOAT_EQ(status.roomTemperature, t);
+
+        // Encoding A byte in packet[7] must represent the same temperature
+        float decoded_a = 10.0f + static_cast<float>(remote[7] - 3) / 2.0f;
+        EXPECT_FLOAT_EQ(decoded_a, status.roomTemperature);
+    }
 }
 
 TEST(LossnayProfile, RepeatedActualModePollsPublishOnlyActionTransitions) {

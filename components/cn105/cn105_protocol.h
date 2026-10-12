@@ -64,7 +64,7 @@ inline uint8_t encode_temperature_b(float temperature) {
 }
 
 /// Encode a remote temperature into the two-byte format used by SET remote temp packets.
-/// Byte 1 (encoding A legacy): round(temp * 2) - 16
+/// Byte 1 (encoding A legacy): round(temp * 2) - 17
 /// Byte 2 (encoding B):        round(temp * 2) + 128
 ///
 /// @param temperature  Remote temperature in °C.
@@ -72,7 +72,7 @@ inline uint8_t encode_temperature_b(float temperature) {
 /// @param[out] enc_b   Output: encoding B byte for the remote temp packet.
 inline void encode_remote_temperature(float temperature, uint8_t& enc_a, uint8_t& enc_b) {
     float rounded = std::round(temperature * 2.0f);
-    enc_a = static_cast<uint8_t>(rounded - 16);
+    enc_a = static_cast<uint8_t>(rounded - 17);
     enc_b = static_cast<uint8_t>(rounded + 128);
 }
 
