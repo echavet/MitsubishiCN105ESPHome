@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 namespace esphome {
@@ -18,7 +19,7 @@ namespace esphome {
         }
 
         float normalizeHeatpumpTemperatureToUiTemperature(const float c) {
-            if (fahrenheit_mode_ == FahrenheitMode::OFF || c == NAN) {
+            if (fahrenheit_mode_ == FahrenheitMode::OFF || std::isnan(c)) {
                 return c; // If disabled, return the Celsius value as is.
             }
 
@@ -52,7 +53,7 @@ namespace esphome {
         }
 
         float normalizeUiTemperatureToHeatpumpTemperature(const float c) {
-            if (fahrenheit_mode_ == FahrenheitMode::OFF || c == NAN) {
+            if (fahrenheit_mode_ == FahrenheitMode::OFF || std::isnan(c)) {
                 return c; // If disabled, return the Celsius value as is.
             }
 
