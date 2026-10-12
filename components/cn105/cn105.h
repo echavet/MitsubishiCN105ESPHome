@@ -66,6 +66,9 @@ namespace esphome {
 
         CN105Climate(uart::UARTComponent* hw_serial, bool lossnay = false);
 
+        // Expose the existing polling-cycle state to ESPHome lambda conditions.
+        bool isCycleRunning() { return this->loopCycle.isCycleRunning(); }
+
         enum class VaneType {
             STANDARD = 0,
             SPLIT_HORIZONTAL = 1,
