@@ -1041,6 +1041,33 @@ sensor:
     update_interval: 60s
 ```
 
+### Polling-cycle state for advanced automations
+
+`id(hp).isCycleRunning()` returns the component's existing CN105 polling-cycle
+state. It is `true` between `cycleStarted()` and `cycleEnded()`, and `false`
+before a cycle starts or after it ends, including a timeout reset. This is the
+communication polling cycle, not the heat pump's heating/cooling action.
+
+This is useful when an advanced automation needs to observe the interval
+between polling cycles, for example before a model-specific UART action. It
+avoids guessing the cycle duration with fixed delays or maintaining a local
+component copy just to access this state. A connection-aware condition is:
+
+```yaml
+condition:
+  lambda: |-
+    return id(hp).isHeatpumpConnected() && !id(hp).isCycleRunning();
+```
+
+Use the climate component ID from your own configuration in place of `hp`.
+To observe a cycle ending, wait for the state to become `true`, then `false`,
+with appropriate timeout handling in the automation.
+
+The getter is a read-only snapshot. It does not reserve the UART, pause polling,
+queue a custom command, or confirm that a cycle completed successfully. Other
+component writes may occur outside a polling cycle, so custom UART operations
+still need their own coordination and response handling.
+
 ## Hardware Settings (Function Settings)
 
 This advanced feature allows you to read and modify the internal "Function Settings" (ISU) of your Mitsubishi unit directly from Home Assistant. These settings control hardware behaviors like auto-restart, temperature sensing location, or static pressure.
