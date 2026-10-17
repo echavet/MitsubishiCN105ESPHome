@@ -1,5 +1,8 @@
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
+#if __has_include("esphome/core/alloc_helpers.h")
+#include "esphome/core/alloc_helpers.h"
+#endif
 #include "esphome/core/hal.h"
 #include "uptime_connection_sensor.h"
 
