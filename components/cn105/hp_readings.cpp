@@ -249,7 +249,7 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         }
 
         if (this->outside_air_temperature_sensor_ != nullptr) {
-            this->outside_air_temperature_sensor_->publish_state(this->fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(currentStatus.outsideAirTemperature));
+            this->outside_air_temperature_sensor_->publish_state(currentStatus.outsideAirTemperature);
         }
     } // else no change
 }
