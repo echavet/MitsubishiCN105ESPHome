@@ -88,6 +88,7 @@ Units tested by project contributors include:
 Known working Lossnay units using `lossnay: true`:
 
 - `LGH-50RVS-E`
+- `VL-350CZPVU-L-E`
 
 ## Usage
 
