@@ -297,4 +297,63 @@ inline AutoDirection auto_direction(const char* auto_sub_mode) {
     return AutoDirection::UNKNOWN;
 }
 
+// ════════════════════════════════════════════════════════════════
+// HEAT_COOL drive (dual setpoint)
+// ════════════════════════════════════════════════════════════════
+
+/// How HEAT_COOL runs the unit. Inside the band it is hardware AUTO, which follows
+/// the direction the shared outdoor unit is already running and so never blocks
+/// another head. Outside the band it is explicit HEAT or COOL toward the band.
+enum class HeatCoolDrive : uint8_t { NONE, AUTO, HEAT, COOL };
+
+/// Drive for a HEAT_COOL band [low, high].
+/// - Entering: explicit HEAT/COOL when the room is `margin` past an edge, AUTO otherwise.
+/// - AUTO -> HEAT/COOL once the room is `margin` past an edge and hardware AUTO is not
+///   already running toward the band.
+/// - HEAT/COOL -> AUTO once the room is back inside the band and the explicit drive
+///   has run for `min_dwell_ms`. An explicit mode keeps the outdoor unit in its
+///   direction even while idle, blocking heads that want the other one.
+/// @param room            Room temperature (NaN when unknown)
+/// @param current         Drive in force, NONE when entering HEAT_COOL
+/// @param auto_dir        Direction hardware AUTO reports (only read in AUTO)
+/// @param last_switch_ms  millis() of the last drive change
+/// @return the drive to run (never NONE)
+inline HeatCoolDrive heat_cool_drive(
+    float room, float low, float high, HeatCoolDrive current, AutoDirection auto_dir,
+    uint32_t now_ms, uint32_t last_switch_ms, float margin, uint32_t min_dwell_ms
+) {
+    if (std::isnan(room)) {
+        return current == HeatCoolDrive::NONE ? HeatCoolDrive::AUTO : current;
+    }
+    const bool too_cold = room <= low - margin;
+    const bool too_warm = room >= high + margin;
+    const bool dwelled = static_cast<uint32_t>(now_ms - last_switch_ms) >= min_dwell_ms;
+    switch (current) {
+    case HeatCoolDrive::NONE:
+        if (too_cold) return HeatCoolDrive::HEAT;
+        if (too_warm) return HeatCoolDrive::COOL;
+        return HeatCoolDrive::AUTO;
+    case HeatCoolDrive::AUTO:
+        if (too_cold && auto_dir != AutoDirection::HEAT) return HeatCoolDrive::HEAT;
+        if (too_warm && auto_dir != AutoDirection::COOL) return HeatCoolDrive::COOL;
+        return HeatCoolDrive::AUTO;
+    case HeatCoolDrive::HEAT:
+        return (dwelled && room >= low) ? HeatCoolDrive::AUTO : HeatCoolDrive::HEAT;
+    case HeatCoolDrive::COOL:
+        return (dwelled && room <= high) ? HeatCoolDrive::AUTO : HeatCoolDrive::COOL;
+    }
+    return current;
+}
+
+/// Single setpoint for hardware AUTO inside a HEAT_COOL band: the band edge on the
+/// side AUTO is running (low while heating, high while cooling), so following the
+/// outdoor unit's direction idles anywhere in the band. Before AUTO has reported a
+/// direction, the midpoint keeps any first move inside the band.
+/// @param last_dir  Last direction AUTO reported (UNKNOWN until it reports one)
+inline float heat_cool_auto_setpoint(float low, float high, AutoDirection last_dir) {
+    if (last_dir == AutoDirection::HEAT) return low;
+    if (last_dir == AutoDirection::COOL) return high;
+    return (low + high) / 2.0f;
+}
+
 }  // namespace cn105_protocol

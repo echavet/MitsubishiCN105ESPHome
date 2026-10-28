@@ -218,6 +218,14 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->debugStatus("received", status);
         this->debugStatus("current", currentStatus);
         cn105::CommonProtocol::apply_status(*this, status);
+        // HEAT_COOL: the drive follows the new room temperature. Publish again
+        // only when the drive changed the action apply_status just published.
+        const auto action_before = this->action;
+        this->profile_->reevaluate_heat_cool();
+        this->updateAction();
+        if (this->action != action_before) {
+            this->publish_state();
+        }
     } // else no change
 }
 
