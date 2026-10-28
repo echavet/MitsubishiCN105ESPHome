@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 namespace esphome {
@@ -18,13 +19,13 @@ namespace esphome {
         }
 
         float normalizeHeatpumpTemperatureToUiTemperature(const float c) {
-            if (fahrenheit_mode_ == FahrenheitMode::OFF || c == NAN) {
+            if (fahrenheit_mode_ == FahrenheitMode::OFF || std::isnan(c)) {
                 return c; // If disabled, return the Celsius value as is.
             }
 
             // Select the appropriate conversion table based on mode
             const std::vector<std::pair<float, float>>& localTable = getActiveTable();
-            if (localTable.empty()) {
+            if (localTable.empty() || c < localTable.front().second - 0.25f || c > localTable.back().second + 0.25f) {
                 return c;
             }
 
@@ -52,7 +53,7 @@ namespace esphome {
         }
 
         float normalizeUiTemperatureToHeatpumpTemperature(const float c) {
-            if (fahrenheit_mode_ == FahrenheitMode::OFF || c == NAN) {
+            if (fahrenheit_mode_ == FahrenheitMode::OFF || std::isnan(c)) {
                 return c; // If disabled, return the Celsius value as is.
             }
 
@@ -63,6 +64,9 @@ namespace esphome {
             }
 
             float fahrenheitInput = (c * 1.8f) + 32.0f;
+            if (fahrenheitInput < localTable.front().first - 0.5f || fahrenheitInput > localTable.back().first + 0.5f) {
+                return c;
+            }
 
             // Due to vagaries of floating point math across architectures, we can't
             // just look up `c` in the map -- we're very unlikely to find a matching

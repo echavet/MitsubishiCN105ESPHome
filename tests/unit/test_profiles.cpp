@@ -151,10 +151,91 @@ TEST(HeatPumpProfile, RemoteTemperatureEncodingAndInternalSensorFallback) {
     HeatPumpProtocol::encode_remote_temperature(internal, 0);
     EXPECT_EQ(remote[5], 7);
     EXPECT_EQ(remote[6], 1);
-    EXPECT_EQ(remote[7], 27);
+    EXPECT_EQ(remote[7], 26);
     EXPECT_EQ(remote[8], 171);
     EXPECT_EQ(internal[6], 0);
     EXPECT_EQ(internal[8], 0x80);
+}
+
+TEST(HeatPumpProfile, RemoteTemperatureRoundTripsThroughRoomStatus) {
+    using esphome::cn105::CommonProtocol;
+    for (float t = 10.0f; t <= 31.5f; t += 0.5f) {
+        uint8_t remote[22]{};
+        HeatPumpProtocol::encode_remote_temperature(remote, t);
+
+        uint8_t room_data[16]{};
+        room_data[6] = remote[8];  // Encoding B byte echoed in 0x03 room status
+        auto status = CommonProtocol::decode_room_status(room_data, {});
+        EXPECT_FLOAT_EQ(status.roomTemperature, t);
+
+        // Encoding A byte in packet[7] must represent the same temperature
+        float decoded_a = 10.0f + static_cast<float>(remote[7] - 3) / 2.0f;
+        EXPECT_FLOAT_EQ(decoded_a, status.roomTemperature);
+    }
+}
+
+struct FahrenheitModeRange {
+    esphome::FahrenheitMode mode;
+    int min_f;
+    int max_f;
+};
+
+using RemoteTemperatureFahrenheitTest = ::testing::TestWithParam<FahrenheitModeRange>;
+INSTANTIATE_TEST_SUITE_P(
+    FahrenheitModes,
+    RemoteTemperatureFahrenheitTest,
+    ::testing::Values(
+        FahrenheitModeRange{esphome::FahrenheitMode::STANDARD, 61, 88},
+        FahrenheitModeRange{esphome::FahrenheitMode::ALT, 61, 88},
+        FahrenheitModeRange{esphome::FahrenheitMode::MSZ_A24NA, 59, 89}
+    )
+);
+
+TEST_P(RemoteTemperatureFahrenheitTest, EndToEndRoundTrip) {
+    using esphome::FahrenheitSupport;
+    using esphome::cn105::CommonProtocol;
+
+    const auto& mr = GetParam();
+    FahrenheitSupport fs;
+    fs.setUseFahrenheitSupportMode(mr.mode);
+
+    for (int f = mr.min_f; f <= mr.max_f; ++f) {
+        // 1. Documented README F->C lambda on incoming HA remote sensor value
+        const float lambda_c = (f - 32.0f) * (5.0f / 9.0f);
+
+        // 2. set_remote_temperature() normalization + 0x07 packet encoding
+        const float remote_c = HeatPumpProtocol::normalize_remote_temperature(lambda_c, fs);
+        uint8_t pkt07[22] = {};
+        HeatPumpProtocol::encode_remote_temperature(pkt07, remote_c);
+        EXPECT_EQ(pkt07[6], 0x01);
+
+        // 3a. Heat pump echoes remote temperature via Encoding B (0x03 data[6])
+        uint8_t room_b[16] = {};
+        room_b[6] = pkt07[8];
+        const auto status_b = CommonProtocol::decode_room_status(room_b, {});
+        const float ui_c_b = fs.normalizeHeatpumpTemperatureToUiTemperature(status_b.roomTemperature);
+        const float ha_f_b = (ui_c_b * (9.0f / 5.0f)) + 32.0f;
+        EXPECT_FLOAT_EQ(ha_f_b, f) << "Encoding B round-trip failed for " << f << "F";
+
+        // 3b. Heat pump uses Encoding A byte from 0x07 packet[7] (10.0C + (enc_a - 3) * 0.5C)
+        const float hp_room_a = 10.0f + (pkt07[7] - 3.0f) / 2.0f;
+        const float ui_c_a = fs.normalizeHeatpumpTemperatureToUiTemperature(hp_room_a);
+        const float ha_f_a = (ui_c_a * (9.0f / 5.0f)) + 32.0f;
+        EXPECT_FLOAT_EQ(ha_f_a, f) << "Encoding A round-trip failed for " << f << "F";
+    }
+}
+
+TEST(HeatPumpProfile, RemoteTemperatureInternalSensorSentinelNotClamped) {
+    esphome::FahrenheitSupport fs;
+    fs.setUseFahrenheitSupportMode(esphome::FahrenheitMode::STANDARD);
+
+    // Internal sensor fallback sentinel (0) must not be clamped to the table minimum
+    const float sentinel = HeatPumpProtocol::normalize_remote_temperature(0.0f, fs);
+    EXPECT_FLOAT_EQ(sentinel, 0.0f);
+    uint8_t fallback_pkt[22] = {};
+    HeatPumpProtocol::encode_remote_temperature(fallback_pkt, sentinel);
+    EXPECT_EQ(fallback_pkt[6], 0x00);
+    EXPECT_EQ(fallback_pkt[8], 0x80);
 }
 
 TEST(LossnayProfile, RepeatedActualModePollsPublishOnlyActionTransitions) {
@@ -406,6 +487,63 @@ TEST(CommonProfile, ErrorAvailabilityBitIsNotAnError) {
     EXPECT_EQ(CommonProtocol::decode_error(data), "Error 0x12 sub 0xAB");
     data[4] = 0x80; data[5] = 1;
     EXPECT_EQ(CommonProtocol::decode_error(data), "Error 0x00 sub 0x01");
+}
+
+namespace {
+
+struct StatusTarget {
+    struct Sensor {
+        float state = NAN;
+        int publishes = 0;
+        void publish_state(float value) {
+            state = value;
+            ++publishes;
+        }
+    };
+    heatpumpStatus currentStatus{};
+    esphome::FahrenheitSupport fahrenheitSupport_;
+    float current_temperature = NAN;
+    int action_updates = 0;
+    int climate_publishes = 0;
+    Sensor* compressor_frequency_sensor_ = nullptr;
+    Sensor* input_power_sensor_ = nullptr;
+    Sensor* kwh_sensor_ = nullptr;
+    Sensor* runtime_hours_sensor_ = nullptr;
+    Sensor* outside_air_temperature_sensor_ = nullptr;
+    void updateAction() { ++action_updates; }
+    void publish_state() { ++climate_publishes; }
+};
+
+}  // namespace
+
+TEST(CommonProfile, OutsideAirTemperatureNotNormalizedInFahrenheitMode) {
+    using esphome::FahrenheitMode;
+    using esphome::cn105::CommonProtocol;
+
+    for (auto mode : {FahrenheitMode::STANDARD, FahrenheitMode::ALT, FahrenheitMode::MSZ_A24NA}) {
+        StatusTarget target;
+        StatusTarget::Sensor outside_sensor;
+        target.outside_air_temperature_sensor_ = &outside_sensor;
+        target.fahrenheitSupport_.setUseFahrenheitSupportMode(mode);
+
+        // Test out-of-range (10.0C, 40.0C) and in-table (22.0C) outdoor temperatures
+        // alongside an in-table indoor room temperature (22.0C).
+        for (float outside_c : {10.0f, 22.0f, 40.0f}) {
+            uint8_t data[16]{};
+            data[5] = static_cast<uint8_t>(outside_c * 2.0f + 128.0f);
+            data[6] = static_cast<uint8_t>(22.0f * 2.0f + 128.0f);
+
+            const auto decoded = CommonProtocol::decode_room_status(data, target.currentStatus);
+            EXPECT_TRUE(CommonProtocol::apply_status(target, decoded));
+
+            // Indoor room temperature is normalized through the Fahrenheit lookup table
+            EXPECT_FLOAT_EQ(target.current_temperature,
+                            target.fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(22.0f));
+            EXPECT_NE(target.current_temperature, 22.0f);
+            // Outside air temperature is published raw without normalization or clipping (#724)
+            EXPECT_FLOAT_EQ(outside_sensor.state, outside_c);
+        }
+    }
 }
 
 TEST(HeatPumpProfile, FunctionResponsesRejectInvalidPayloadsWithoutMutation) {
