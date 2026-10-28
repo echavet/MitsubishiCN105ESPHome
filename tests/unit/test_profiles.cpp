@@ -489,6 +489,63 @@ TEST(CommonProfile, ErrorAvailabilityBitIsNotAnError) {
     EXPECT_EQ(CommonProtocol::decode_error(data), "Error 0x00 sub 0x01");
 }
 
+namespace {
+
+struct StatusTarget {
+    struct Sensor {
+        float state = NAN;
+        int publishes = 0;
+        void publish_state(float value) {
+            state = value;
+            ++publishes;
+        }
+    };
+    heatpumpStatus currentStatus{};
+    esphome::FahrenheitSupport fahrenheitSupport_;
+    float current_temperature = NAN;
+    int action_updates = 0;
+    int climate_publishes = 0;
+    Sensor* compressor_frequency_sensor_ = nullptr;
+    Sensor* input_power_sensor_ = nullptr;
+    Sensor* kwh_sensor_ = nullptr;
+    Sensor* runtime_hours_sensor_ = nullptr;
+    Sensor* outside_air_temperature_sensor_ = nullptr;
+    void updateAction() { ++action_updates; }
+    void publish_state() { ++climate_publishes; }
+};
+
+}  // namespace
+
+TEST(CommonProfile, OutsideAirTemperatureNotNormalizedInFahrenheitMode) {
+    using esphome::FahrenheitMode;
+    using esphome::cn105::CommonProtocol;
+
+    for (auto mode : {FahrenheitMode::STANDARD, FahrenheitMode::ALT, FahrenheitMode::MSZ_A24NA}) {
+        StatusTarget target;
+        StatusTarget::Sensor outside_sensor;
+        target.outside_air_temperature_sensor_ = &outside_sensor;
+        target.fahrenheitSupport_.setUseFahrenheitSupportMode(mode);
+
+        // Test out-of-range (10.0C, 40.0C) and in-table (22.0C) outdoor temperatures
+        // alongside an in-table indoor room temperature (22.0C).
+        for (float outside_c : {10.0f, 22.0f, 40.0f}) {
+            uint8_t data[16]{};
+            data[5] = static_cast<uint8_t>(outside_c * 2.0f + 128.0f);
+            data[6] = static_cast<uint8_t>(22.0f * 2.0f + 128.0f);
+
+            const auto decoded = CommonProtocol::decode_room_status(data, target.currentStatus);
+            EXPECT_TRUE(CommonProtocol::apply_status(target, decoded));
+
+            // Indoor room temperature is normalized through the Fahrenheit lookup table
+            EXPECT_FLOAT_EQ(target.current_temperature,
+                            target.fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(22.0f));
+            EXPECT_NE(target.current_temperature, 22.0f);
+            // Outside air temperature is published raw without normalization or clipping (#724)
+            EXPECT_FLOAT_EQ(outside_sensor.state, outside_c);
+        }
+    }
+}
+
 TEST(HeatPumpProfile, FunctionResponsesRejectInvalidPayloadsWithoutMutation) {
     heatpumpFunctions functions;
     uint8_t raw[15]; std::fill_n(raw, 15, 0x09);

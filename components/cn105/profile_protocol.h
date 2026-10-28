@@ -1,6 +1,7 @@
 #pragma once
 #include "cn105_protocol.h"
 #include "cn105_types.h"
+#include "localization.h"
 #include <cstdio>
 
 namespace esphome::cn105 {
@@ -18,6 +19,38 @@ struct CommonProtocol {
         }
         status.runtimeHours = static_cast<float>((data[11] << 16) | (data[12] << 8) | data[13]) / 60;
         return status;
+    }
+
+    template<typename Sensor>
+    static void publish_if_present(Sensor* sensor, float value) {
+        if (sensor != nullptr) sensor->publish_state(value);
+    }
+
+    template<typename Target>
+    static bool apply_status(Target& target, const heatpumpStatus& status) {
+        if (status == target.currentStatus) return false;
+
+        target.currentStatus.operating = status.operating;
+        target.currentStatus.compressorFrequency = status.compressorFrequency;
+        target.currentStatus.inputPower = status.inputPower;
+        target.currentStatus.kWh = status.kWh;
+        target.currentStatus.runtimeHours = status.runtimeHours;
+        target.currentStatus.roomTemperature = status.roomTemperature;
+        target.currentStatus.outsideAirTemperature = status.outsideAirTemperature;
+        target.current_temperature =
+            target.fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(target.currentStatus.roomTemperature);
+
+        target.updateAction();
+        target.publish_state();
+
+        publish_if_present(target.compressor_frequency_sensor_, target.currentStatus.compressorFrequency);
+        publish_if_present(target.input_power_sensor_, target.currentStatus.inputPower);
+        publish_if_present(target.kwh_sensor_, target.currentStatus.kWh);
+        publish_if_present(target.runtime_hours_sensor_, target.currentStatus.runtimeHours);
+        // Outside air temperature is a raw sensor reading and must not be
+        // mapped through the indoor thermostat Fahrenheit lookup table (#724).
+        publish_if_present(target.outside_air_temperature_sensor_, target.currentStatus.outsideAirTemperature);
+        return true;
     }
 
     static std::string decode_error(const uint8_t* data) {
