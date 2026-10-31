@@ -197,7 +197,7 @@ namespace esphome {
 
 
         float get_setup_priority() const override {
-            return setup_priority::AFTER_WIFI;  // Configurez ce composant aprÃÂ¨s le WiFi
+            return setup_priority::AFTER_WIFI;  // Configurez ce composant après le WiFi
         }
 
         void generateExtraComponents();
@@ -275,23 +275,23 @@ namespace esphome {
 
         void controlFan();
         void controlSwing();
-        // Bootstrap connexion CN105 en loop() (ÃÂ©vite de perdre les tout premiers logs OTA)
+        // Bootstrap connexion CN105 en loop() (évite de perdre les tout premiers logs OTA)
         void maybe_start_connection_();
 
-        // DÃÂ©lai de grÃÂ¢ce configurable avant d'envoyer CONNECT (pour laisser le flux OTA s'attacher)
+        // Délai de grâce configurable avant d'envoyer CONNECT (pour laisser le flux OTA s'attacher)
         void set_connection_bootstrap_delay(uint32_t delay_ms) { this->conn_bootstrap_delay_ms_ = delay_ms; }
 
 
-        // Mode installateur: utilise un handshake CONNECT ÃÂ©tendu (0x5B) au lieu du standard (0x5A)
+        // Mode installateur: utilise un handshake CONNECT étendu (0x5B) au lieu du standard (0x5A)
         void set_installer_mode(bool mode) {
-            // Mode demandÃÂ© via YAML
+            // Mode demandé via YAML
             this->installer_mode_ = mode;
-            // Mode effectivement utilisÃÂ©: peut tomber en fallback vers standard si la PAC ignore 0x5B
+            // Mode effectivement utilisé: peut tomber en fallback vers standard si la PAC ignore 0x5B
             this->installer_mode_effective_ = mode && this->profile_->supports(cn105::ProfileFeature::INSTALLER_MODE);
             this->installer_mode_fallback_done_ = false;
         }
 
-        // UnitÃÂ© de puissance brute envoyÃÂ©e par la PAC: false = Watts (dÃÂ©faut), true = BTU/s
+        // Unité de puissance brute envoyée par la PAC: false = Watts (défaut), true = BTU/s
         void set_power_unit_is_btu(bool v) { this->power_unit_is_btu_ = v; }
 
         // Opt-in (supports.restore_setpoints): persist HEAT_COOL band across reboots
@@ -447,7 +447,7 @@ namespace esphome {
         wantedHeatpumpRunStates wantedRunStates{};
         cycleManagement loopCycle{};
 
-        // Orchestrateur des requÃÂªtes INFO
+        // Orchestrateur des requêtes INFO
         RequestScheduler scheduler_;
         void registerInfoRequests();
         void registerHardwareSettingsRequests();
@@ -503,7 +503,7 @@ namespace esphome {
 
         // foundStart, bytesRead, dataLength, command → moved into parser_ (Phase 3A)
 
-        // Gestion sÃÂ»re d'un paquet diffÃÂ©rÃÂ© ÃÂ  ÃÂ©crire pour ÃÂ©viter la capture d'un buffer de pile
+        // Gestion sûre d'un paquet différé à écrire pour éviter la capture d'un buffer de pile
         void try_write_pending_packet();
         uint8_t pending_packet_[PACKET_LEN] = {};
         int pending_packet_len_ = 0;
@@ -513,13 +513,13 @@ namespace esphome {
         // Connection lifecycle FSM
         DriverState state_ = DriverState::BOOT;
         uint32_t boot_ms_ = 0;
-        uint32_t conn_bootstrap_delay_ms_{ 10000 };  // par dÃÂ©faut 10s
+        uint32_t conn_bootstrap_delay_ms_{ 10000 };  // par défaut 10s
 
         bool installer_mode_{ false };
         bool installer_mode_effective_{ false };
         bool installer_mode_fallback_done_{ false };
 
-        bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (nÃÂ©cessite conversion ÃÂ3.412)
+        bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (nécessite conversion ×3.412)
         bool supports_dual_setpoint_ = false;
         int horizontal_vanes_{ 1 }; // Kept for legacy logging if needed, or can be removed if unused.
         VaneType vane_type_{ VaneType::STANDARD };
