@@ -27,6 +27,8 @@ from esphome.const import (
     CONF_UART_ID,
     CONF_ENTITY_CATEGORY,
     ENTITY_CATEGORY_DIAGNOSTIC,
+    ENTITY_CATEGORY_CONFIG,
+    DEVICE_CLASS_HUMIDITY,
     STATE_CLASS_TOTAL_INCREASING,
     UNIT_SECOND,
     ICON_TIMER,
@@ -343,7 +345,7 @@ ISEE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(ISeeSensor).extend(
 TARGET_HUMIDITY_SENSOR_SCHEMA = sensor.sensor_schema(
     TargetHumiditySensor,
     unit_of_measurement="%",
-    icon="mdi:water-percent",
+    device_class=DEVICE_CLASS_HUMIDITY,
     state_class=STATE_CLASS_MEASUREMENT,
     accuracy_decimals=0,
     entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
@@ -351,10 +353,14 @@ TARGET_HUMIDITY_SENSOR_SCHEMA = sensor.sensor_schema(
 FUNCTIONS_SENSOR_SCHEMA = text_sensor.text_sensor_schema(FunctionsSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsSensor)}
 )
-FUNCTIONS_BUTTON_SCHEMA = button.button_schema(FunctionsButton).extend(
+FUNCTIONS_BUTTON_SCHEMA = button.button_schema(
+    FunctionsButton, entity_category=ENTITY_CATEGORY_CONFIG
+).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsButton)}
 )
-FUNCTIONS_NUMBER_SCHEMA = number.number_schema(FunctionsNumber).extend(
+FUNCTIONS_NUMBER_SCHEMA = number.number_schema(
+    FunctionsNumber, entity_category=ENTITY_CATEGORY_CONFIG
+).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsNumber)}
 )
 SUB_MODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(SubModSensor).extend(
@@ -364,14 +370,18 @@ AUTO_SUB_MODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(AutoSubModSensor).e
     {cv.GenerateID(CONF_ID): cv.declare_id(AutoSubModSensor)}
 )
 
-ERROR_CODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(ErrorCodeSensor).extend(
+ERROR_CODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(
+    ErrorCodeSensor, entity_category=ENTITY_CATEGORY_DIAGNOSTIC
+).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(ErrorCodeSensor)}
 )
 
 REMOTE_TEMP_SOURCE_SCHEMA = cv.Schema(
     {
         cv.Required(CONF_REMOTE_TEMP_SOURCE_SENSOR_ID): cv.use_id(sensor.Sensor),
-        cv.Optional(CONF_REMOTE_TEMP_SOURCE_INFO): text_sensor.text_sensor_schema(RemoteTempSourceInfo).extend(
+        cv.Optional(CONF_REMOTE_TEMP_SOURCE_INFO): text_sensor.text_sensor_schema(
+            RemoteTempSourceInfo, entity_category=ENTITY_CATEGORY_DIAGNOSTIC
+        ).extend(
             {cv.GenerateID(CONF_ID): cv.declare_id(RemoteTempSourceInfo)}
         ),
     }
@@ -412,7 +422,9 @@ HVAC_OPTION_SWITCH_SCHEMA = switch.switch_schema(HVACOptionSwitch).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(HVACOptionSwitch)}
 )
 
-HARDWARE_SETTING_ITEM_SCHEMA = select.select_schema(HardwareSettingSelect).extend(
+HARDWARE_SETTING_ITEM_SCHEMA = select.select_schema(
+    HardwareSettingSelect, entity_category=ENTITY_CATEGORY_CONFIG
+).extend(
     {
         cv.Required(CONF_CODE): cv.int_range(min=101, max=128),
         cv.Required(CONF_OPTIONS): cv.Schema({cv.int_range(min=1, max=3): cv.string}),
