@@ -519,7 +519,7 @@ namespace esphome {
         bool installer_mode_effective_{ false };
         bool installer_mode_fallback_done_{ false };
 
-        bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (nécessite conversion ×3.412)
+        bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (conversion ×3600/1055.056 ≈ ×3.412)
         bool supports_dual_setpoint_ = false;
         int horizontal_vanes_{ 1 }; // Kept for legacy logging if needed, or can be removed if unused.
         VaneType vane_type_{ VaneType::STANDARD };
