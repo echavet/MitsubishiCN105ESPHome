@@ -61,7 +61,7 @@ float CN105Climate::calculateTemperatureSetting(float setting) {
  */
 float CN105Climate::convert_input_power_to_W(float raw_input_power) {
     if (power_unit_is_btu_) {
-        static constexpr float conv_factor = 3600.0f / 1055.05558262f;
+        static constexpr float conv_factor = 3600.0f / 1055.05585262f;
         return raw_input_power * conv_factor;
     }
     return raw_input_power;  // already in Watts

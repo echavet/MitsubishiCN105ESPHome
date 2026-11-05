@@ -126,7 +126,7 @@ void CN105Climate::getDataFromResponsePacket() {
     if (this->scheduler_.process_response(code)) {
         return;
     }
-    // Sinon, switch pour les cas non gÃÂ©rÃÂ©s par l'orchestrateur
+    // Sinon, switch pour les cas non gérés par l'orchestrateur
     switch (code) {
 
     case 0x04:
