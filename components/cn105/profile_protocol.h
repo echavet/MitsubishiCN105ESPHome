@@ -1,7 +1,6 @@
 #pragma once
 #include "cn105_protocol.h"
 #include "cn105_types.h"
-#include "localization.h"
 #include <cstdio>
 
 namespace esphome::cn105 {
@@ -37,8 +36,7 @@ struct CommonProtocol {
         target.currentStatus.runtimeHours = status.runtimeHours;
         target.currentStatus.roomTemperature = status.roomTemperature;
         target.currentStatus.outsideAirTemperature = status.outsideAirTemperature;
-        target.current_temperature =
-            target.fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(target.currentStatus.roomTemperature);
+        target.setCurrentTemperature(target.currentStatus.roomTemperature);
 
         target.updateAction();
         target.publish_state();

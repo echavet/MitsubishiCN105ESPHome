@@ -510,6 +510,9 @@ struct StatusTarget {
     Sensor* kwh_sensor_ = nullptr;
     Sensor* runtime_hours_sensor_ = nullptr;
     Sensor* outside_air_temperature_sensor_ = nullptr;
+    void setCurrentTemperature(float temperature) {
+        current_temperature = fahrenheitSupport_.normalizeHeatpumpTemperatureToUiTemperature(temperature);
+    }
     void updateAction() { ++action_updates; }
     void publish_state() { ++climate_publishes; }
 };
