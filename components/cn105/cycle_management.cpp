@@ -44,7 +44,8 @@ void cycleManagement::cycleStarted() {
 void cycleManagement::cycleEnded(bool timedOut) {
     cycleRunning = false;
 
-    if (lastCompleteCycleMs < CUSTOM_MILLIS) {    // we check this because of defering mecanism
+    // signed delta is millis()-rollover safe; > 0 means the deferred timestamp is in the past
+    if ((int32_t)(CUSTOM_MILLIS - lastCompleteCycleMs) > 0) {    // we check this because of defering mecanism
         // a complete cycle is done
         lastCompleteCycleMs = CUSTOM_MILLIS;      // to prevent next inteval from ticking too soon
     }
@@ -55,11 +56,12 @@ void cycleManagement::cycleEnded(bool timedOut) {
 }
 
 bool cycleManagement::hasUpdateIntervalPassed(unsigned int update_interval) {
-    if (CUSTOM_MILLIS < lastCompleteCycleMs) return false;      // must be checked because operands are they are unsigned
-    return (CUSTOM_MILLIS - lastCompleteCycleMs) > update_interval;
+    // signed delta handles both millis() rollover (~49.7 days) and a deferred (future) lastCompleteCycleMs
+    int32_t elapsed = (int32_t)(CUSTOM_MILLIS - lastCompleteCycleMs);
+    return elapsed > (int32_t)update_interval;
 }
 
 bool cycleManagement::doesCycleTimeOut(unsigned int update_interval) {
-    if (CUSTOM_MILLIS < lastCycleStartMs) return false;         // must be checked because operands are they are unsigned
-    return (CUSTOM_MILLIS - lastCycleStartMs) > (2 * update_interval) + 1000;
+    int32_t elapsed = (int32_t)(CUSTOM_MILLIS - lastCycleStartMs);   // rollover safe
+    return elapsed > (int32_t)((2 * update_interval) + 1000);
 }
