@@ -94,13 +94,12 @@ void HeatPumpProfile::decode_settings() {
     }
 
     // --- START OF MODIFIED SECTION - Reverted widevane section back to more or less original state
-    if ((hp_.data[10] != 0) && (hp_.traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL))) {    // wideVane is not always supported
-        uint8_t wideVaneByte = hp_.data[10] & 0x0F;
-        auto wideVane_opt = cn105_protocol::lookup_value_opt(WIDEVANE_MAP, WIDEVANE, 8, wideVaneByte);
-        if (wideVane_opt) {
-            receivedSettings.wideVane = *wideVane_opt;
+    if (hp_.traits_.supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL)) {    // wideVane is not always supported
+        const char* wideVane = HeatPumpProtocol::decode_wide_vane(hp_.data[10]);
+        if (wideVane != nullptr) {
+            receivedSettings.wideVane = wideVane;
         } else {
-            ESP_LOGW("Decoder", "Unknown wideVane byte 0x%02X — keeping previous value", wideVaneByte);
+            ESP_LOGW("Decoder", "Unknown wideVane byte 0x%02X — keeping previous value", hp_.data[10]);
             // Guard against null: on the first settings packet currentSettings.wideVane
             // is still nullptr, and an unknown byte here would otherwise propagate a null
             // pointer into the %s log below (and downstream), panicking the ESP32.
@@ -388,7 +387,7 @@ void HeatPumpProfile::checkWideVaneSettings(heatpumpSettings& settings, bool upd
 
     /* ******** HANDLE MITSUBISHI VANE CHANGES ********
      * VANE_MAP[7]        = {"AUTO", "1", "2", "3", "4", "5", "SWING"};
-     * WIDEVANE_MAP[8]   = { "<<", "<",  "|",  ">",  ">>", "<>", "SWING", "AIRFLOW CONTROL" }
+     * WIDEVANE_MAP[9]   = { "<<", "<",  "|",  ">",  ">>", "<>", "SWING", "AIRFLOW CONTROL", "AUTO" }
      */
 
     if (hp_.hasChanged(hp_.currentSettings.wideVane, settings.wideVane, "wideVane")) {    // widevane setting change ?
@@ -1185,7 +1184,7 @@ float HeatPumpProfile::calculate_temperature_setting(float setting) const {
 }
 
 void HeatPumpProfile::set_wide_vane_setting(const char* setting) {
-    int index = hp_.lookupByteMapIndex(WIDEVANE_MAP, 8, setting);
+    int index = hp_.lookupByteMapIndex(WIDEVANE_MAP, 9, setting);
     if (index > -1) {
         hp_.wantedSettings.wideVane = WIDEVANE_MAP[index];
     } else {

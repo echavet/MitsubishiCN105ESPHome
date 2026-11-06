@@ -81,6 +81,12 @@ struct HeatPumpProtocol {
     static float normalize_remote_temperature(float setting, FahrenheitSupport& fahrenheit) {
         return setting > 0 ? fahrenheit.normalizeUiTemperatureToHeatpumpTemperature(setting) : setting;
     }
+    // Settings byte 10. Returns nullptr for a byte the table does not know.
+    static const char* decode_wide_vane(uint8_t raw) {
+        if (raw == 0x00) return WIDEVANE_MAP[8];  // AUTO
+        const auto value = cn105_protocol::lookup_value_opt(WIDEVANE_MAP, WIDEVANE, 8, static_cast<uint8_t>(raw & 0x0F));
+        return value ? *value : nullptr;
+    }
     static bool can_control_airflow(const heatpumpSettings& current) {
         return current.wideVane != nullptr && std::strcmp(current.wideVane, WIDEVANE_MAP[7]) == 0;
     }
@@ -187,7 +193,7 @@ struct HeatPumpProtocol {
         field(vane_for_packet(wanted), VANE_MAP, VANE, 7, 12, 6, CONTROL_PACKET_1[4]);
         if (wanted.wideVane != nullptr) {
             const char* setting = wide_vane_setting(wanted, current);
-            const int index = setting != nullptr ? cn105_protocol::lookup_index(WIDEVANE_MAP, 8, setting) : -1;
+            const int index = setting != nullptr ? cn105_protocol::lookup_index(WIDEVANE_MAP, 9, setting) : -1;
             if (index >= 0) {
                 packet[18] = WIDEVANE[index] | (wide_adjust ? 0x80 : 0x00);
                 packet[7] |= CONTROL_PACKET_2[0];
