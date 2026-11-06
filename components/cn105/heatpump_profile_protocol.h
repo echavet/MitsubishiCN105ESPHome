@@ -129,8 +129,16 @@ struct HeatPumpProtocol {
             setting = std::round(2.0f * setting) / 2.0f;
             return setting < 16.0f ? 16.0f : (setting > 31.0f ? 31.0f : setting);
         }
-        if (!encoding_b)
-            return cn105_protocol::lookup_index(TEMP_MAP, 16, static_cast<int>(setting + 0.5)) > -1 ? setting : TEMP_MAP[0];
+        if (!encoding_b) {
+            // Encoding A: TEMP_MAP is stored 31..16. Clamp to that range before lookup
+            // so a miss never falls through to TEMP_MAP[0] (31°C) for a low setpoint.
+            if (std::isnan(setting))
+                return setting;
+            setting = setting < 16.0f ? 16.0f : (setting > 31.0f ? 31.0f : setting);
+            if (cn105_protocol::lookup_index(TEMP_MAP, 16, static_cast<int>(setting + 0.5)) > -1)
+                return setting;
+            return setting;  // already clamped to the nearer bound of 16–31
+        }
         setting = std::round(2.0f * setting) / 2.0f;
         return setting < 10 ? 10 : (setting > 31 ? 31 : setting);
     }
