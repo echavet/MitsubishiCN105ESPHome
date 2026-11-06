@@ -1,5 +1,6 @@
 #include "cn105.h"
 #include "Globals.h"
+#include "heatpump_profile_protocol.h"
 
 #include <algorithm>
 #include <cmath>
@@ -240,9 +241,10 @@ void CN105Climate::setAirflowControlSetting(const char* setting) {
 void CN105Climate::set_remote_temperature(float setting) {
     if (!this->profile_->accepts_remote_temperature(setting)) return;
     // Each accepted sample refreshes the watchdog, even if its value is unchanged (#474).
+    setting = cn105::HeatPumpProtocol::normalize_remote_temperature(setting, this->fahrenheitSupport_);
     this->remoteTemperature_ = setting;
     this->shouldSendExternalTemperature_ = true;
-    ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", setting);
+    ESP_LOGD(LOG_REMOTE_TEMP, "setting remote temperature to %f", this->remoteTemperature_);
     this->pingExternalTemperature();
     if (setting > 0) this->startRemoteTempKeepAlive();
     else this->stopRemoteTempKeepAlive();

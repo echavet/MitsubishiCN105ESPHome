@@ -214,43 +214,10 @@ void CN105Climate::handleConnectionSuccess() {
 
 
 void CN105Climate::statusChanged(heatpumpStatus status) {
-
     if (status != currentStatus) {
         this->debugStatus("received", status);
         this->debugStatus("current", currentStatus);
-
-
-        this->currentStatus.operating = status.operating;
-        this->currentStatus.compressorFrequency = status.compressorFrequency;
-        this->currentStatus.inputPower = status.inputPower;
-        this->currentStatus.kWh = status.kWh;
-        this->currentStatus.runtimeHours = status.runtimeHours;
-        this->currentStatus.roomTemperature = status.roomTemperature;
-        this->currentStatus.outsideAirTemperature = status.outsideAirTemperature;
-        this->setCurrentTemperature(this->currentStatus.roomTemperature);
-
-        this->updateAction();       // update action info on HA climate component
-        this->publish_state();
-
-        if (this->compressor_frequency_sensor_ != nullptr) {
-            this->compressor_frequency_sensor_->publish_state(currentStatus.compressorFrequency);
-        }
-
-        if (this->input_power_sensor_ != nullptr) {
-            this->input_power_sensor_->publish_state(currentStatus.inputPower);
-        }
-
-        if (this->kwh_sensor_ != nullptr) {
-            this->kwh_sensor_->publish_state(currentStatus.kWh);
-        }
-
-        if (this->runtime_hours_sensor_ != nullptr) {
-            this->runtime_hours_sensor_->publish_state(currentStatus.runtimeHours);
-        }
-
-        if (this->outside_air_temperature_sensor_ != nullptr) {
-            this->outside_air_temperature_sensor_->publish_state(currentStatus.outsideAirTemperature);
-        }
+        cn105::CommonProtocol::apply_status(*this, status);
     } // else no change
 }
 

@@ -389,6 +389,7 @@ namespace esphome {
         void setHeatpumpConnected(bool state);
 
     private:
+        friend struct cn105::CommonProtocol;
         friend class cn105::HeatPumpProfile;
         friend class cn105::LossnayProfile;
         std::unique_ptr<cn105::Cn105ProtocolProfile> profile_;

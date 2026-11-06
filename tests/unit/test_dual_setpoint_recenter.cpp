@@ -236,6 +236,48 @@ TEST(DualSetpointRecenterTest, HeatCool_NaNBounds_InitializedAroundSetpoint) {
     EXPECT_FLOAT_EQ(sim.getHigh(), 23.0f);
 }
 
+// Regression test for issue #745: when Fahrenheit compatibility is enabled and
+// dual setpoints start as NaN, getTargetTemperatureHigh/Low() must return NaN
+// so that reconcile_target_temperatures() initializes the missing bound(s) in
+// HEAT and AUTO modes rather than leaving high_ui as NaN.
+TEST(DualSetpointRecenterTest, Fahrenheit_NaNBounds_InitializedInHeatAndAuto) {
+    for (auto mode : {FahrenheitMode::STANDARD, FahrenheitMode::ALT, FahrenheitMode::MSZ_A24NA}) {
+        {
+            BandSim sim;
+            sim.fahr.setUseFahrenheitSupportMode(mode);
+
+            sim.updateFromSettingsFixed(CLIMATE_MODE_HEAT, 21.0f);
+
+            EXPECT_FALSE(std::isnan(sim.low_ui));
+            EXPECT_FALSE(std::isnan(sim.high_ui));
+            EXPECT_NEAR(sim.getLow(), 21.0f, 1e-4f);
+            EXPECT_NEAR(sim.getHigh(), 21.0f, 1e-4f);
+        }
+        {
+            BandSim sim;
+            sim.fahr.setUseFahrenheitSupportMode(mode);
+
+            sim.updateFromSettingsFixed(CLIMATE_MODE_AUTO, 21.0f);
+
+            EXPECT_FALSE(std::isnan(sim.low_ui));
+            EXPECT_FALSE(std::isnan(sim.high_ui));
+            EXPECT_NEAR(sim.getLow(), 19.0f, 1e-4f);
+            EXPECT_NEAR(sim.getHigh(), 23.0f, 1e-4f);
+        }
+        {
+            BandSim sim;
+            sim.fahr.setUseFahrenheitSupportMode(mode);
+            sim.setLow(19.0f);
+
+            sim.updateFromSettingsFixed(CLIMATE_MODE_AUTO, 21.0f);
+
+            EXPECT_FALSE(std::isnan(sim.high_ui));
+            EXPECT_NEAR(sim.getLow(), 19.0f, 1e-4f);
+            EXPECT_NEAR(sim.getHigh(), 21.0f, 1e-4f);
+        }
+    }
+}
+
 // ========================================================
 // The ratchet itself, pinned: with the PRE-FIX dispatch the same scenario
 // creeps +0.5°C per pass on both bounds (this is what issue #673 observed

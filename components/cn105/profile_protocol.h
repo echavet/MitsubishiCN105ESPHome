@@ -20,6 +20,37 @@ struct CommonProtocol {
         return status;
     }
 
+    template<typename Sensor>
+    static void publish_if_present(Sensor* sensor, float value) {
+        if (sensor != nullptr) sensor->publish_state(value);
+    }
+
+    template<typename Target>
+    static bool apply_status(Target& target, const heatpumpStatus& status) {
+        if (status == target.currentStatus) return false;
+
+        target.currentStatus.operating = status.operating;
+        target.currentStatus.compressorFrequency = status.compressorFrequency;
+        target.currentStatus.inputPower = status.inputPower;
+        target.currentStatus.kWh = status.kWh;
+        target.currentStatus.runtimeHours = status.runtimeHours;
+        target.currentStatus.roomTemperature = status.roomTemperature;
+        target.currentStatus.outsideAirTemperature = status.outsideAirTemperature;
+        target.setCurrentTemperature(target.currentStatus.roomTemperature);
+
+        target.updateAction();
+        target.publish_state();
+
+        publish_if_present(target.compressor_frequency_sensor_, target.currentStatus.compressorFrequency);
+        publish_if_present(target.input_power_sensor_, target.currentStatus.inputPower);
+        publish_if_present(target.kwh_sensor_, target.currentStatus.kWh);
+        publish_if_present(target.runtime_hours_sensor_, target.currentStatus.runtimeHours);
+        // Outside air temperature is a raw sensor reading and must not be
+        // mapped through the indoor thermostat Fahrenheit lookup table (#724).
+        publish_if_present(target.outside_air_temperature_sensor_, target.currentStatus.outsideAirTemperature);
+        return true;
+    }
+
     static std::string decode_error(const uint8_t* data) {
         // Bit 7 announces error-reporting availability, rather than an error.
         const uint8_t code = data[4] & 0x7F;
