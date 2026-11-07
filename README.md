@@ -344,7 +344,7 @@ climate:
       fan_mode: [AUTO, QUIET, LOW, MEDIUM, HIGH]
       swing_mode: ["OFF", VERTICAL]
       # Specify which options to display in horizontal_vane_select dropdown
-      # Defaults to all options: ["←←", "←", "|", "→", "→→", "←→", "SWING", "AIRFLOW CONTROL"]
+      # Defaults to all options: ["←←", "←", "|", "→", "→→", "←→", "SWING", "AIRFLOW CONTROL", "AUTO"]
       # Example to hide "←→" and "AIRFLOW CONTROL" if not supported by your unit:
       horizontal_vane_mode: ["←←", "←", "|", "→", "→→", SWING]
 ```
