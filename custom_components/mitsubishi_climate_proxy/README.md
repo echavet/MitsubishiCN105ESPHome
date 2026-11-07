@@ -39,6 +39,25 @@ climate:
 2.  Install "Mitsubishi Climate Proxy".
 3.  Restart Home Assistant.
 
+## Version 2026.11.1
+
+`manifest.json` version **2026.11.1** is the integration fix for HACS installs of GitHub release **2026.11.0**. That release shipped a config flow at version 2 without a migration handler, so existing entries (stored at version 1) stayed unloaded with `Migration handler not found` and the climate was unavailable. 2026.11.1 migrates those entries to version 2.
+
+The migration does not rewrite `entry_id`, `data`, `options`, or the entity registry. Home Assistant updates the entry version and `modified_at` only. Restart Home Assistant after installing the update. No ESP firmware flash is required, and this version does not replace the 2026.11.0 firmware tag.
+
+HACS treats every GitHub release of this repository as an integration update (`hacs.json` has `zip_release` false and the release has no integration-only asset). Publish **2026.11.1** as the next stable release for HACS to offer it. Installing 2026.11.0 again does not retry a fixed copy of that tag.
+
+### Downgrade after the migration has run
+
+Once Home Assistant has started on 2026.11.1, the stored entry version is 2.
+
+*   Installing **2026.11.0** again still matches config-flow version 2. Home Assistant does not ask for a migration handler, and the climate loads. That package is what failed for entries still at version 1; it does not undo a completed migration.
+*   Rolling back to **2026.5.1** or **2026.5.2** (config-flow version 1) refuses the entry (`version 2 is higher than the current version`) and the climate stays unavailable. The stored `data` is still readable by that code, which only uses `source` and `name`.
+
+Before this migration has run, rolling back from a failed 2026.11.0 startup to 2026.5.1 or 2026.5.2 is safe: the failed startup does not write the entry, so it is still version 1.
+
+To roll back to 2026.5.x after a successful migration, install that package and, with Home Assistant stopped, set each `mitsubishi_climate_proxy` entry's `version` back to `1` in `.storage/core.config_entries`. Do not delete the entry. Deleting it changes the entity id and the HomeKit accessory id.
+
 ## Configuration (UI Method - Recommended)
 
 This integration now supports configuration directly via the Home Assistant user interface.
