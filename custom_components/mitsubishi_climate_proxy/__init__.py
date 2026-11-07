@@ -36,3 +36,27 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, ["climate"])
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Migrate a config entry to ConfigFlow.VERSION.
+
+    Version 2 only adds optional keys. Entries created by 2026.5.x keep their
+    data and options; the climate platform applies defaults for anything
+    absent. Home Assistant invokes this once and does not loop, so a version
+    1 entry has to land on version 2 in this call.
+
+    Downgrading the integration after this runs leaves the stored entry at
+    version 2. A package whose config flow is still version 1 then refuses to
+    set up. See the proxy README.
+    """
+    if config_entry.version == 1:
+        hass.config_entries.async_update_entry(config_entry, version=2)
+    elif config_entry.version != 2:
+        _LOGGER.error(
+            "Cannot migrate %s from unsupported version %s",
+            config_entry.title,
+            config_entry.version,
+        )
+        return False
+    return True
