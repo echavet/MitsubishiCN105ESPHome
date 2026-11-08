@@ -115,8 +115,13 @@ void CN105Climate::terminateCycle() {
     this->nbCompleteCycles_++;
 }
 void CN105Climate::getErrorInfoFromResponsePacket() {
-    if (this->error_code_sensor_ != nullptr)
-        this->error_code_sensor_->publish_state(this->profile_->decode_error(this->data));
+    if (this->error_code_sensor_ == nullptr) {
+        return;
+    }
+    std::string error = this->profile_->decode_error(this->data);
+    if (!this->error_code_sensor_->has_state() || this->error_code_sensor_->state != error) {
+        this->error_code_sensor_->publish_state(error);
+    }
 }
 
 void CN105Climate::getDataFromResponsePacket() {
