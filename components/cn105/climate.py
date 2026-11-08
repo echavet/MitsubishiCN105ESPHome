@@ -1,3 +1,5 @@
+import logging
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components.uptime.sensor import UptimeSecondsSensor
@@ -70,6 +72,8 @@ AUTO_LOAD = [
     "number",
 ]
 DEPENDENCIES = ["uart"]  # Garder uart ici aussi
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _esphome_version_tuple():
@@ -649,11 +653,14 @@ def to_code(config):
         # Configure the horizontal vane options
         horizontal_vane_options = supports.get(CONF_SUPPORTS_HORIZONTAL_VANE_MODE, [])
 
-        # Set the number of horizontal vanes (Legacy)
-        cg.add(var.set_horizontal_vanes(supports.get(CONF_HORIZONTAL_VANES, 1)))
-
-        # Set vane type (New)
+        # Set vane type (legacy "horizontal_vanes: 2" maps to split_horizontal)
         vane_type_conf = supports.get(CONF_VANE_TYPE, "standard")
+        if vane_type_conf == "standard" and supports.get(CONF_HORIZONTAL_VANES, 1) > 1:
+            vane_type_conf = "split_horizontal"
+        if vane_type_conf == "split_vertical":
+            _LOGGER.warning(
+                "vane_type: split_vertical is not implemented yet and behaves like 'standard' (see issue #505)"
+            )
         vane_type_val = VANE_TYPES.get(vane_type_conf, 0)
         vane_type_enum = cg.RawExpression(
             f"static_cast<esphome::CN105Climate::VaneType>({vane_type_val})"
