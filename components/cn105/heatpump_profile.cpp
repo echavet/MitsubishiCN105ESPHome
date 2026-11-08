@@ -222,7 +222,12 @@ bool HeatPumpProfile::decode_submode() {
             : STAGE_MAP[0];  // default to "IDLE" when no prior value exists
     }
 
-    auto sub_mode_opt = cn105_protocol::lookup_value_opt(SUB_MODE_MAP, SUB_MODE, 6, hp_.data[3]);
+    // Bitmask: the filter reminder bit (0x01) can stay set for weeks (#758)
+    uint8_t sub_mode_byte = hp_.data[3];
+    if (sub_mode_byte & 0xFE) {
+        sub_mode_byte &= 0xFE;
+    }
+    auto sub_mode_opt = cn105_protocol::lookup_value_opt(SUB_MODE_MAP, SUB_MODE, 6, sub_mode_byte);
     if (sub_mode_opt) {
         receivedSettings.sub_mode = *sub_mode_opt;
     } else {
@@ -686,7 +691,7 @@ void HeatPumpProfile::control_temperature() {
         } else {
             setting = hp_.getTargetTemperature();
         }
-        ESP_LOGD("control", "HEAT mode : getting temperature (low/target): %1.f", setting);
+        ESP_LOGD("control", "HEAT mode : getting temperature (low/target): %.1f", setting);
         break;
     case climate::CLIMATE_MODE_COOL:
         // Mode COOL : using high target temperature
@@ -695,7 +700,7 @@ void HeatPumpProfile::control_temperature() {
         } else {
             setting = hp_.getTargetTemperature();
         }
-        ESP_LOGD("control", "COOL mode : getting temperature (high/target): %1.f", setting);
+        ESP_LOGD("control", "COOL mode : getting temperature (high/target): %.1f", setting);
         break;
     case climate::CLIMATE_MODE_DRY:
         // Mode DRY : using high target temperature
@@ -704,7 +709,7 @@ void HeatPumpProfile::control_temperature() {
         } else {
             setting = hp_.getTargetTemperature();
         }
-        ESP_LOGD("control", "DRY mode : getting temperature (high/target): %1.f", setting);
+        ESP_LOGD("control", "DRY mode : getting temperature (high/target): %.1f", setting);
         break;
     default:
         // Other modes : use median temperature
@@ -713,7 +718,7 @@ void HeatPumpProfile::control_temperature() {
         } else {
             setting = hp_.getTargetTemperature();
         }
-        ESP_LOGD("control", "DEFAULT mode : getting temperature median:%1.f", setting);
+        ESP_LOGD("control", "DEFAULT mode : getting temperature median:%.1f", setting);
         break;
     }
 
