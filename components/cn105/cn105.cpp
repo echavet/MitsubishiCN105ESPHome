@@ -5,6 +5,10 @@
 #include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#if defined(USE_ESP_IDF) || (defined(ESPHOME_VERSION_CODE) && ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 10, 0))
+#include "esphome/components/uart/uart_component_esp_idf.h"
+#define CN105_HAS_IDF_UART 1
+#endif
 #endif
 
 using namespace esphome;
@@ -167,7 +171,7 @@ void CN105Climate::registerHardwareSettingsRequests() {
     InfoRequest r_funcs1("functions1", "Functions Part 1", 0x20, 3, 0, interval, LOG_FUNCTIONS_TAG);
     r_funcs1.onResponse = [this, check_and_disable](CN105Climate& self) {
         // Log the raw packet and decoded pairs even if the unit returns all zeros
-        self.hpPacketDebug(self.data, self.parser_.data_length(), "RX 0x20");
+        self.hpPacketDebug(self.parser_.raw(), self.parser_.frame_size(), "RX 0x20");
         if (check_and_disable(self, 0x20)) {
             ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 1 (via InfoRequest)");
         }
@@ -181,7 +185,7 @@ void CN105Climate::registerHardwareSettingsRequests() {
     InfoRequest r_funcs2("functions2", "Functions Part 2", 0x22, 3, 0, interval, LOG_FUNCTIONS_TAG);
     r_funcs2.onResponse = [this, check_and_disable](CN105Climate& self) {
         // Log the raw packet and decoded pairs even if the unit returns all zeros
-        self.hpPacketDebug(self.data, self.parser_.data_length(), "RX 0x22");
+        self.hpPacketDebug(self.parser_.raw(), self.parser_.frame_size(), "RX 0x22");
         if (check_and_disable(self, 0x22)) {
             ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 2 (via InfoRequest)");
             self.functionsArrived();
@@ -373,8 +377,6 @@ void CN105Climate::reconnectUART() {
     ESP_LOGD(TAG, "reconnectUART()");
     this->lastReconnectTimeMs = CUSTOM_MILLIS;
     this->disconnectUART();
-    // Disabled: Low-level UART fallback (ESP-IDF 5.4.x) can interfere with the
-    // handshake/fallback tests. We let UARTComponent generate the standard reset.
     this->force_low_level_uart_reinit();
     this->setupUART();
     this->sendFirstConnectionPacket();
@@ -416,12 +418,17 @@ bool CN105Climate::isHeatpumpConnectionActive() {
 void CN105Climate::force_low_level_uart_reinit() {
 #ifdef USE_ESP32
     // Low layer reset: reconfigure user control by UARTComponent
-    // We use the port passed by set_uart_port (fallback UART0 if unknown)
+#ifdef CN105_HAS_IDF_UART
+    // ESPHome skips the logger's UART when assigning ports, so ask for the real one
+    const uart_port_t port = static_cast<uart_port_t>(
+        static_cast<uart::IDFUARTComponent*>(this->parent_)->get_hw_serial_number());
+#else
     const uart_port_t port = (this->uart_port_ == 1) ? UART_NUM_1 :
 #ifdef UART_NUM_2
     (this->uart_port_ == 2) ? UART_NUM_2 :
 #endif
         UART_NUM_0;
+#endif
 
     ESP_LOGI(TAG, "Forcing low-level UART reinit on port %d (tx=%d, rx=%d)", (int)port, this->tx_pin_, this->rx_pin_);
 
