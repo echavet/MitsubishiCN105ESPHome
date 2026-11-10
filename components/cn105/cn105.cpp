@@ -80,7 +80,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart) :
 
     this->powerRequestWithoutResponses = 0;     // power request is not supported by all heatpump #112
 
-    this->remote_temp_timeout_ = 4294967295;    // uint32_t max
+    this->remote_temp_timeout_ = UINT32_MAX;
     this->generateExtraComponents();
     this->loopCycle.init();
     this->wantedSettings.resetSettings();
@@ -250,7 +250,7 @@ void CN105Climate::pingExternalTemperature() {
 
 void CN105Climate::set_remote_temp_timeout(uint32_t timeout) {
     this->remote_temp_timeout_ = timeout;
-    if (timeout == 4294967295) {
+    if (timeout == UINT32_MAX) {
         ESP_LOGI(LOG_REMOTE_TEMP, "set_remote_temp_timeout is set to never.");
     } else {
         //ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to %lu", timeout);
@@ -392,6 +392,8 @@ void CN105Climate::disconnectUART() {
     ESP_LOGD(TAG, "disconnectUART()");
     this->uart_setup_switch = false;
     this->setHeatpumpConnected(false);
+    cancel_timeout("checkFirstConnection");
+    cancel_timeout("checkInstallerConnection");
     // Legacy booleans removed — state managed by FSM (setHeatpumpConnected / transition_to_)
     this->firstRun = true;
     this->publish_state();

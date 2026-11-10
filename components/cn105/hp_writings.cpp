@@ -12,17 +12,14 @@ void CN105Climate::sendFirstConnectionPacket() {
     if (this->isUARTReady_()) {
         this->lastReconnectTimeMs = CUSTOM_MILLIS;          // marker to prevent to many reconnections
         this->setHeatpumpConnected(false);
+        cancel_timeout("checkInstallerConnection");         // just in case we attempt a reconnect before the timer expired
+        this->installer_connect_attempted_ = false;
+        this->installer_session_active_ = false;
         uint8_t packet[CONNECT_LEN];
         memcpy(packet, CONNECT, CONNECT_LEN);
 
-        // Choix du mode de handshake: standard (0x5A) ou installateur (0x5B)
-        packet[1] = this->installer_mode_effective_ ? 0x5B : 0x5A;
-        // CONNECT a un checksum pré-calculé dans la constante; si on modifie l'octet commande, on doit le recalculer.
-        packet[CONNECT_LEN - 1] = checkSum(packet, CONNECT_LEN - 1);
+        ESP_LOGI(LOG_CONN_TAG, "Sending the connection packet in Standard mode (0x%02X)...", packet[1]);
 
-        ESP_LOGI(LOG_CONN_TAG, "Envoi du paquet de connexion en mode %s (0x%02X)...", this->installer_mode_effective_ ? "Installateur" : "Standard", packet[1]);
-
-        // Détails des octets en DEBUG sur le tag de connexion
         this->hpPacketDebug(packet, CONNECT_LEN, LOG_CONN_TAG);
 
         this->writePacket(packet, CONNECT_LEN, false);      // checkIsActive=false because it's the first packet and we don't have any reply yet
@@ -33,18 +30,10 @@ void CN105Climate::sendFirstConnectionPacket() {
 
         // we wait for a 10s timeout to check if the hp has replied to connection packet
         this->set_timeout("checkFirstConnection", 10000, [this]() {
-            if (!this->isHeatpumpConnected()) {
-                ESP_LOGE(LOG_CONN_TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
-                // Fallback automatique: si le mode installateur est demandé mais que la PAC ignore 0x5B,
-                // on retente une fois en mode standard (0x5A) pour préserver la connectivité.
-                if (this->installer_mode_ && this->installer_mode_effective_ && !this->installer_mode_fallback_done_) {
-                    this->installer_mode_effective_ = false;
-                    this->installer_mode_fallback_done_ = true;
-                    ESP_LOGW(LOG_CONN_TAG, "No reply to installer handshake (0x5B). Falling back to standard handshake (0x5A).");
-                }
-                ESP_LOGI(LOG_CONN_TAG, "Reinitializing UART and trying to connect again...");
-                this->reconnectUART();
-            }});
+            ESP_LOGE(LOG_CONN_TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
+            ESP_LOGI(LOG_CONN_TAG, "Reinitializing UART and trying to connect again...");
+            this->reconnectUART();
+        });
 
     } else {
         ESP_LOGE(LOG_CONN_TAG, "UART doesn't seem to be connected...");
@@ -54,7 +43,26 @@ void CN105Climate::sendFirstConnectionPacket() {
     }
 }
 
+void CN105Climate::sendInstallerConnectPacket() {
+    uint8_t packet[INST_CONNECT_LEN];
+    memcpy(packet, INST_CONNECT, INST_CONNECT_LEN);
+    packet[INST_CONNECT_LEN - 1] = checkSum(packet, INST_CONNECT_LEN - 1);
 
+    ESP_LOGI(LOG_CONN_TAG, "Standard session established, upgrading with installer handshake (0x%02X)...", packet[1]);
+    this->hpPacketDebug(packet, INST_CONNECT_LEN, LOG_CONN_TAG);
+
+    this->installer_connect_attempted_ = true;
+    this->writePacket(packet, INST_CONNECT_LEN, false);
+    this->lastSend = CUSTOM_MILLIS;
+
+    this->set_timeout("checkInstallerConnection", 5000, [this]() {
+        ESP_LOGW(LOG_CONN_TAG, "No reply to installer handshake (0x5B). Staying on the standard session.");
+        // Even though the installer connect failed, user connect succeeded so start poll cycle if not already running.
+        if (!isHeatpumpConnected()) {
+            this->setHeatpumpConnected(true);
+        }
+    });
+}
 
 
 // void CN105Climate::statusChanged() {

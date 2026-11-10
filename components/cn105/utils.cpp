@@ -397,6 +397,8 @@ void CN105Climate::hpPacketDebug(const uint8_t* packet, unsigned int length, con
         case 0x42: label = "ACK/INFO"; break;  // Response/Info from HP
         case 0x61: label = "GET"; break;       // Request data from HP
         case 0x62: label = "RESPONSE"; break;  // Data response from HP
+        case 0x7A: label = "SUCCESS"; break;
+        case 0x7B: label = "SUCCESS_INST"; break;
         }
     }
 

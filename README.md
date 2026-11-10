@@ -241,7 +241,7 @@ The `remote_temperature_timeout` setting allows the unit to revert back to the i
 
 Recommended: start with `10s` and increase (e.g., `30s`) if you still miss early logs. A safety fallback starts anyway after 120s.
 
-`installer_mode` enables an extended CN105 connection handshake (CONNECT command `0x5B`) instead of the standard handshake (`0x5A`). Some indoor units (notably some ducted SEZ variants) may require this to unlock installer/service privileges so that Function Settings (ISU / `hardware_settings`) return real values instead of `0`. Default is `false` for maximum compatibility.
+`installer_mode` enables an extended CN105 connection handshake (CONNECT command `0x5B`) after a successful standard handshake (`0x5A`). Some indoor units (notably some ducted SEZ variants) may require this to unlock installer/service privileges so that Function Settings (ISU / `hardware_settings`) return real values instead of `0`. Default is `false` for maximum compatibility.
 
 `fahrenheit_compatibility` improves compatibility with HomeAssistant installations using Fahrenheit units. Mitsubishi uses a custom lookup table to convert F to C which doesn't correspond to the actual math in all cases. This can result in external thermostats and HomeAssistant "disagreeing" on what the current setpoint is. Setting this value to `standard` (or `alt` for alternative conversion tables) forces the component to use the same lookup tables, resulting in more consistent display of setpoints. For MSZ-A24NA and similar units, use `msz_a24na` to use the MSZ-A24NA Fahrenheit-to-Celsius table. Recommended for Fahrenheit users. (See https://github.com/echavet/MitsubishiCN105ESPHome/pull/298.)
 

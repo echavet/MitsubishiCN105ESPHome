@@ -270,22 +270,18 @@ namespace esphome {
 
         void controlFan();
         void controlSwing();
-        // Bootstrap connexion CN105 en loop() (ÃÂ©vite de perdre les tout premiers logs OTA)
+        // Bootstrap CN105 connection in loop() (avoids losing the very first OTA logs)
         void maybe_start_connection_();
 
-        // DÃÂ©lai de grÃÂ¢ce configurable avant d'envoyer CONNECT (pour laisser le flux OTA s'attacher)
+        // Configurable grace period before sending CONNECT (to let the OTA stream attach)
         void set_connection_bootstrap_delay(uint32_t delay_ms) { this->conn_bootstrap_delay_ms_ = delay_ms; }
 
-        // Mode installateur: utilise un handshake CONNECT ÃÂ©tendu (0x5B) au lieu du standard (0x5A)
+        // Installer mode: uses an extended CONNECT handshake (0x5B) after the standard one (0x5A)
         void set_installer_mode(bool mode) {
-            // Mode demandÃÂ© via YAML
             this->installer_mode_ = mode;
-            // Mode effectivement utilisÃÂ©: peut tomber en fallback vers standard si la PAC ignore 0x5B
-            this->installer_mode_effective_ = mode;
-            this->installer_mode_fallback_done_ = false;
         }
 
-        // UnitÃÂ© de puissance brute envoyÃÂ©e par la PAC: false = Watts (dÃÂ©faut), true = BTU/s
+        // Raw power unit sent by the heat pump: false = Watts (default), true = BTU/s
         void set_power_unit_is_btu(bool v) { this->power_unit_is_btu_ = v; }
 
         // Opt-in (supports.restore_setpoints): persist HEAT_COOL band across reboots
@@ -309,6 +305,7 @@ namespace esphome {
 
 
         void sendFirstConnectionPacket();
+        void sendInstallerConnectPacket();
         void terminateCycle();
         //bool can_proceed() override;
 
@@ -550,8 +547,8 @@ namespace esphome {
         uint32_t conn_bootstrap_delay_ms_{ 10000 };  // par dÃÂ©faut 10s
 
         bool installer_mode_{ false };
-        bool installer_mode_effective_{ false };
-        bool installer_mode_fallback_done_{ false };
+        bool installer_connect_attempted_{ false };
+        bool installer_session_active_{ false };
         bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (nÃÂ©cessite conversion ÃÂ3.412)
         bool supports_dual_setpoint_ = false;
         int horizontal_vanes_{ 1 }; // Kept for legacy logging if needed, or can be removed if unused.
