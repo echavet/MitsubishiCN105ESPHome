@@ -56,15 +56,15 @@ struct HeatPumpProtocol {
                 targets.setTargetTemperatureHigh(temperature + 2.0f);
             }
         } else {
-            if (std::isnan(targets.getTargetTemperatureLow())) targets.setTargetTemperatureLow(temperature);
-            if (std::isnan(targets.getTargetTemperatureHigh())) targets.setTargetTemperatureHigh(temperature);
-            const float theoretical = targets.calculateTemperatureSetting(
-                (targets.getTargetTemperatureLow() + targets.getTargetTemperatureHigh()) / 2.0f);
-            if (theoretical != temperature) {
-                const float delta = (targets.getTargetTemperatureHigh() - targets.getTargetTemperatureLow()) / 2.0f;
-                targets.setTargetTemperatureLow(theoretical - delta);
-                targets.setTargetTemperatureHigh(theoretical + delta);
-            }
+            // OFF / FAN_ONLY: keep the band for the next HEAT_COOL. Only write an edge
+            // that changed: the Fahrenheit table round trip is not idempotent (#673).
+            const float low = targets.getTargetTemperatureLow();
+            const float high = targets.getTargetTemperatureHigh();
+            const cn105_protocol::DualBand band = cn105_protocol::idle_dual_band(
+                low, high, temperature,
+                [&targets](float setting) { return targets.calculateTemperatureSetting(setting); });
+            if (std::isnan(low) || band.low != low) targets.setTargetTemperatureLow(band.low);
+            if (std::isnan(high) || band.high != high) targets.setTargetTemperatureHigh(band.high);
         }
     }
 
