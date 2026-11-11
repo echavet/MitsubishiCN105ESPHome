@@ -281,4 +281,20 @@ inline bool is_temp_byte_unused(uint8_t data11) {
     return data11 == 0x80;
 }
 
+// ════════════════════════════════════════════════════════════════
+// Hardware AUTO operating direction
+// ════════════════════════════════════════════════════════════════
+
+enum class AutoDirection { UNKNOWN, HEAT, COOL };
+
+/// Operating direction the unit reports while in hardware AUTO (HEAT_COOL / AUTO).
+/// @param auto_sub_mode  Decoded AUTO_SUB_MODE_MAP string (may be nullptr before the first 0x09 packet)
+/// @return HEAT or COOL for AUTO_HEAT / AUTO_COOL, UNKNOWN for anything else
+inline AutoDirection auto_direction(const char* auto_sub_mode) {
+    if (auto_sub_mode == nullptr) return AutoDirection::UNKNOWN;
+    if (std::strcmp(auto_sub_mode, "AUTO_HEAT") == 0) return AutoDirection::HEAT;
+    if (std::strcmp(auto_sub_mode, "AUTO_COOL") == 0) return AutoDirection::COOL;
+    return AutoDirection::UNKNOWN;
+}
+
 }  // namespace cn105_protocol

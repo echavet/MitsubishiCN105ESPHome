@@ -46,6 +46,7 @@ add_executable(cn105_tests
     test_mode_preservation.cpp
     test_vane_setpoint_persistence.cpp
     test_climate_action.cpp
+    test_auto_direction.cpp
 )
 
 target_link_libraries(cn105_tests
