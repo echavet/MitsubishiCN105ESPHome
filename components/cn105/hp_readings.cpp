@@ -521,35 +521,35 @@ void CN105Climate::processCommand() {
     case 0x62:  /* packet contains data (room °C, settings, timer, status, or functions...)*/
         this->getDataFromResponsePacket();
         break;
-    case 0x7a:  // Connection success (standard)
+    case 0x7a: { // Connection success (standard)
         ESP_LOGI(LOG_CONN_TAG, "--> Heatpump replied: connection success (User, 0x%02X)! <--",
             this->parser_.command());
         this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
         this->loopCycle.lastCompleteCycleMs = CUSTOM_MILLIS;
         this->currentSettings.resetSettings();      // each time we connect, we need to reset current setting to force a complete sync with ha component state and receievdSettings
         this->currentRunStates.resetSettings();
-        cancel_timeout("checkFirstConnection");
-        if (this->installer_mode_) {
-            this->sendInstallerConnectPacket();
-        } else {
-            this->setHeatpumpConnected(true);
-        }
+        const auto decision = cn105_protocol::handshake_on_standard_reply(this->installer_mode_);
+        if (decision.cancel_first_timeout) cancel_timeout("checkFirstConnection");
+        if (decision.send_installer) this->sendInstallerConnectPacket();
+        if (decision.mark_connected) this->setHeatpumpConnected(true);
         break;
-    case 0x7b:  // Connection success (installer upgrade)
+    }
+    case 0x7b: { // Connection success (installer upgrade)
         this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
-        if (this->installer_connect_attempted_) {
+        const auto decision = cn105_protocol::handshake_on_installer_reply(
+            this->installer_connect_attempted_, this->isHeatpumpConnected());
+        if (decision.session_active) {
             ESP_LOGI(LOG_CONN_TAG, "--> Heatpump replied: installer session active (0x%02X)! <--",
                 this->parser_.command());
             this->installer_session_active_ = true;
-            cancel_timeout("checkInstallerConnection");
+            if (decision.cancel_installer_timeout) cancel_timeout("checkInstallerConnection");
             // Now that the installer connect handshake has completed, start poll cycle if not already running.
-            if (!isHeatpumpConnected()) {
-                this->setHeatpumpConnected(true);
-            }
+            if (decision.mark_connected) this->setHeatpumpConnected(true);
         } else {
             ESP_LOGD(LOG_CONN_TAG, "Unexpected installer connect reply, ignoring");
         }
         break;
+    }
     default:
         break;
     }

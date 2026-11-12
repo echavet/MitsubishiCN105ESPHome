@@ -29,7 +29,7 @@ void CN105Climate::sendFirstConnectionPacket() {
         this->nbHeatpumpConnections_++;
 
         // we wait for a 10s timeout to check if the hp has replied to connection packet
-        this->set_timeout("checkFirstConnection", 10000, [this]() {
+        this->set_timeout("checkFirstConnection", cn105_protocol::kFirstConnectTimeoutMs, [this]() {
             ESP_LOGE(LOG_CONN_TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
             ESP_LOGI(LOG_CONN_TAG, "Reinitializing UART and trying to connect again...");
             this->reconnectUART();
@@ -55,10 +55,10 @@ void CN105Climate::sendInstallerConnectPacket() {
     this->writePacket(packet, INST_CONNECT_LEN, false);
     this->lastSend = CUSTOM_MILLIS;
 
-    this->set_timeout("checkInstallerConnection", 5000, [this]() {
+    this->set_timeout("checkInstallerConnection", cn105_protocol::kInstallerConnectTimeoutMs, [this]() {
         ESP_LOGW(LOG_CONN_TAG, "No reply to installer handshake (0x5B). Staying on the standard session.");
         // Even though the installer connect failed, user connect succeeded so start poll cycle if not already running.
-        if (!isHeatpumpConnected()) {
+        if (cn105_protocol::handshake_on_installer_timeout(this->isHeatpumpConnected()).mark_connected) {
             this->setHeatpumpConnected(true);
         }
     });
