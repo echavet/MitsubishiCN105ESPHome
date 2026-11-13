@@ -12,9 +12,6 @@ void CN105Climate::sendFirstConnectionPacket() {
     if (this->isUARTReady_()) {
         this->lastReconnectTimeMs = CUSTOM_MILLIS;          // marker to prevent to many reconnections
         this->setHeatpumpConnected(false);
-        cancel_timeout("checkInstallerConnection");         // just in case we attempt a reconnect before the timer expired
-        this->installer_connect_attempted_ = false;
-        this->installer_session_active_ = false;
         uint8_t packet[CONNECT_LEN];
         memcpy(packet, CONNECT, CONNECT_LEN);
         packet[3] = this->profile_->id();
@@ -29,12 +26,9 @@ void CN105Climate::sendFirstConnectionPacket() {
         this->lastConnectRqTimeMs = CUSTOM_MILLIS;
         this->nbHeatpumpConnections_++;
 
-        // we wait for a 10s timeout to check if the hp has replied to connection packet
-        this->set_timeout("checkFirstConnection", cn105_protocol::kFirstConnectTimeoutMs, [this]() {
-            ESP_LOGE(LOG_CONN_TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
-            ESP_LOGI(LOG_CONN_TAG, "Reinitializing UART and trying to connect again...");
-            this->reconnectUART();
-        });
+        // Arms the 0x7A reply timeout (reconnects if the heatpump stays silent) and
+        // drops any stale installer handshake state from a previous attempt.
+        this->handshake_.on_connect_sent();
 
     } else {
         ESP_LOGE(LOG_CONN_TAG, "UART doesn't seem to be connected...");
@@ -53,17 +47,8 @@ void CN105Climate::sendInstallerConnectPacket() {
     ESP_LOGI(LOG_CONN_TAG, "Standard session established, upgrading with installer handshake (0x%02X), profile 0x%02X...", packet[1], packet[3]);
     this->hpPacketDebug(packet, INST_CONNECT_LEN, LOG_CONN_TAG);
 
-    this->installer_connect_attempted_ = true;
     this->writePacket(packet, INST_CONNECT_LEN, false);
     this->lastSend = CUSTOM_MILLIS;
-
-    this->set_timeout("checkInstallerConnection", cn105_protocol::kInstallerConnectTimeoutMs, [this]() {
-        ESP_LOGW(LOG_CONN_TAG, "No reply to installer handshake (0x5B). Staying on the standard session.");
-        // Even though the installer connect failed, user connect succeeded so start poll cycle if not already running.
-        if (cn105_protocol::handshake_on_installer_timeout(this->isHeatpumpConnected()).mark_connected) {
-            this->setHeatpumpConnected(true);
-        }
-    });
 }
 
 

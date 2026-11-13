@@ -42,10 +42,12 @@ void CN105Climate::processDataPacket() {
 
     this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), "READ");
 
-    // During handshake, log every received frame for diagnostics
-    if (!this->isHeatpumpConnected()) {
+    // During handshake, log every received frame for diagnostics. Handshake replies are
+    // logged even when connected, so stray ones (e.g. a late 0x7B) show up in the log.
+    const uint8_t command = this->parser_.command();
+    if (!this->isHeatpumpConnected() || command == 0x7A || command == 0x7B) {
         ESP_LOGD(LOG_CONN_TAG, "RX during handshake (cmd=0x%02X len=%d)",
-            this->parser_.command(), this->parser_.data_length());
+            command, this->parser_.data_length());
         this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
     }
 
@@ -60,8 +62,7 @@ void CN105Climate::processDataPacket() {
         ESP_LOGW("chkSum", "KO -> checksum mismatch (cmd=0x%02X len=%d)",
             this->parser_.command(), this->parser_.data_length());
         if (!this->isHeatpumpConnected()) {
-            ESP_LOGD(LOG_CONN_TAG, "Checksum KO during handshake");
-            this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
+            ESP_LOGD(LOG_CONN_TAG, "Checksum KO during handshake");  // frame already dumped above
         }
     }
 }
@@ -177,22 +178,21 @@ void CN105Climate::processCommand() {
         this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_ACK);
         this->updateSuccess();
         break;
-
     case 0x62:  /* packet contains data (room °C, settings, timer, status, or functions...)*/
         this->getDataFromResponsePacket();
         break;
     case 0x7a:  // Standard handshake
         if (this->profile_->accepts_handshake(this->parser_.command(), this->parser_.raw()[3])) {
-            this->handleConnectionSuccess();
+            this->handshake_.on_standard_reply();
         } else {
             ESP_LOGW(LOG_CONN_TAG, "Ignoring unexpected handshake response for %s", this->profile_->name());
         }
         break;
     case 0x7b:  // Installer handshake
         if (this->profile_->accepts_handshake(this->parser_.command(), this->parser_.raw()[3])) {
-            this->handleInstallerConnectionSuccess();
+            this->handshake_.on_installer_reply();
         } else {
-            ESP_LOGW(LOG_CONN_TAG, "Ignoring unexpected handshake response for %s", this->profile_->name());
+            ESP_LOGW(LOG_CONN_TAG, "Ignoring unexpected installer handshake response for %s", this->profile_->name());
         }
         break;
     default:
@@ -200,36 +200,38 @@ void CN105Climate::processCommand() {
     }
 }
 
-void CN105Climate::handleConnectionSuccess() {
-    ESP_LOGI(LOG_CONN_TAG, "--> %s replied: connection success (User, 0x%02X)! <--",
-        this->profile_->name(),
-        this->parser_.command());
-    this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
-    this->loopCycle.lastCompleteCycleMs = CUSTOM_MILLIS;
-    // Reset cached settings so the first read after reconnect performs a full sync.
-    this->currentSettings.resetSettings();
-    this->currentRunStates.resetSettings();
-    this->profile_->reset();
-    const auto decision = cn105_protocol::handshake_on_standard_reply(this->installer_mode_);
-    if (decision.cancel_first_timeout) cancel_timeout("checkFirstConnection");
-    if (decision.send_installer) this->sendInstallerConnectPacket();
-    if (decision.mark_connected) this->setHeatpumpConnected(true);
-}
-
-void CN105Climate::handleInstallerConnectionSuccess() {
-    this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
-    const auto decision = cn105_protocol::handshake_on_installer_reply(
-        this->installer_connect_attempted_, this->isHeatpumpConnected());
-    if (decision.session_active) {
+void CN105Climate::onHandshakeEvent(cn105::HandshakeEvent event) {
+    using cn105::HandshakeEvent;
+    switch (event) {
+    case HandshakeEvent::SESSION_STARTED:
+        ESP_LOGI(LOG_CONN_TAG, "--> %s replied: connection success (User, 0x%02X)! <--",
+            this->profile_->name(),
+            this->parser_.command());
+        this->loopCycle.lastCompleteCycleMs = CUSTOM_MILLIS;
+        // Reset cached settings so the first read after reconnect performs a full sync.
+        this->currentSettings.resetSettings();
+        this->currentRunStates.resetSettings();
+        this->profile_->reset();
+        break;
+    case HandshakeEvent::INSTALLER_SKIPPED:
+        ESP_LOGI(LOG_CONN_TAG, "Skipping installer handshake (0x5B): the unit declined it earlier this boot.");
+        break;
+    case HandshakeEvent::INSTALLER_TIMEOUT:
+        ESP_LOGW(LOG_CONN_TAG, "No reply to installer handshake (0x5B). Staying on the standard session until reboot.");
+        // Update lastResponseMs so we don't get a timeout and reconnect.
+        this->lastResponseMs = CUSTOM_MILLIS;
+        break;
+    case HandshakeEvent::INSTALLER_ACTIVE:
         ESP_LOGI(LOG_CONN_TAG, "--> %s replied: installer session active (0x%02X)! <--",
             this->profile_->name(),
             this->parser_.command());
-        this->installer_session_active_ = true;
-        if (decision.cancel_installer_timeout) cancel_timeout("checkInstallerConnection");
-        // Now that the installer connect handshake has completed, start poll cycle if not already running.
-        if (decision.mark_connected) this->setHeatpumpConnected(true);
-    } else {
-        ESP_LOGD(LOG_CONN_TAG, "Ignoring unexpected installer handshake response for %s", this->profile_->name());
+        break;
+    case HandshakeEvent::UNEXPECTED_STANDARD:
+        ESP_LOGW(LOG_CONN_TAG, "Ignoring stray standard handshake reply (0x7A) from %s: no CONNECT (0x5A) pending", this->profile_->name());
+        break;
+    case HandshakeEvent::UNEXPECTED_INSTALLER:
+        ESP_LOGW(LOG_CONN_TAG, "Ignoring stray installer handshake reply (0x7B) from %s: no installer CONNECT (0x5B) pending", this->profile_->name());
+        break;
     }
 }
 

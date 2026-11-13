@@ -42,7 +42,21 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart, bool lossnay) :
         [this]() { this->terminateCycle(); },
         // context_callback: Returns 'this' for the 'canSend' and 'onResponse' callbacks.
         [this]() -> CN105Climate* { return this; }
-    ) {
+    ),
+    handshake_(cn105::HandshakeHooks{
+        [this]() { this->sendInstallerConnectPacket(); },
+        [this](const char* name, uint32_t timeout_ms, std::function<void()> callback) {
+            this->set_timeout(name, timeout_ms, std::move(callback));
+        },
+        [this](const char* name) { this->cancel_timeout(name); },
+        [this]() { this->setHeatpumpConnected(true); },
+        [this]() {
+            ESP_LOGE(LOG_CONN_TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
+            ESP_LOGI(LOG_CONN_TAG, "Reinitializing UART and trying to connect again...");
+            this->reconnectUART();
+        },
+        [this](cn105::HandshakeEvent event) { this->onHandshakeEvent(event); }
+    }) {
 
     // Current temperature + action via version-shimmed ClimateTraits API (#733).
     cn105_traits_add_current_temp_and_action(this->traits_);
@@ -363,10 +377,7 @@ void CN105Climate::disconnectUART() {
     ESP_LOGD(TAG, "disconnectUART()");
     this->uart_setup_switch = false;
     this->setHeatpumpConnected(false);
-    this->installer_connect_attempted_ = false;
-    this->installer_session_active_ = false;
-    cancel_timeout("checkFirstConnection");
-    cancel_timeout("checkInstallerConnection");
+    this->handshake_.on_disconnect();
     // Legacy booleans removed — state managed by FSM (setHeatpumpConnected / transition_to_)
     this->firstRun = true;
     this->publish_state();

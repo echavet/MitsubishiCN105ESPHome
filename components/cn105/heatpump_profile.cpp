@@ -522,45 +522,32 @@ void HeatPumpProfile::apply_wanted_settings() {
 }
 
 void HeatPumpProfile::control_mode() {
-
     switch (hp_.mode) {
     case climate::CLIMATE_MODE_COOL:
-        ESP_LOGI("control", "changing mode to COOL");
         hp_.setModeSetting("COOL");
         hp_.setPowerSetting("ON");
         break;
     case climate::CLIMATE_MODE_HEAT:
-        ESP_LOGI("control", "changing mode to HEAT");
         hp_.setModeSetting("HEAT");
         hp_.setPowerSetting("ON");
-
         break;
     case climate::CLIMATE_MODE_DRY:
-        ESP_LOGI("control", "changing mode to DRY");
         hp_.setModeSetting("DRY");
         hp_.setPowerSetting("ON");
-
         break;
-
     case climate::CLIMATE_MODE_HEAT_COOL:
-        ESP_LOGI("control", "changing mode to HEAT_COOL (hardware AUTO)");
         hp_.setModeSetting("AUTO");
         hp_.setPowerSetting("ON");
         break;
-
     case climate::CLIMATE_MODE_AUTO:
-        ESP_LOGI("control", "changing mode to AUTO");
         hp_.setModeSetting("AUTO");
         hp_.setPowerSetting("ON");
-
         break;
     case climate::CLIMATE_MODE_FAN_ONLY:
-        ESP_LOGI("control", "changing mode to FAN_ONLY");
         hp_.setModeSetting("FAN");
         hp_.setPowerSetting("ON");
         break;
     case climate::CLIMATE_MODE_OFF:
-        ESP_LOGI("control", "changing mode to OFF");
         hp_.setPowerSetting("OFF");
         break;
     default:
