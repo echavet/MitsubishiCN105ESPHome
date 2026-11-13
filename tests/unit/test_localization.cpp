@@ -38,6 +38,15 @@ TEST(FahrenheitSupportTest, OffMode_Passthrough) {
     }
 }
 
+TEST(FahrenheitSupportTest, NaN_Passthrough) {
+    FahrenheitSupport fs;
+    for (auto mode : {FahrenheitMode::OFF, FahrenheitMode::STANDARD, FahrenheitMode::ALT, FahrenheitMode::MSZ_A24NA}) {
+        fs.setUseFahrenheitSupportMode(mode);
+        EXPECT_TRUE(std::isnan(fs.normalizeUiTemperatureToHeatpumpTemperature(NAN)));
+        EXPECT_TRUE(std::isnan(fs.normalizeHeatpumpTemperatureToUiTemperature(NAN)));
+    }
+}
+
 // ========================================================
 // Storage round-trip cycle: for every whole-Fahrenheit UI value,
 // one get/set cycle returns the same UI value (no drift), and a
@@ -83,19 +92,34 @@ static void expectRowValuesRoundTrip(FahrenheitMode mode, const float* rows, int
 }
 
 TEST(FahrenheitSupportTest, StandardTable_RowValuesRoundTrip) {
-    // Interior rows of the STANDARD table (61F/88F edges bypass the table by
-    // design — upper_bound edge — and are covered by the cycle tests above).
-    const float rows[] = {16.5f, 17.0f, 17.5f, 18.0f, 18.5f, 19.0f, 20.0f, 21.0f,
-                          21.5f, 22.0f, 22.5f, 23.0f, 24.0f, 25.0f, 26.0f, 27.0f,
-                          27.5f, 28.0f, 28.5f, 29.0f, 29.5f, 30.0f};
+    const float rows[] = {16.0f, 16.5f, 17.0f, 17.5f, 18.0f, 18.5f, 19.0f, 20.0f,
+                          21.0f, 21.5f, 22.0f, 22.5f, 23.0f, 24.0f, 25.0f, 26.0f,
+                          27.0f, 27.5f, 28.0f, 28.5f, 29.0f, 29.5f, 30.0f, 30.5f};
     expectRowValuesRoundTrip(FahrenheitMode::STANDARD, rows, sizeof(rows) / sizeof(rows[0]));
 }
 
 TEST(FahrenheitSupportTest, AltTable_RowValuesRoundTrip) {
-    const float rows[] = {16.5f, 17.0f, 18.0f, 18.5f, 19.0f, 19.5f, 20.0f, 20.5f,
-                          21.0f, 21.5f, 22.0f, 23.0f, 24.0f, 25.0f, 26.0f, 27.0f,
-                          28.0f, 28.5f, 29.0f, 29.5f, 30.0f, 30.5f};
+    const float rows[] = {16.0f, 16.5f, 17.0f, 18.0f, 18.5f, 19.0f, 19.5f, 20.0f,
+                          20.5f, 21.0f, 21.5f, 22.0f, 23.0f, 24.0f, 25.0f, 26.0f,
+                          27.0f, 28.0f, 28.5f, 29.0f, 29.5f, 30.0f, 30.5f, 31.0f};
     expectRowValuesRoundTrip(FahrenheitMode::ALT, rows, sizeof(rows) / sizeof(rows[0]));
+}
+
+TEST(FahrenheitSupportTest, OutOfRange_Passthrough) {
+    FahrenheitSupport fs;
+    for (auto mode : {FahrenheitMode::STANDARD, FahrenheitMode::ALT, FahrenheitMode::MSZ_A24NA}) {
+        fs.setUseFahrenheitSupportMode(mode);
+        // Below table minimum (e.g. 10C / 50F SmartSet setpoint, or cold room temperature)
+        for (float c : {-5.0f, 0.0f, 10.0f, 14.0f}) {
+            EXPECT_FLOAT_EQ(fs.normalizeHeatpumpTemperatureToUiTemperature(c), c);
+            EXPECT_FLOAT_EQ(fs.normalizeUiTemperatureToHeatpumpTemperature(c), c);
+        }
+        // Above table maximum (e.g. hot unconditioned room temperature)
+        for (float c : {32.0f, 33.0f, 35.0f}) {
+            EXPECT_FLOAT_EQ(fs.normalizeHeatpumpTemperatureToUiTemperature(c), c);
+            EXPECT_FLOAT_EQ(fs.normalizeUiTemperatureToHeatpumpTemperature(c), c);
+        }
+    }
 }
 
 // ========================================================

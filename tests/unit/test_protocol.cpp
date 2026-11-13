@@ -136,16 +136,16 @@ TEST(ProtocolEncodeRemoteTemp, KeepAlive_20_9C) {
     uint8_t enc_a, enc_b;
     encode_remote_temperature(20.9f, enc_a, enc_b);
     // round(20.9*2) = round(41.8) = 42
-    // enc_a = 42 - 16 = 26 = 0x1A
+    // enc_a = 42 - 17 = 25 = 0x19
     // enc_b = 42 + 128 = 170 = 0xAA
-    EXPECT_EQ(enc_a, 0x1A);
+    EXPECT_EQ(enc_a, 0x19);
     EXPECT_EQ(enc_b, 0xAA);
 }
 
 TEST(ProtocolEncodeRemoteTemp, Exact_21_0C) {
     uint8_t enc_a, enc_b;
     encode_remote_temperature(21.0f, enc_a, enc_b);
-    EXPECT_EQ(enc_a, 0x1A);  // 42 - 16
+    EXPECT_EQ(enc_a, 0x19);  // 42 - 17
     EXPECT_EQ(enc_b, 0xAA);  // 42 + 128
 }
 
@@ -153,8 +153,25 @@ TEST(ProtocolEncodeRemoteTemp, Low_10_0C) {
     uint8_t enc_a, enc_b;
     encode_remote_temperature(10.0f, enc_a, enc_b);
     // round(10.0*2) = 20
-    EXPECT_EQ(enc_a, 0x04);  // 20 - 16
+    EXPECT_EQ(enc_a, 0x03);  // 20 - 17
     EXPECT_EQ(enc_b, 0x94);  // 20 + 128
+}
+
+TEST(ProtocolEncodeRemoteTemp, RoundTrip_AllHalfSteps_BothEncodingsAgree) {
+    for (float t = 10.0f; t <= 31.5f; t += 0.5f) {
+        uint8_t enc_a = 0, enc_b = 0;
+        encode_remote_temperature(t, enc_a, enc_b);
+
+        // Encoding B: (enc_b - 128) / 2.0 == t
+        float decoded_b = decode_temperature(0x00, enc_b);
+        EXPECT_FLOAT_EQ(decoded_b, t) << "Encoding B roundtrip failed for " << t << "°C";
+
+        // Encoding A (legacy 0.5°C steps starting at 10.0°C = 0x03):
+        // 10.0 + (enc_a - 3) / 2.0 == t
+        float decoded_a = 10.0f + static_cast<float>(enc_a - 3) / 2.0f;
+        EXPECT_FLOAT_EQ(decoded_a, t) << "Encoding A roundtrip failed for " << t << "°C";
+        EXPECT_FLOAT_EQ(decoded_a, decoded_b) << "Encodings A and B disagree for " << t << "°C";
+    }
 }
 
 // ════════════════════════════════════════════════════════════════

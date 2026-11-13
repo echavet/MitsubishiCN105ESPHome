@@ -28,6 +28,26 @@ jobs:
       run: cd tests/unit/build && ctest --output-on-failure --no-tests=error
 
   # ──────────────────────────────────────────────
+  # Climate Proxy config-entry migration against Home Assistant Core 2026.11.0.
+  # Independent of the firmware jobs: this does not compile ESPHome.
+  # ──────────────────────────────────────────────
+  proxy-migration-tests:
+    name: Climate Proxy migration (HA 2026.11.0)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.14"
+
+    - name: Install Home Assistant 2026.11.0 and pytest
+      run: pip install -r tests/proxy/requirements.txt
+
+    - name: Run proxy migration tests
+      run: pytest tests/proxy -q
+
+  # ──────────────────────────────────────────────
   # Job 2 — ESPHome compile (existing matrix)
   # Now depends on unit-tests passing first.
   # ──────────────────────────────────────────────
@@ -42,6 +62,7 @@ jobs:
         version: [stable]
         variant: 
           - examples/root-configs/esp32-test
+          - examples/root-configs/lossnay-test
           - examples/root-configs/hp-debug
           - examples/root-configs/hp-sejour
           - examples/m5stack-atoms3/atom-m5

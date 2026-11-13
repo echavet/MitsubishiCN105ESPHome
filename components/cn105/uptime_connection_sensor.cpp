@@ -2,6 +2,7 @@
 #include "esphome/core/helpers.h"
 #include "esphome/core/hal.h"
 #include "uptime_connection_sensor.h"
+#include "esphome/core/version.h"
 
 namespace esphome {
     namespace cn105 {
@@ -43,7 +44,23 @@ namespace esphome {
             this->update();
         }
 
-        std::string HpUpTimeConnectionSensor::unique_id() { return get_mac_address() + "-uptime-hp_connection"; }
+        std::string HpUpTimeConnectionSensor::unique_id() {
+            #if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+                char mac[13];
+                get_mac_address_into_buffer(mac);
+            
+                constexpr char suffix[] = "-uptime-hp_connection";
+            
+                std::string id;
+                id.reserve(12 + sizeof(suffix) - 1);
+                id.append(mac, 12);
+                id.append(suffix);
+            
+                return id;
+            #else
+                return get_mac_address() + "-uptime-hp_connection";
+            #endif
+        }
         void HpUpTimeConnectionSensor::dump_config() { LOG_SENSOR("", "Uptime Connection Sensor", this); }
 
     }  // namespace cn105

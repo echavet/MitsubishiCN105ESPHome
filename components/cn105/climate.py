@@ -27,6 +27,8 @@ from esphome.const import (
     CONF_UART_ID,
     CONF_ENTITY_CATEGORY,
     ENTITY_CATEGORY_DIAGNOSTIC,
+    ENTITY_CATEGORY_CONFIG,
+    DEVICE_CLASS_HUMIDITY,
     STATE_CLASS_TOTAL_INCREASING,
     UNIT_SECOND,
     ICON_TIMER,
@@ -54,7 +56,7 @@ from esphome.components.sensor import (
 )
 from esphome.core import CORE, coroutine
 
-# ... (AUTO_LOAD, DEPENDENCIES, toutes les constantes CONF_XXX_SENSOR, DEFAULT_MODES - identiques ÃÂÃÂ  votre version) ...
+# ... (AUTO_LOAD, DEPENDENCIES, toutes les constantes CONF_XXX_SENSOR, DEFAULT_MODES - identiques à votre version) ...
 AUTO_LOAD = [
     "climate",
     "sensor",
@@ -175,8 +177,35 @@ CONF_REMOTE_TEMP_KEEPALIVE_INTERVAL = "remote_temperature_keepalive_interval"
 CONF_DEBOUNCE_DELAY = "debounce_delay"
 CONF_CONNECTION_BOOTSTRAP_DELAY = "connection_bootstrap_delay"
 CONF_INSTALLER_MODE = "installer_mode"
+CONF_LOSSNAY = "lossnay"
 
-# DÃÂÃÂ©finitions des classes C++ (identiques ÃÂÃÂ  votre version)
+LOSSNAY_CLIMATE_MODES = ["AUTO", "HEAT", "FAN_ONLY"]
+LOSSNAY_FAN_MODES = ["LOW", "MEDIUM", "MIDDLE", "HIGH"]
+
+LOSSNAY_UNSUPPORTED_OPTIONS = {
+    CONF_HORIZONTAL_SWING_SELECT,
+    CONF_VERTICAL_SWING_SELECT,
+    CONF_COMPRESSOR_FREQUENCY_SENSOR,
+    CONF_ISEE_SENSOR,
+    CONF_TARGET_HUMIDITY_SENSOR,
+    CONF_FUNCTIONS_SENSOR,
+    CONF_FUNCTIONS_BUTTON,
+    CONF_FUNCTIONS_SET_BUTTON,
+    CONF_FUNCTIONS_SET_CODE,
+    CONF_FUNCTIONS_SET_VALUE,
+    CONF_STAGE_SENSOR,
+    CONF_SUB_MODE_SENSOR,
+    CONF_AUTO_SUB_MODE_SENSOR,
+    CONF_REMOTE_TEMP_SOURCE,
+    CONF_AIRFLOW_CONTROL_SELECT,
+    CONF_AIR_PURIFIER_SWITCH,
+    CONF_NIGHT_MODE_SWITCH,
+    CONF_CIRCULATOR_SWITCH,
+    CONF_HARDWARE_SETTINGS,
+    CONF_REMOTE_TEMPERATURE_CONTROL_SENSOR,
+}
+
+# Définitions des classes C++ (identiques à votre version)
 VaneOrientationSelect = cg.global_ns.class_(
     "VaneOrientationSelect", select.Select, cg.Component
 )
@@ -224,7 +253,7 @@ HardwareSettingSelect = cg.global_ns.class_(
 )
 
 
-# --- Fonction d'aide pour rÃÂÃÂ©cupÃÂÃÂ©rer les pins TX/RX (identique ÃÂÃÂ  votre version corrigÃÂÃÂ©e) ---
+# --- Fonction d'aide pour récupérer les pins TX/RX (identique à votre version corrigée) ---
 def get_uart_pins_from_config(core_config, target_uart_id_str):
     tx_pin_num = -1
     rx_pin_num = -1
@@ -250,9 +279,9 @@ def get_uart_pins_from_config(core_config, target_uart_id_str):
 
 
 def get_uart_port_index(core_config, target_uart_id_str):
-    # ESPHome ne fournit pas directement l'index de contrÃÂÃÂ´leur; on l'infÃÂÃÂ¨re
-    # via l'ordre de dÃÂÃÂ©claration ou restons ÃÂÃÂ  0 par dÃÂÃÂ©faut.
-    # On tente d'associer l'objet id() ÃÂÃÂ  sa position.
+    # ESPHome ne fournit pas directement l'index de contrôleur; on l'infère
+    # via l'ordre de déclaration ou restons à 0 par défaut.
+    # On tente d'associer l'objet id() à sa position.
     idx = 0
     for i, uart_conf_item in enumerate(core_config.get("uart", [])):
         if str(uart_conf_item[CONF_ID]) == target_uart_id_str:
@@ -268,7 +297,7 @@ def get_uart_port_index(core_config, target_uart_id_str):
 
 # --- FIN de la fonction d'aide ---
 
-# SchÃÂÃÂ©mas pour les entitÃÂÃÂ©s optionnelles (identiques ÃÂÃÂ  votre version)
+# Schémas pour les entités optionnelles (identiques à votre version)
 SELECT_SCHEMA = select.select_schema(VaneOrientationSelect).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(VaneOrientationSelect)}
 )
@@ -316,7 +345,7 @@ ISEE_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(ISeeSensor).extend(
 TARGET_HUMIDITY_SENSOR_SCHEMA = sensor.sensor_schema(
     TargetHumiditySensor,
     unit_of_measurement="%",
-    icon="mdi:water-percent",
+    device_class=DEVICE_CLASS_HUMIDITY,
     state_class=STATE_CLASS_MEASUREMENT,
     accuracy_decimals=0,
     entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
@@ -324,10 +353,14 @@ TARGET_HUMIDITY_SENSOR_SCHEMA = sensor.sensor_schema(
 FUNCTIONS_SENSOR_SCHEMA = text_sensor.text_sensor_schema(FunctionsSensor).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsSensor)}
 )
-FUNCTIONS_BUTTON_SCHEMA = button.button_schema(FunctionsButton).extend(
+FUNCTIONS_BUTTON_SCHEMA = button.button_schema(
+    FunctionsButton, entity_category=ENTITY_CATEGORY_CONFIG
+).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsButton)}
 )
-FUNCTIONS_NUMBER_SCHEMA = number.number_schema(FunctionsNumber).extend(
+FUNCTIONS_NUMBER_SCHEMA = number.number_schema(
+    FunctionsNumber, entity_category=ENTITY_CATEGORY_CONFIG
+).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(FunctionsNumber)}
 )
 SUB_MODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(SubModSensor).extend(
@@ -337,14 +370,18 @@ AUTO_SUB_MODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(AutoSubModSensor).e
     {cv.GenerateID(CONF_ID): cv.declare_id(AutoSubModSensor)}
 )
 
-ERROR_CODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(ErrorCodeSensor).extend(
+ERROR_CODE_SENSOR_SCHEMA = text_sensor.text_sensor_schema(
+    ErrorCodeSensor, entity_category=ENTITY_CATEGORY_DIAGNOSTIC
+).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(ErrorCodeSensor)}
 )
 
 REMOTE_TEMP_SOURCE_SCHEMA = cv.Schema(
     {
         cv.Required(CONF_REMOTE_TEMP_SOURCE_SENSOR_ID): cv.use_id(sensor.Sensor),
-        cv.Optional(CONF_REMOTE_TEMP_SOURCE_INFO): text_sensor.text_sensor_schema(RemoteTempSourceInfo).extend(
+        cv.Optional(CONF_REMOTE_TEMP_SOURCE_INFO): text_sensor.text_sensor_schema(
+            RemoteTempSourceInfo, entity_category=ENTITY_CATEGORY_DIAGNOSTIC
+        ).extend(
             {cv.GenerateID(CONF_ID): cv.declare_id(RemoteTempSourceInfo)}
         ),
     }
@@ -362,15 +399,15 @@ REMOTE_TEMPERATURE_CONTROL_SENSOR_SCHEMA = binary_sensor.binary_sensor_schema(
     }
 )
 
-# SchÃÂÃÂ©ma pour STAGE_SENSOR (qui est un text_sensor) AVEC la nouvelle sous-option
+# Schéma pour STAGE_SENSOR (qui est un text_sensor) AVEC la nouvelle sous-option
 STAGE_SENSOR_CONFIG_SCHEMA = text_sensor.text_sensor_schema(StageSensor).extend(
     {
-        # L'ID pour l'objet StageSensor C++ est gÃÂÃÂ©rÃÂÃÂ© par text_sensor.TEXT_SENSOR_SCHEMA (via CONF_ID)
+        # L'ID pour l'objet StageSensor C++ est géré par text_sensor.TEXT_SENSOR_SCHEMA (via CONF_ID)
         cv.Optional(CONF_USE_AS_OPERATING_FALLBACK, default=False): cv.boolean,
     }
 )
 
-# SchÃÂÃÂ©ma pour HP_UP_TIME_CONNECTION_SENSOR (identique ÃÂÃÂ  votre version)
+# Schéma pour HP_UP_TIME_CONNECTION_SENSOR (identique à votre version)
 HP_UP_TIME_CONNECTION_SENSOR_SCHEMA = sensor.sensor_schema(
     HpUpTimeConnectionSensor,
     unit_of_measurement=UNIT_SECOND,
@@ -385,7 +422,9 @@ HVAC_OPTION_SWITCH_SCHEMA = switch.switch_schema(HVACOptionSwitch).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(HVACOptionSwitch)}
 )
 
-HARDWARE_SETTING_ITEM_SCHEMA = select.select_schema(HardwareSettingSelect).extend(
+HARDWARE_SETTING_ITEM_SCHEMA = select.select_schema(
+    HardwareSettingSelect, entity_category=ENTITY_CATEGORY_CONFIG
+).extend(
     {
         cv.Required(CONF_CODE): cv.int_range(min=101, max=128),
         cv.Required(CONF_OPTIONS): cv.Schema({cv.int_range(min=1, max=3): cv.string}),
@@ -402,6 +441,65 @@ HARDWARE_SETTING_SCHEMA = cv.Schema(
         ),
     }
 )
+
+
+def validate_lossnay_config(config):
+    if not config.get(CONF_LOSSNAY, False):
+        return config
+
+    supports = config.get(CONF_SUPPORTS, {})
+    modes = supports.get(CONF_MODE, LOSSNAY_CLIMATE_MODES)
+    allowed_modes = set(LOSSNAY_CLIMATE_MODES) | {"OFF"}
+    invalid_modes = sorted(set(modes) - allowed_modes)
+    if invalid_modes:
+        raise cv.Invalid(
+            "lossnay supports only AUTO, HEAT, FAN_ONLY and OFF climate modes; "
+            f"unsupported modes: {', '.join(invalid_modes)}"
+        )
+
+    fan_modes = supports.get(CONF_FAN_MODE, LOSSNAY_FAN_MODES)
+    invalid_fans = sorted(set(fan_modes) - set(LOSSNAY_FAN_MODES))
+    if invalid_fans:
+        raise cv.Invalid(
+            "lossnay supports only LOW, MEDIUM, MIDDLE and HIGH fan modes; "
+            f"unsupported fan modes: {', '.join(invalid_fans)}"
+        )
+
+    swing_modes = supports.get(CONF_SWING_MODE, [])
+    if swing_modes:
+        raise cv.Invalid("lossnay does not support swing modes")
+
+    if supports.get(CONF_DUAL_SETPOINT, False):
+        raise cv.Invalid("lossnay does not support dual target temperatures")
+
+    unsupported_options = sorted(
+        option for option in LOSSNAY_UNSUPPORTED_OPTIONS if option in config
+    )
+    if unsupported_options:
+        raise cv.Invalid(
+            "lossnay does not support these options: "
+            + ", ".join(unsupported_options)
+        )
+
+    if config.get(CONF_INSTALLER_MODE, False):
+        raise cv.Invalid("lossnay does not support installer_mode")
+
+    if config.get(CONF_MSZ_A24NA_SETPOINT_TABLE, False):
+        raise cv.Invalid("lossnay does not support msz_a24na_setpoint_table")
+
+    if supports.get(CONF_RESTORE_SETPOINTS, False):
+        raise cv.Invalid("lossnay does not support setpoint restoration")
+
+    if CONF_SUPPORTS_HORIZONTAL_VANE_MODE in supports:
+        raise cv.Invalid("lossnay does not support horizontal vane modes")
+
+    if supports.get(CONF_HORIZONTAL_VANES, 1) != 1:
+        raise cv.Invalid("lossnay does not support horizontal vanes")
+
+    if supports.get(CONF_VANE_TYPE, "standard") != "standard":
+        raise cv.Invalid("lossnay does not support vane types")
+
+    return config
 
 CONFIG_SCHEMA = (
     climate.climate_schema(CN105Climate)
@@ -441,7 +539,7 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_MSZ_A24NA_SETPOINT_TABLE, default=False): cv.boolean,
             cv.Optional(
                 CONF_STAGE_SENSOR
-            ): STAGE_SENSOR_CONFIG_SCHEMA,  # ModifiÃÂÃÂ© pour le nouveau schÃÂÃÂ©ma
+            ): STAGE_SENSOR_CONFIG_SCHEMA,  # Modifié pour le nouveau schéma
             cv.Optional(CONF_SUB_MODE_SENSOR): SUB_MODE_SENSOR_SCHEMA,
             cv.Optional(CONF_AUTO_SUB_MODE_SENSOR): AUTO_SUB_MODE_SENSOR_SCHEMA,
             cv.Optional(CONF_ERROR_CODE_SENSOR): ERROR_CODE_SENSOR_SCHEMA,
@@ -461,6 +559,7 @@ CONFIG_SCHEMA = (
                 cv.update_interval
             ),
             cv.Optional(CONF_INSTALLER_MODE, default=False): cv.boolean,
+            cv.Optional(CONF_LOSSNAY, default=False): cv.boolean,
             cv.Optional(
                 CONF_HP_UP_TIME_CONNECTION_SENSOR
             ): HP_UP_TIME_CONNECTION_SENSOR_SCHEMA,
@@ -474,16 +573,17 @@ CONFIG_SCHEMA = (
             ): REMOTE_TEMPERATURE_CONTROL_SENSOR_SCHEMA,
             #cv.Optional(CONF_REMOTE_TEMPERATURE_MARGIN, default=0.4): cv.positive_float,
             cv.Optional(CONF_POWER_UNIT_IS_BTU, default=False): cv.boolean,
+            # mode/fan_mode/swing_mode defaults depend on the profile and are applied in to_code.
             cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
                 {
                     cv.Optional(
-                        CONF_MODE, default=DEFAULT_CLIMATE_MODES
+                        CONF_MODE
                     ): cv.ensure_list(climate.validate_climate_mode),
                     cv.Optional(
-                        CONF_FAN_MODE, default=DEFAULT_FAN_MODES
+                        CONF_FAN_MODE
                     ): cv.ensure_list(climate.validate_climate_fan_mode),
                     cv.Optional(
-                        CONF_SWING_MODE, default=DEFAULT_SWING_MODES
+                        CONF_SWING_MODE
                     ): cv.ensure_list(climate.validate_climate_swing_mode),
                     cv.Optional(CONF_DUAL_SETPOINT, default=False): cv.boolean,
                     cv.Optional(CONF_RESTORE_SETPOINTS, default=False): cv.boolean,
@@ -503,12 +603,14 @@ CONFIG_SCHEMA = (
     .extend(cv.COMPONENT_SCHEMA)
 )
 
+CONFIG_SCHEMA = cv.All(CONFIG_SCHEMA, validate_lossnay_config)
+
 
 @coroutine
 def to_code(config):
     uart_id_object = config[CONF_UART_ID]
     uart_var = yield cg.get_variable(uart_id_object)
-    var = cg.new_Pvariable(config[CONF_ID], uart_var)
+    var = cg.new_Pvariable(config[CONF_ID], uart_var, config[CONF_LOSSNAY])
 
     cg.add(var.set_installer_mode(config[CONF_INSTALLER_MODE]))
     cg.add(var.set_power_unit_is_btu(config[CONF_POWER_UNIT_IS_BTU]))
@@ -530,8 +632,11 @@ def to_code(config):
         supports = config[CONF_SUPPORTS]
         traits = var.config_traits()
 
-        # Configurer les modes supportÃÂÃÂ©s
-        supported_modes = supports.get(CONF_MODE, DEFAULT_CLIMATE_MODES)
+        # Configurer les modes supportés
+        supported_modes = supports.get(
+            CONF_MODE,
+            LOSSNAY_CLIMATE_MODES if config[CONF_LOSSNAY] else DEFAULT_CLIMATE_MODES,
+        )
         for mode_str in supported_modes:
             if mode_str == "OFF":
                 continue
@@ -576,14 +681,20 @@ def to_code(config):
         # ESPHome's default behavior for modes like COOL/HEAT is to enable single-point target temperature.
         # We don't need to explicitly force single-point or clear the dual flag (it's off by default).
 
-        for fan_mode_str in supports.get(CONF_FAN_MODE, DEFAULT_FAN_MODES):
+        for fan_mode_str in supports.get(
+            CONF_FAN_MODE,
+            LOSSNAY_FAN_MODES if config[CONF_LOSSNAY] else DEFAULT_FAN_MODES,
+        ):
             if fan_mode_str in climate.CLIMATE_FAN_MODES:
                 cg.add(
                     traits.add_supported_fan_mode(
                         climate.CLIMATE_FAN_MODES[fan_mode_str]
                     )
                 )
-        for swing_mode_str in supports.get(CONF_SWING_MODE, DEFAULT_SWING_MODES):
+        for swing_mode_str in supports.get(
+            CONF_SWING_MODE,
+            [] if config[CONF_LOSSNAY] else DEFAULT_SWING_MODES,
+        ):
             if swing_mode_str in climate.CLIMATE_SWING_MODES:
                 cg.add(
                     traits.add_supported_swing_mode(
@@ -604,7 +715,7 @@ def to_code(config):
         )
     )
 
-    # --- Configuration des entitÃÂÃÂ©s optionnelles (style original) ---
+    # --- Configuration des entités optionnelles (style original) ---
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf_item = config[CONF_HORIZONTAL_SWING_SELECT]
         # new_select s'occupe de l'enregistrement. options=[] est important.
@@ -629,15 +740,15 @@ def to_code(config):
         control_select_var = yield select.new_select(conf_item, options=[])
         cg.add(var.set_airflow_control_select(control_select_var))
 
-    # Pour les capteurs, text_sensors, etc., utiliser la mÃÂÃÂ©thode .new_... standard
+    # Pour les capteurs, text_sensors, etc., utiliser la méthode .new_... standard
     # Ces fonctions s'occupent de l'enregistrement du composant.
     if CONF_COMPRESSOR_FREQUENCY_SENSOR in config:
-        # conf = config[CONF_COMPRESSOR_FREQUENCY_SENSOR] # 'conf' est dÃÂÃÂ©jÃÂÃÂ  utilisÃÂÃÂ© comme argument de to_code
-        # conf["force_update"] = False # Ceci ÃÂÃÂ©tait dans votre code original, le garder si pertinent
+        # conf = config[CONF_COMPRESSOR_FREQUENCY_SENSOR] # 'conf' est déjà utilisé comme argument de to_code
+        # conf["force_update"] = False # Ceci était dans votre code original, le garder si pertinent
         conf_item = config[CONF_COMPRESSOR_FREQUENCY_SENSOR]
         if (
             "force_update" not in conf_item
-        ):  # S'assurer de ne pas l'ÃÂÃÂ©craser si l'user l'a mis
+        ):  # S'assurer de ne pas l'écraser si l'user l'a mis
             conf_item["force_update"] = False
         sensor_var = yield sensor.new_sensor(conf_item)
         cg.add(var.set_compressor_frequency_sensor(sensor_var))
@@ -740,7 +851,7 @@ def to_code(config):
     # --- TRAITEMENT POUR STAGE_SENSOR AVEC LA NOUVELLE OPTION ---
     if CONF_STAGE_SENSOR in config:
         conf_stage_dict = config[CONF_STAGE_SENSOR]
-        # new_text_sensor gÃÂÃÂ¨re la crÃÂÃÂ©ation et l'enregistrement de base du text_sensor
+        # new_text_sensor gère la création et l'enregistrement de base du text_sensor
         stage_ts_var = yield text_sensor.new_text_sensor(conf_stage_dict)
         cg.add(var.set_stage_sensor(stage_ts_var))
 

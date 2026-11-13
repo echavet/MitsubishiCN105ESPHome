@@ -3,40 +3,20 @@
 ///
 /// Uses shared predicates from cn105_protocol.h to avoid logic duplication.
 #include <gtest/gtest.h>
-#include "cn105_protocol.h"
+#include "heatpump_profile_protocol.h"
 #include "cn105_types.h"
 
 namespace {
 
-// Mirror of wantedHeatpumpSettings for testing resetSettings behavior
-struct TestWantedSettings {
-    const char* vane = nullptr;
-    float temperature = -1.0f;
-    const char* last_user_vane = nullptr;
-    float last_user_temperature = -1.0f;
-    uint32_t last_user_vane_ms = 0;
-    uint32_t last_user_temperature_ms = 0;
-
-    void resetSettings() {
-        vane = nullptr;
-        temperature = -1.0f;
-    }
-};
+using TestWantedSettings = wantedHeatpumpSettings;
 
 const char* setVane(TestWantedSettings& ws, const char* setting, uint32_t now_ms) {
-    for (int i = 0; i < 7; i++) {
-        if (strcasecmp(VANE_MAP[i], setting) == 0) {
-            ws.vane = VANE_MAP[i];
-            ws.last_user_vane = VANE_MAP[i];
-            ws.last_user_vane_ms = now_ms;
-            return VANE_MAP[i];
-        }
-    }
-    return nullptr;
+    esphome::cn105::HeatPumpProtocol::set_vane_setting(ws, setting, now_ms);
+    return ws.vane;
 }
 
 const char* vaneForPacket(const TestWantedSettings& ws) {
-    return ws.vane ? ws.vane : ws.last_user_vane;
+    return esphome::cn105::HeatPumpProtocol::vane_for_packet(ws);
 }
 
 }  // namespace

@@ -1,12 +1,12 @@
 # Mitsubishi CN105 ESPHome
 
-This project is a firmware for ESP32 microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump through Home Assistant, a web interface, or any MQTT client.
+This project is a firmware for ESP32 microcontrollers supporting UART communication via the CN105 Mitsubishi connector. Its purpose is to enable complete control of a compatible Mitsubishi heat pump or Lossnay through Home Assistant, a web interface, or any MQTT client.
 
 It uses the ESPHome framework and is compatible with the Arduino framework and ESP-IDF.
 
 This component version is an adaptation of [geoffdavis's esphome-mitsubishiheatpump](https://github.com/geoffdavis/esphome-mitsubishiheatpump). Its purpose is to integrate the Mitsubishi heat pump protocol (enabled by the [SwiCago library](https://github.com/SwiCago/HeatPump)) directly into the ESPHome component classes for a more seamless integration.
 
-The intended use case is for owners of a Mitsubishi Electric heat pump or air conditioner that includes a CN105 communication port to directly control their air handler or indoor unit using local communication through a web browser, or most commonly, the [HomeAssistant](https://www.home-assistant.io/) home automation platform. Installation requires a WiFi capable ESP32 or ESP8266 device, a bidirectional logic level shifter, and a 5-pin plug to connect to the heat pump indoor unit. ESPHome is used to load the custom firmware onto the device, and the web browser or HomeAssistant software is used to send temperature setpoints, external temperature references, and settings to the heat pump. Installation requires basic soldering skills, and basic skills in flashing a firmware to a microcontroller (though ESPHome makes this as painless as possible).
+The intended use case is for owners of a Mitsubishi Electric heat pump, air conditioner, or Lossnay that includes a CN105 communication port to directly control their air handler or indoor unit using local communication through a web browser, or most commonly, the [HomeAssistant](https://www.home-assistant.io/) home automation platform. Installation requires a WiFi capable ESP32 or ESP8266 device, a bidirectional logic level shifter, and a 5-pin plug to connect to the heat pump indoor unit. ESPHome is used to load the custom firmware onto the device, and the web browser or HomeAssistant software is used to send temperature setpoints, external temperature references, and settings to the heat pump. Installation requires basic soldering skills, and basic skills in flashing a firmware to a microcontroller (though ESPHome makes this as painless as possible).
 
 The benefits include fully local control over your heat pump system, without reliance on a vendor network. Additional visibility, finer control, and even improved energy efficiency and comfort are possible when utilizing the remote temperature features.
 
@@ -27,6 +27,7 @@ The benefits include fully local control over your heat pump system, without rel
 - Enhanced UART communication with the Heatpump to eliminate delays in the ESPHome loop(), which was a limitation of the original [SwiCago library](https://github.com/SwiCago/HeatPump).
 - Byte-by-byte reading within the loop() function ensures no data loss or lag, as the component continuously reads without blocking ESPHome.
 - UART writes are followed by non-blocking reads. The responses are accumulated byte-by-byte in the loop() method and processed when complete, allowing command stacking without delays for a more responsive UI.
+- Support for Lossnay heat recovery ventilation systems
 
 ### Retained Features
 
@@ -83,6 +84,11 @@ Units tested by project contributors include:
 - `SEZ-KD25VAQ`
 - `SEZ-M50DAL`
 - `MSZ-A24NA` (See `msz_a24na_setpoint_table` and `fahrenheit_compatibility`)
+
+Known working Lossnay units using `lossnay: true`:
+
+- `LGH-50RVS-E`
+- `VL-350CZPVU-L-E`
 
 ## Usage
 
@@ -341,6 +347,22 @@ climate:
       # Defaults to all options: ["←←", "←", "|", "→", "→→", "←→", "SWING", "AIRFLOW CONTROL"]
       # Example to hide "←→" and "AIRFLOW CONTROL" if not supported by your unit:
       horizontal_vane_mode: ["←←", "←", "|", "→", "→→", SWING]
+```
+
+#### Lossnay example
+
+Lossnay ventilation units can use the same component with the explicit `lossnay: true` option. Heat Recovery is exposed as `heat`, Bypass as `fan_only`, and Automatic as `auto`. Lossnay does not have a target temperature, swing, vane, compressor, or auxiliary-control packet. ESPHome climate entities always expose a target temperature; their traits cannot disable it. Any target-temperature control shown in Home Assistant has no effect on Lossnay and its commands are ignored.
+
+```yaml
+climate:
+  - platform: cn105
+    id: lossnay
+    name: Lossnay
+    uart_id: uart_lossnay
+    lossnay: true
+    supports:
+      mode: [AUTO, HEAT, FAN_ONLY]
+      fan_mode: [LOW, MEDIUM, MIDDLE, HIGH]
 ```
 
 > [!TIP]
@@ -968,7 +990,7 @@ auto_sub_mode_sensor:
   - `DEFROST` - a cold climate behavior that runs a short AC cycle during heating mode to melt ice from the coils
   - `STANDBY` - unit is off, or has been put into a "sleep" state through AUTO operation on another indoor unit
 
-Some examples of how these all fit together: Unit 1 is in AUTO set to 20C and Unit 2 is in AUTO and set to 20C. Unit 1 senses that the room is 24C and tries to enter `AUTO_COOL`. If Unit 2 wants to heat the room it is in, it will enter `STANDBY` (and in the case of a few units tested, this mean it will go to "sleep" as if it is off, but not really be off) making Unit 1 enter `AUTO_LEADER` sub mode. In future releases, it is planned to make the ACTION in HA match these modes. But at this time this is not implemented.
+Some examples of how these all fit together: Unit 1 is in AUTO set to 20C and Unit 2 is in AUTO and set to 20C. Unit 1 senses that the room is 24C and tries to enter `AUTO_COOL`. If Unit 2 wants to heat the room it is in, it will enter `STANDBY` (and in the case of a few units tested, this mean it will go to "sleep" as if it is off, but not really be off) making Unit 1 enter `AUTO_LEADER` sub mode. With ESPHome 2026.3.0 or newer, `DEFROST` is exposed to HA as the `defrosting` climate action. The other sub-modes are not currently mapped to HA climate actions.
 
 It is also important to note that the Kumo adapter has many more settings that impact the behaviour above (such as thermal fan behaviour) and if you have set these the exact actions the untis take in these modes/submodes/stages is determined by those. Some of these can also be set by remotes and other devices. The setup you have will dictate the exact actions you see. If you have permutations, please share!
 
@@ -1019,6 +1041,33 @@ sensor:
       return (float) nbCompleteCycles / nbCycles * 100.0;
     update_interval: 60s
 ```
+
+### Polling-cycle state for advanced automations
+
+`id(hp).isCycleRunning()` returns the component's existing CN105 polling-cycle
+state. It is `true` between `cycleStarted()` and `cycleEnded()`, and `false`
+before a cycle starts or after it ends, including a timeout reset. This is the
+communication polling cycle, not the heat pump's heating/cooling action.
+
+This is useful when an advanced automation needs to observe the interval
+between polling cycles, for example before a model-specific UART action. It
+avoids guessing the cycle duration with fixed delays or maintaining a local
+component copy just to access this state. A connection-aware condition is:
+
+```yaml
+condition:
+  lambda: |-
+    return id(hp).isHeatpumpConnected() && !id(hp).isCycleRunning();
+```
+
+Use the climate component ID from your own configuration in place of `hp`.
+To observe a cycle ending, wait for the state to become `true`, then `false`,
+with appropriate timeout handling in the automation.
+
+The getter is a read-only snapshot. It does not reserve the UART, pause polling,
+queue a custom command, or confirm that a cycle completed successfully. Other
+component writes may occur outside a polling cycle, so custom UART operations
+still need their own coordination and response handling.
 
 ## Hardware Settings (Function Settings)
 

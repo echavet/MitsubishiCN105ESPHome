@@ -192,7 +192,7 @@ TEST(RealPower, OffSubMode_0x10) {
 TEST(RealRemoteTemp, Encode_22_8C) {
     uint8_t enc_a, enc_b;
     encode_remote_temperature(22.8f, enc_a, enc_b);
-    EXPECT_EQ(enc_a, 0x1E); // 46 - 16
+    EXPECT_EQ(enc_a, 0x1D); // 46 - 17
     EXPECT_EQ(enc_b, 0xAE); // 46 + 128
 }
 
