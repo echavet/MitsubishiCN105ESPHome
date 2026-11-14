@@ -15,16 +15,9 @@ void CN105Climate::sendFirstConnectionPacket() {
         uint8_t packet[CONNECT_LEN];
         memcpy(packet, CONNECT, CONNECT_LEN);
         packet[3] = this->profile_->id();
-
-        // Choix du mode de handshake: standard (0x5A) ou installateur (0x5B)
-        packet[1] = (this->installer_mode_effective_) ? 0x5B : 0x5A;
-        // CONNECT a un checksum pré-calculé dans la constante; si on modifie l'octet commande, on doit le recalculer.
         packet[CONNECT_LEN - 1] = checkSum(packet, CONNECT_LEN - 1);
 
-        ESP_LOGI(LOG_CONN_TAG, "Envoi du paquet de connexion en mode %s (0x%02X), profile 0x%02X...",
-            packet[1] == 0x5B ? "Installateur" : "Standard", packet[1], packet[3]);
-
-        // Détails des octets en DEBUG sur le tag de connexion
+        ESP_LOGI(LOG_CONN_TAG, "Sending the connection packet in Standard mode (0x%02X), profile 0x%02X...", packet[1], packet[3]);
         this->hpPacketDebug(packet, CONNECT_LEN, LOG_CONN_TAG);
 
         this->writePacket(packet, CONNECT_LEN, false);      // checkIsActive=false because it's the first packet and we don't have any reply yet
@@ -33,20 +26,9 @@ void CN105Climate::sendFirstConnectionPacket() {
         this->lastConnectRqTimeMs = CUSTOM_MILLIS;
         this->nbHeatpumpConnections_++;
 
-        // we wait for a 10s timeout to check if the hp has replied to connection packet
-        this->set_timeout("checkFirstConnection", 10000, [this]() {
-            if (!this->isHeatpumpConnected()) {
-                ESP_LOGE(LOG_CONN_TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
-                // Fallback automatique: si le mode installateur est demandé mais que la PAC ignore 0x5B,
-                // on retente une fois en mode standard (0x5A) pour préserver la connectivité.
-                if (this->installer_mode_ && this->installer_mode_effective_ && !this->installer_mode_fallback_done_) {
-                    this->installer_mode_effective_ = false;
-                    this->installer_mode_fallback_done_ = true;
-                    ESP_LOGW(LOG_CONN_TAG, "No reply to installer handshake (0x5B). Falling back to standard handshake (0x5A).");
-                }
-                ESP_LOGI(LOG_CONN_TAG, "Reinitializing UART and trying to connect again...");
-                this->reconnectUART();
-            }});
+        // Arms the 0x7A reply timeout (reconnects if the heatpump stays silent) and
+        // drops any stale installer handshake state from a previous attempt.
+        this->handshake_.on_connect_sent();
 
     } else {
         ESP_LOGE(LOG_CONN_TAG, "UART doesn't seem to be connected...");
@@ -55,6 +37,20 @@ void CN105Climate::sendFirstConnectionPacket() {
         CUSTOM_DELAY(750);
     }
 }
+
+void CN105Climate::sendInstallerConnectPacket() {
+    uint8_t packet[INST_CONNECT_LEN];
+    memcpy(packet, INST_CONNECT, INST_CONNECT_LEN);
+    packet[3] = this->profile_->id();
+    packet[INST_CONNECT_LEN - 1] = checkSum(packet, INST_CONNECT_LEN - 1);
+
+    ESP_LOGI(LOG_CONN_TAG, "Standard session established, upgrading with installer handshake (0x%02X), profile 0x%02X...", packet[1], packet[3]);
+    this->hpPacketDebug(packet, INST_CONNECT_LEN, LOG_CONN_TAG);
+
+    this->writePacket(packet, INST_CONNECT_LEN, false);
+    this->lastSend = CUSTOM_MILLIS;
+}
+
 
 // void CN105Climate::statusChanged() {
 //     ESP_LOGD(TAG, "hpStatusChanged ->");
@@ -228,7 +224,7 @@ void CN105Climate::publishWantedRunStatesStateToHA() {
 void CN105Climate::sendWantedSettingsDelegate() {
     this->wantedSettings.hasBeenSent = true;
     this->lastSend = CUSTOM_MILLIS;
-    ESP_LOGI(TAG, "sending wantedSettings..");
+    ESP_LOGI(TAG, "sending wantedSettings...");
     this->debugSettings("wantedSettings", wantedSettings);
     // and then we send the update packet
     uint8_t packet[PACKET_LEN] = {};

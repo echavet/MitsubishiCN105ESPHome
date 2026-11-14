@@ -28,6 +28,7 @@
 #include "localization.h"
 #include "info_request.h"
 #include "request_scheduler.h"
+#include "connect_handshake.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/button/button.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
@@ -275,20 +276,15 @@ namespace esphome {
 
         void controlFan();
         void controlSwing();
-        // Bootstrap connexion CN105 en loop() (évite de perdre les tout premiers logs OTA)
+        // Bootstrap CN105 connection in loop() (avoids losing the very first OTA logs)
         void maybe_start_connection_();
 
-        // Délai de grâce configurable avant d'envoyer CONNECT (pour laisser le flux OTA s'attacher)
+        // Configurable grace period before sending CONNECT (to let the OTA stream attach)
         void set_connection_bootstrap_delay(uint32_t delay_ms) { this->conn_bootstrap_delay_ms_ = delay_ms; }
 
-
-        // Mode installateur: utilise un handshake CONNECT étendu (0x5B) au lieu du standard (0x5A)
+        // Installer mode: uses an extended CONNECT handshake (0x5B) after the standard one (0x5A)
         void set_installer_mode(bool mode) {
-            // Mode demandé via YAML
-            this->installer_mode_ = mode;
-            // Mode effectivement utilisé: peut tomber en fallback vers standard si la PAC ignore 0x5B
-            this->installer_mode_effective_ = mode && this->profile_->supports(cn105::ProfileFeature::INSTALLER_MODE);
-            this->installer_mode_fallback_done_ = false;
+            this->handshake_.set_installer_mode(mode && this->profile_->supports(cn105::ProfileFeature::INSTALLER_MODE));
         }
 
         // Unité de puissance brute envoyée par la PAC: false = Watts (défaut), true = BTU/s
@@ -315,6 +311,7 @@ namespace esphome {
 
 
         void sendFirstConnectionPacket();
+        void sendInstallerConnectPacket();
         void terminateCycle();
         //bool can_proceed() override;
 
@@ -394,7 +391,7 @@ namespace esphome {
         friend class cn105::LossnayProfile;
         std::unique_ptr<cn105::Cn105ProtocolProfile> profile_;
         void force_low_level_uart_reinit();
-        void handleConnectionSuccess();
+        void onHandshakeEvent(cn105::HandshakeEvent event);
 
         int uart_port_ = -1;
         const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
@@ -450,6 +447,8 @@ namespace esphome {
 
         // Orchestrateur des requêtes INFO
         RequestScheduler scheduler_;
+        // CONNECT handshake (0x5A, optional installer 0x5B): flags, timers, decisions
+        cn105::ConnectHandshake handshake_;
         void registerInfoRequests();
         void registerHardwareSettingsRequests();
 
@@ -515,10 +514,6 @@ namespace esphome {
         DriverState state_ = DriverState::BOOT;
         uint32_t boot_ms_ = 0;
         uint32_t conn_bootstrap_delay_ms_{ 10000 };  // par défaut 10s
-
-        bool installer_mode_{ false };
-        bool installer_mode_effective_{ false };
-        bool installer_mode_fallback_done_{ false };
 
         bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (conversion ×3600/1055.056 ≈ ×3.412)
         bool supports_dual_setpoint_ = false;

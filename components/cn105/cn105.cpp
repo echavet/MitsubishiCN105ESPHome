@@ -42,7 +42,21 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart, bool lossnay) :
         [this]() { this->terminateCycle(); },
         // context_callback: Returns 'this' for the 'canSend' and 'onResponse' callbacks.
         [this]() -> CN105Climate* { return this; }
-    ) {
+    ),
+    handshake_(cn105::HandshakeHooks{
+        [this]() { this->sendInstallerConnectPacket(); },
+        [this](const char* name, uint32_t timeout_ms, std::function<void()> callback) {
+            this->set_timeout(name, timeout_ms, std::move(callback));
+        },
+        [this](const char* name) { this->cancel_timeout(name); },
+        [this]() { this->setHeatpumpConnected(true); },
+        [this]() {
+            ESP_LOGE(LOG_CONN_TAG, "--> Heatpump did not reply: NOT CONNECTED <--");
+            ESP_LOGI(LOG_CONN_TAG, "Reinitializing UART and trying to connect again...");
+            this->reconnectUART();
+        },
+        [this](cn105::HandshakeEvent event) { this->onHandshakeEvent(event); }
+    }) {
 
     // Current temperature + action via version-shimmed ClimateTraits API (#733).
     cn105_traits_add_current_temp_and_action(this->traits_);
@@ -79,7 +93,7 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart, bool lossnay) :
 
     this->powerRequestWithoutResponses = 0;     // power request is not supported by all heatpump #112
 
-    this->remote_temp_timeout_ = 4294967295;    // uint32_t max
+    this->remote_temp_timeout_ = UINT32_MAX;
     this->generateExtraComponents();
     this->loopCycle.init();
     this->wantedSettings.resetSettings();
@@ -221,7 +235,7 @@ void CN105Climate::pingExternalTemperature() {
 
 void CN105Climate::set_remote_temp_timeout(uint32_t timeout) {
     this->remote_temp_timeout_ = timeout;
-    if (timeout == 4294967295) {
+    if (timeout == UINT32_MAX) {
         ESP_LOGI(LOG_REMOTE_TEMP, "set_remote_temp_timeout is set to never.");
     } else {
         //ESP_LOGI(LOG_ACTION_EVT_TAG, "set_remote_temp_timeout is set to %lu", timeout);
@@ -363,6 +377,7 @@ void CN105Climate::disconnectUART() {
     ESP_LOGD(TAG, "disconnectUART()");
     this->uart_setup_switch = false;
     this->setHeatpumpConnected(false);
+    this->handshake_.on_disconnect();
     // Legacy booleans removed — state managed by FSM (setHeatpumpConnected / transition_to_)
     this->firstRun = true;
     this->publish_state();
