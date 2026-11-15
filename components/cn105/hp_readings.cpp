@@ -175,7 +175,11 @@ void CN105Climate::processCommand() {
     switch (this->parser_.command()) {
     case 0x61:  /* last update was successful */
         this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_ACK);
-        this->updateSuccess();
+        if (this->isFunctionsWriteInFlight()) {
+            this->onFunctionsAck();
+        } else {
+            this->updateSuccess();
+        }
         break;
 
     case 0x62:  /* packet contains data (room °C, settings, timer, status, or functions...)*/

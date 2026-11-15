@@ -365,8 +365,9 @@ void CN105Climate::disconnectUART() {
     this->setHeatpumpConnected(false);
     // Legacy booleans removed — state managed by FSM (setHeatpumpConnected / transition_to_)
     this->firstRun = true;
+    this->cancel_timeout(FUNCTIONS_ACK_TIMER);
+    this->functions_write_phase_ = FunctionsWritePhase::IDLE;
     this->publish_state();
-
 }
 
 void CN105Climate::reconnectUART() {

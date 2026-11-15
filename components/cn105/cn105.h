@@ -532,5 +532,20 @@ namespace esphome {
         bool restore_setpoints_ = false;
         void restore_setpoint_state_();
         void save_setpoint_state_();
+
+        enum class FunctionsWritePhase : uint8_t {
+            IDLE,
+            AWAIT_FIRST_ACK,
+            AWAIT_SECOND_ACK,
+        };
+
+        FunctionsWritePhase functions_write_phase_ = FunctionsWritePhase::IDLE;
+        uint8_t packet2[PACKET_LEN] = {};
+        void onFunctionsAck();
+        void abortFunctionsWrite();
+        bool isFunctionsWriteInFlight() const {
+            return this->functions_write_phase_ != FunctionsWritePhase::IDLE;
+        }
+
     };
 }

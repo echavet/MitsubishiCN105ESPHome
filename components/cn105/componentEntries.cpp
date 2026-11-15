@@ -76,7 +76,7 @@ void CN105Climate::loop() {
 
     // As long as the connection is not successful, we do not launch ANY cycle/write (otherwise it short-circuits the delay).
     // We still continue to read/process the input in order to detect 0x7A/0x7B (connection success).
-    const bool can_talk_to_hp = this->isHeatpumpConnected();
+    const bool can_talk_to_hp = this->isHeatpumpConnected() && !this->isFunctionsWriteInFlight();
 
     if (!this->processInput()) {                                            // if we don't get any input: no read op
         if (!can_talk_to_hp) {
@@ -92,8 +92,6 @@ void CN105Climate::loop() {
                 this->isGetFunctions_ = false;
             } else {
                 this->setFunctions(this->functions);
-                // Also request to get function settings from heat pump to update UI with latest values.
-                this->isGetFunctions_ = true;
             }
         } else {
             if (this->loopCycle.isCycleRunning()) {                         // if we are  running an update cycle

@@ -135,6 +135,9 @@ const uint8_t ESPMHP_MIN_TEMPERATURE = 16;
 const uint8_t ESPMHP_MAX_TEMPERATURE = 26;
 const float ESPMHP_TEMPERATURE_STEP = 0.5;
 
+static constexpr uint32_t FUNCTIONS_ACK_TIMEOUT_MS = 2000;
+static const char* const FUNCTIONS_ACK_TIMER = "functions_ack";
+
 struct heatpumpSettings {
     const char* power = nullptr;
     const char* mode = nullptr;
