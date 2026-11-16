@@ -37,7 +37,14 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart, bool lossnay) :
     profile_(cn105::make_protocol_profile(*this, lossnay)),
     scheduler_(
         // send callback: send a packet via buildAndSendInfoPacket
-        [this](uint8_t code) { this->buildAndSendInfoPacket(code); },
+        [this](uint8_t code) {
+            const bool sent = this->buildAndSendInfoPacket(code);
+            if (!sent && this->loopCycle.isCycleRunning()) {
+                // Polls regenerate themselves: end this cycle, a new one starts after the reconnect.
+                this->loopCycle.cycleEnded(true);
+            }
+            return sent;
+        },
         // timeout_callback: uses set_timeout from component
         [this](const std::string& name, uint32_t timeout_ms, std::function<void()> callback) {
             this->set_timeout(name.c_str(), timeout_ms, std::move(callback));
@@ -45,7 +52,12 @@ CN105Climate::CN105Climate(uart::UARTComponent* uart, bool lossnay) :
         // terminate_callback: completes the cycle
         [this]() { this->terminateCycle(); },
         // context_callback: Returns 'this' for the 'canSend' and 'onResponse' callbacks.
-        [this]() -> CN105Climate* { return this; }
+        [this]() -> CN105Climate* { return this; },
+        // abandon_callback: stop waiting for the reply of a request that soft-timed out
+        [this]() {
+            if (this->bus_gate_.outstanding_kind() == cn105::BusRequestKind::INFO_REQUEST)
+                this->bus_gate_.release();
+        }
     ),
     handshake_(cn105::HandshakeHooks{
         [this]() { this->sendInstallerConnectPacket(); },
@@ -381,11 +393,15 @@ void CN105Climate::disconnectUART() {
     ESP_LOGD(TAG, "disconnectUART()");
     this->uart_setup_switch = false;
     this->setHeatpumpConnected(false);
+    if (this->loopCycle.isCycleRunning()) {
+        this->loopCycle.cycleEnded(true);
+    }
     this->handshake_.on_disconnect();
     // Legacy booleans removed — state managed by FSM (setHeatpumpConnected / transition_to_)
     this->firstRun = true;
+    this->bus_gate_.release();
+    this->scheduler_.reset_pending();
     this->publish_state();
-
 }
 
 void CN105Climate::reconnectUART() {

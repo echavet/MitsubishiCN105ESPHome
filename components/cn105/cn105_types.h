@@ -33,6 +33,10 @@ static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 750;
 static const uint32_t RECEIVED_SETPOINT_GRACE_WINDOW_MS = 3000;
 static const uint32_t UI_SETPOINT_ANTIREBOUND_MS = 600;
 
+// A user change that could not be sent (link down) is discarded after this long:
+// it describes a state the user may no longer want.
+static const uint32_t WANTED_SETTINGS_MAX_AGE_MS = 30000;
+
 static const int PACKET_LEN = 22;
 static const int PACKET_TYPE_DEFAULT = 99;
 

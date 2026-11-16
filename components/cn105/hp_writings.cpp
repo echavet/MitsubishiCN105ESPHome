@@ -89,7 +89,7 @@ void CN105Climate::prepareSetPacket(uint8_t* packet, int length) {
     }
 }
 
-void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) {
+bool CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) {
 
     if ((this->isUARTReady_()) &&
         (this->isHeatpumpConnectionActive() || (!checkIsActive))) {
@@ -103,32 +103,15 @@ void CN105Climate::writePacket(uint8_t* packet, int length, bool checkIsActive) 
 
         // Prevent sending wantedSettings too soon after writing for example the remote temperature update packet
         this->lastSend = CUSTOM_MILLIS;
-
-    } else {
-        ESP_LOGW(TAG, "could not write as asked, because UART is not connected");
-        this->reconnectUART();
-        ESP_LOGW(TAG, "delaying packet writing because we need to reconnect first...");
-        if (length > PACKET_LEN) {
-            ESP_LOGE(TAG, "Packet length %d exceeds PACKET_LEN %d, dropping.", length, PACKET_LEN);
-            return;
-        }
-        memcpy(this->pending_packet_, packet, static_cast<size_t>(length));
-        this->pending_packet_len_ = length;
-        this->pending_check_is_active_ = checkIsActive;
-        this->has_pending_packet_ = true;
-        this->set_timeout("write", 4000, [this]() { this->try_write_pending_packet(); });
+        return true;
     }
-}
 
-void CN105Climate::try_write_pending_packet() {
-    if (!this->has_pending_packet_) return;
-    if (!this->isUARTReady_()) {
-        this->reconnectUART();
-        this->set_timeout("write", 2000, [this]() { this->try_write_pending_packet(); });
-        return;
-    }
-    this->writePacket(this->pending_packet_, this->pending_packet_len_, this->pending_check_is_active_);
-    this->has_pending_packet_ = false;
+    // Nothing is saved. disconnectUART() releases the bus claim and the reconnect starts a fresh
+    // handshake. The caller keeps its own wanted state queued; it is re-sent from loop() once
+    // the connection is fully established (isHeatpumpConnected()).
+    ESP_LOGW(TAG, "could not write as asked, because UART is not connected: reconnecting");
+    this->reconnectUART();
+    return false;
 }
 
 const char* CN105Climate::getModeSetting() {
@@ -220,16 +203,33 @@ void CN105Climate::publishWantedRunStatesStateToHA() {
     this->profile_->apply_wanted_run_states();
 }
 
-
 void CN105Climate::sendWantedSettingsDelegate() {
-    this->wantedSettings.hasBeenSent = true;
+    // Too old to still reflect what the user wants (link was down for a while): drop it.
+    // The next poll resyncs the UI because currentSettings is reset on every new session.
+    if (cn105_protocol::is_wanted_settings_expired(static_cast<uint32_t>(this->wantedSettings.lastChange),
+                                                   CUSTOM_MILLIS, WANTED_SETTINGS_MAX_AGE_MS)) {
+        ESP_LOGW(TAG, "Dropping wantedSettings queued for more than %u ms", (unsigned) WANTED_SETTINGS_MAX_AGE_MS);
+        this->wantedSettings.resetSettings();
+        this->bus_gate_.release();     // sendWantedSettings() claimed it before calling us
+        this->publish_state();
+        return;
+    }
+
     this->lastSend = CUSTOM_MILLIS;
     ESP_LOGI(TAG, "sending wantedSettings...");
     this->debugSettings("wantedSettings", wantedSettings);
     // and then we send the update packet
     uint8_t packet[PACKET_LEN] = {};
     this->createPacket(packet);
-    this->writePacket(packet, PACKET_LEN);
+
+    if (!this->writePacket(packet, PACKET_LEN)) {
+        // hasChanged stays true, hasBeenSent stays false: checkPendingWantedSettings() sends the
+        // newest wanted state once the connection is back. Nothing was published optimistically.
+        ESP_LOGW(TAG, "wantedSettings not sent, keeping them queued");
+        return;
+    }
+
+    this->wantedSettings.hasBeenSent = true;
     this->hpPacketDebug(packet, 22, "WRITE_SETTINGS");
 
     this->publishWantedSettingsStateToHA();
@@ -253,6 +253,11 @@ void CN105Climate::sendWantedSettings() {
         if (CUSTOM_MILLIS - this->lastSend > 300) {        // we don't want to send too many packets
 
             //this->cycleEnded();   // only if we let the cycle be interrupted to send wented settings
+
+            if (!this->bus_gate_.begin(cn105::BusRequestKind::SET_SETTINGS, cn105::BusExpectedResponse::ACK, CUSTOM_MILLIS)) {
+                ESP_LOGD(TAG, "will sendWantedSettings later because another request is waiting for its reply...");
+                return;
+            }
 
 #ifdef USE_ESP32
             std::lock_guard<std::mutex> guard(wantedSettingsMutex);
@@ -287,10 +292,21 @@ void CN105Climate::buildAndSendRequestPacket(int packetType) {
     this->buildAndSendInfoPacket(code);
 }
 
-void CN105Climate::buildAndSendInfoPacket(uint8_t code) {
+bool CN105Climate::buildAndSendInfoPacket(uint8_t code) {
+    // A soft-timeout can fire after a reconnect and continue a dead cycle: never poll
+    // before the handshake has completed.
+    if (!this->isHeatpumpConnected()) {
+        return false;
+    }
+    if (!this->bus_gate_.begin(cn105::BusRequestKind::INFO_REQUEST, cn105::BusExpectedResponse::DATA,
+                               CUSTOM_MILLIS, cn105::BusGate::kReplyTimeoutMs, code)) {
+        ESP_LOGW(TAG, "Not sending info request 0x%02X: another request is waiting for its reply", code);
+        return false;
+    }
     uint8_t packet[PACKET_LEN] = {};
     createInfoPacket(packet, code);
-    this->writePacket(packet, PACKET_LEN);
+    // false -> lambda ends the cycle
+    return this->writePacket(packet, PACKET_LEN);
 }
 
 void CN105Climate::buildAndSendRequestsInfoPackets() {
@@ -358,6 +374,12 @@ void CN105Climate::sendRemoteTemperaturePacket() {
         return;
     }
 
+    if (!this->bus_gate_.begin(cn105::BusRequestKind::SET_REMOTE_TEMPERATURE, cn105::BusExpectedResponse::ACK, now)) {
+        ESP_LOGW(LOG_REMOTE_TEMP, "Not sending remote temperature: another request is waiting for its reply");
+        shouldSendExternalTemperature_ = true;
+        return;
+    }
+
     // Reset debounce skip counter on successful send
     this->remote_temp_debounce_skip_count_ = 0;
 
@@ -372,7 +394,11 @@ void CN105Climate::sendRemoteTemperaturePacket() {
 
     ESP_LOGD(LOG_REMOTE_TEMP, "Sending remote temperature packet... -> %.1f%s",
         this->remoteTemperature_, temp_changed ? " (changed)" : " (keep-alive)");
-    writePacket(packet, PACKET_LEN);
+    if (!writePacket(packet, PACKET_LEN)) {
+        ESP_LOGW(LOG_REMOTE_TEMP, "Not sending remote temperature, keeping them queued");
+        shouldSendExternalTemperature_ = true;
+        return;
+    }
 
     // Update debounce tracking
     this->last_remote_temp_send_ms_ = now;
@@ -380,6 +406,10 @@ void CN105Climate::sendRemoteTemperaturePacket() {
 }
 
 void CN105Climate::sendRemoteTemperature() {
+    // The flag stays set while another request is waiting, so the send is retried.
+    if (!this->bus_gate_.is_idle(CUSTOM_MILLIS)) {
+        return;
+    }
     this->shouldSendExternalTemperature_ = false;
 
     // Send the packet
@@ -392,6 +422,11 @@ void CN105Climate::sendWantedRunStates() {
         return;
     }
 
+    if (!this->bus_gate_.begin(cn105::BusRequestKind::SET_RUN_STATES, cn105::BusExpectedResponse::ACK, CUSTOM_MILLIS)) {
+        ESP_LOGD(LOG_SET_RUN_STATE, "Will send run states later: another request is waiting for its reply");
+        return;
+    }
+
     uint8_t packet[PACKET_LEN] = {};
 
     prepareSetPacket(packet, PACKET_LEN);
@@ -401,10 +436,46 @@ void CN105Climate::sendWantedRunStates() {
     uint8_t chkSum = checkSum(packet, 21);
     packet[21] = chkSum;
     ESP_LOGD(LOG_SET_RUN_STATE, "Sending set run state package (0x08)");
-    writePacket(packet, PACKET_LEN);
+    if (!writePacket(packet, PACKET_LEN)) {
+        ESP_LOGW(LOG_SET_RUN_STATE, "Run states not sent, keeping them queued");
+        // hasChanged stays true -> retried by loop()
+        return;
+    }
 
     this->publishWantedRunStatesStateToHA();
-
     this->wantedRunStates.resetSettings();
     this->loopCycle.deferCycle();
+}
+
+void CN105Climate::handleHeatpumpAck() {
+    const std::optional<cn105::BusRequestKind> completed_kind = this->bus_gate_.complete(cn105::BusResponse::ACK, CUSTOM_MILLIS);
+    if (!completed_kind.has_value()) {
+        ESP_LOGD(LOG_ACK, "Ignoring ack: no request is waiting for it");
+        return;
+    }
+    switch (*completed_kind) {
+    case cn105::BusRequestKind::SET_FUNCTIONS_PART1:
+        this->sendSecondFunctionsPacket();
+        break;
+    case cn105::BusRequestKind::SET_FUNCTIONS_PART2:
+        ESP_LOGD(TAG, "setFunctions complete");
+        this->isGetFunctions_ = true;
+        break;
+    default:
+        this->updateSuccess();
+        break;
+    }
+}
+
+void CN105Climate::sendSecondFunctionsPacket() {
+    if (!this->bus_gate_.begin(cn105::BusRequestKind::SET_FUNCTIONS_PART2, cn105::BusExpectedResponse::ACK, CUSTOM_MILLIS)) {
+        ESP_LOGW(TAG, "setFunctions part 2 not sent: another request is waiting for its reply, re-reading functions");
+        this->isGetFunctions_ = true;
+        return;
+    }
+    ESP_LOGD(TAG, "sending a setFunctions packet part 2");
+    if (!this->writePacket(this->functions_second_packet_, PACKET_LEN)) {
+        // Part 1 was already acknowledged: the unit may hold a half-applied write. Re-read it.
+        this->isGetFunctions_ = true;
+    }
 }

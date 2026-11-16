@@ -266,6 +266,7 @@ void CN105Climate::hpPacketDebug(const uint8_t* packet, unsigned int length, con
     case 0x41: label = "SET"; break;           // Set request sent to HP
     case 0x61: label = "ACK"; break;           // Set reply from HP
     case 0x42: label = "GET"; break;           // Info request sent to HP
+    case 0x62: label = "RESPONSE"; break;      // Info reply from HP
     }
 
     // Byte 5 is the subcommand, its meaning depends on the packet type

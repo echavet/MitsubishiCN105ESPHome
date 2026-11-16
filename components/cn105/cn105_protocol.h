@@ -281,6 +281,12 @@ inline bool is_temp_byte_unused(uint8_t data11) {
     return data11 == 0x80;
 }
 
+/// True when a queued user change is too old to still be sent.
+/// Unsigned subtraction keeps this correct across millis() rollover.
+inline bool is_wanted_settings_expired(uint32_t changed_ms, uint32_t now_ms, uint32_t max_age_ms) {
+    return (now_ms - changed_ms) > max_age_ms;
+}
+
 // ════════════════════════════════════════════════════════════════
 // Hardware AUTO operating direction
 // ════════════════════════════════════════════════════════════════

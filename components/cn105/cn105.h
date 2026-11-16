@@ -29,6 +29,7 @@
 #include "info_request.h"
 #include "request_scheduler.h"
 #include "connect_handshake.h"
+#include "bus_gate.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/button/button.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
@@ -215,7 +216,7 @@ namespace esphome {
         void reconnectUART();
         void buildAndSendRequestsInfoPackets();
         void buildAndSendRequestPacket(int packetType);
-        void buildAndSendInfoPacket(uint8_t code);
+        bool buildAndSendInfoPacket(uint8_t code);
         bool isHeatpumpConnectionActive();
         void reconnectIfConnectionLost();
 
@@ -399,7 +400,9 @@ namespace esphome {
         int lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue, const char* debugInfo = "");
         int lookupByteMapIndex(const int valuesMap[], int len, int lookupValue, const char* debugInfo = "");
 
-        void writePacket(uint8_t* packet, int length, bool checkIsActive = true);
+        // Returns true when the bytes were written. On false the link has been reset
+        // (reconnectUART) and the bus claim released; the CALLER keeps its own intent queued.
+        bool writePacket(uint8_t* packet, int length, bool checkIsActive = true);
         void prepareInfoPacket(uint8_t* packet, int length);
         void prepareSetPacket(uint8_t* packet, int length);
 
@@ -503,13 +506,6 @@ namespace esphome {
 
         // foundStart, bytesRead, dataLength, command → moved into parser_ (Phase 3A)
 
-        // Gestion sûre d'un paquet différé à écrire pour éviter la capture d'un buffer de pile
-        void try_write_pending_packet();
-        uint8_t pending_packet_[PACKET_LEN] = {};
-        int pending_packet_len_ = 0;
-        bool pending_check_is_active_ = true;
-        bool has_pending_packet_ = false;
-
         // Connection lifecycle FSM
         DriverState state_ = DriverState::BOOT;
         uint32_t boot_ms_ = 0;
@@ -527,5 +523,12 @@ namespace esphome {
         bool restore_setpoints_ = false;
         void restore_setpoint_state_();
         void save_setpoint_state_();
+        // Records the one request that is waiting for a heat pump reply. Every sender claims it
+        // before writing and every reply is matched against it (see bus_gate.h).
+        cn105::BusGate bus_gate_;
+        uint8_t functions_second_packet_[PACKET_LEN] = {};
+        void handleHeatpumpAck();
+        void sendSecondFunctionsPacket();
+        void checkBusTimeout();
     };
 }

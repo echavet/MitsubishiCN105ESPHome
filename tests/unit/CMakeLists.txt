@@ -47,6 +47,8 @@ add_executable(cn105_tests
     test_vane_setpoint_persistence.cpp
     test_climate_action.cpp
     test_connect_handshake.cpp
+    test_bus_gate.cpp
+    test_wanted_expiry.cpp
     test_auto_direction.cpp
     test_sub_mode.cpp
     test_idle_dual_band.cpp
@@ -67,3 +69,16 @@ add_executable(cn105_legacy_action_tests test_climate_action.cpp)
 target_compile_definitions(cn105_legacy_action_tests PRIVATE "ESPHOME_VERSION_CODE=VERSION_CODE(2026,2,0)")
 target_link_libraries(cn105_legacy_action_tests GTest::gtest_main)
 gtest_discover_tests(cn105_legacy_action_tests TEST_PREFIX "LegacyESPHome.")
+
+# The production request scheduler, built without ESPHome. CN105_UNIT_TEST drops its
+# ESPHome includes; the force-included support header supplies the log macros and a fake clock.
+add_executable(cn105_scheduler_tests
+    "${CN105_SRC_DIR}/request_scheduler.cpp"
+    test_request_scheduler.cpp
+)
+target_compile_definitions(cn105_scheduler_tests PRIVATE CN105_UNIT_TEST)
+target_compile_options(cn105_scheduler_tests PRIVATE
+    -include "${CMAKE_SOURCE_DIR}/mocks/scheduler_test_support.h"
+)
+target_link_libraries(cn105_scheduler_tests GTest::gtest_main)
+gtest_discover_tests(cn105_scheduler_tests TEST_PREFIX "Scheduler.")

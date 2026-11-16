@@ -15,14 +15,19 @@ namespace esphome {
      *
      *This class extracts INFO request management logic from the CN105Climate component
      *to respect the single responsibility principle (SRP).
+     *
+     * At most one request is outstanding at any time. A reply is acted on only while its
+     * request is still awaiting. A reply that arrives after the request was given up on
+     * (soft timeout) or that repeats an earlier reply is ignored.
      */
     class RequestScheduler {
     public:
         /**
          * @brief Type of callback for sending a packet
          * @param code The code of the request to send
+         * @return If send suceeded
          */
-        using SendCallback = std::function<void(uint8_t)>;
+        using SendCallback = std::function<bool(uint8_t)>;
 
         /**
          * @brief Type of callback for timeout management
@@ -44,17 +49,25 @@ namespace esphome {
         using ContextCallback = std::function<CN105Climate* ()>;
 
         /**
+         * @brief Type of callback invoked when a request is given up on after a soft timeout,
+         *        so the owner can stop waiting for its reply before the next request is sent
+         */
+        using AbandonCallback = std::function<void()>;
+
+        /**
          * @brief Constructor
          * @param send_callback Callback to send a packet
          * @param timeout_callback Callback to manage timeouts (can be nullptr if not used)
          * @param terminate_callback Callback to end a cycle
          * @param context_callback Callback to get the CN105Climate context (for canSend and onResponse)
+         * @param abandon_callback Callback invoked when a request soft-times out (can be nullptr)
          */
         RequestScheduler(
             SendCallback send_callback,
             TimeoutCallback timeout_callback = nullptr,
             TerminateCallback terminate_callback = nullptr,
-            ContextCallback context_callback = nullptr
+            ContextCallback context_callback = nullptr,
+            AbandonCallback abandon_callback = nullptr
         );
 
         /**
@@ -108,11 +121,25 @@ namespace esphome {
 
         /**
          * @brief Processes a response received
+         *
+         * The reply is acted on only when its request is awaiting: onResponse runs and the
+         * next request is sent. Otherwise it is ignored, so a duplicate or a reply to a
+         * request that was given up on cannot fork the cycle.
+         *
          * @param code The code of the response received
          * @param context CN105Climate context to call onResponse (can be nullptr, uses context_callback_ if provided)
-         * @return true if the response has been processed, false otherwise
+         * @return true if the code is managed by the scheduler (acted on or ignored), false otherwise
          */
         bool process_response(uint8_t code, CN105Climate* context = nullptr);
+
+        /**
+         * @brief Forget every in-flight request (link dropped or a new session started).
+         *
+         * Clears `awaiting` so replies and soft-timeout timers belonging to the dead session are
+         * ignored. `failures` and `disabled` are kept: they describe what the unit supports,
+         * not the state of one session.
+         */
+        void reset_pending();
 
         /**
          * @brief Method to call in the main loop to manage timeouts
@@ -128,6 +155,7 @@ namespace esphome {
         TimeoutCallback timeout_callback_;          // Callback to manage timeouts
         TerminateCallback terminate_callback_;      // Callback to end a cycle
         ContextCallback context_callback_;          // Callback to get the CN105Climate context
+        AbandonCallback abandon_callback_;          // Callback to stop waiting after a soft timeout
 
         /**
          * @brief Sends a specific request by its code
@@ -138,4 +166,3 @@ namespace esphome {
     };
 
 }
-

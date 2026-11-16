@@ -129,6 +129,12 @@ void CN105Climate::getDataFromResponsePacket() {
 
     // D'abord, laissons l'orchestrateur traiter les codes connus
     const uint8_t code = this->data[0];
+    // Replies are matched to requests by order only: one that no request is waiting for
+    // (after a timeout, a duplicate) is ignored.
+    if (!this->bus_gate_.complete(cn105::BusResponse::DATA, CUSTOM_MILLIS, code).has_value()) {
+        ESP_LOGD("Decoder", "Ignoring data reply 0x%02X: no request is waiting for it", code);
+        return;
+    }
     if (this->scheduler_.process_response(code)) {
         return;
     }
@@ -181,7 +187,7 @@ void CN105Climate::processCommand() {
     switch (this->parser_.command()) {
     case 0x61:  /* last update was successful */
         this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_ACK);
-        this->updateSuccess();
+        this->handleHeatpumpAck();
         break;
     case 0x62:  /* packet contains data (room °C, settings, timer, status, or functions...)*/
         this->getDataFromResponsePacket();
@@ -216,6 +222,7 @@ void CN105Climate::onHandshakeEvent(cn105::HandshakeEvent event) {
         // Reset cached settings so the first read after reconnect performs a full sync.
         this->currentSettings.resetSettings();
         this->currentRunStates.resetSettings();
+        this->scheduler_.reset_pending();
         this->profile_->reset();
         break;
     case HandshakeEvent::INSTALLER_SKIPPED:
