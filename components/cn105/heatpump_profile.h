@@ -46,6 +46,7 @@ class HeatPumpProfile final : public Cn105ProtocolProfile {
     void restore_setpoints() override;
     void save_setpoints() override;
     void sanitize_setpoints() override;
+    void reevaluate_heat_cool() override;
 
  private:
     void debug_functions(const uint8_t* packet, unsigned int length);
@@ -73,6 +74,25 @@ class HeatPumpProfile final : public Cn105ProtocolProfile {
 
     void setActionIfOperatingTo(climate::ClimateAction action);
     bool setActionFromAutoDirection();
+
+    // --- HEAT_COOL with dual_setpoint: hardware AUTO in the band, HEAT/COOL outside ---
+    // Heads on a shared outdoor unit run one direction at a time, and an idle head in
+    // explicit COOL still holds it in cooling. Hardware AUTO follows the outdoor unit,
+    // so HEAT_COOL runs AUTO inside the band with the setpoint on the edge AUTO is
+    // running toward (see cn105_protocol::heat_cool_drive).
+    static constexpr float HEAT_COOL_SWITCH_MARGIN = 0.5f;
+    static constexpr uint32_t HEAT_COOL_MIN_DWELL_MS = 10 * 60 * 1000;
+    static constexpr uint32_t HEAT_COOL_REASSERT_MS = 60 * 1000;
+    cn105_protocol::HeatCoolDrive heat_cool_drive_{ cn105_protocol::HeatCoolDrive::NONE };
+    cn105_protocol::AutoDirection heat_cool_auto_dir_{ cn105_protocol::AutoDirection::UNKNOWN };
+    uint32_t heat_cool_switch_ms_ = 0;
+    uint32_t heat_cool_sent_ms_ = 0;
+    bool managesHeatCool() const;
+    void setHeatCoolDrive(cn105_protocol::HeatCoolDrive next);
+    void applyHeatCoolDrive(bool user_command);
+    void adoptReportedHeatCoolDrive(const char* reported_mode);
+    float heatCoolSetpoint() const;
+    void setWantedTemperature(float setting);
 };
 
 }  // namespace esphome::cn105
