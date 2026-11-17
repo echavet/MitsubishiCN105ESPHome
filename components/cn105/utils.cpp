@@ -241,90 +241,83 @@ void CN105Climate::debugSettingsAndStatus(const char* settingName, heatpumpSetti
 }
 
 void CN105Climate::hpPacketDebug(const uint8_t* packet, unsigned int length, const char* packetDirection, const char* log_prefix) {
+#if ESPHOME_LOG_LEVEL < ESPHOME_LOG_LEVEL_DEBUG
+    return;
+#endif
+    char dataStr[MAX_DATA_BYTES * 3 + 1] = "";
+
     if (length < 5) {
         // Fallback for too short packets
-        std::string output;
-        char byteBuf[4];
         for (unsigned int i = 0; i < length; i++) {
-            snprintf(byteBuf, sizeof(byteBuf), "%02X ", packet[i]);
-            output += byteBuf;
+            snprintf(dataStr + i * 3, 4, "%02X ", packet[i]);
         }
-        ESP_LOGD(packetDirection, "SHORT: %s", output.c_str());
+        ESP_LOGD(packetDirection, "SHORT: %s", dataStr);
         return;
     }
 
     // Determine packet type label
+    const uint8_t type = (packet[0] == 0xFC) ? packet[1] : 0x00;
     const char* label = "UNKNOWN";
-    if (packet[0] == 0xFC) {
-        switch (packet[1]) {
-        case 0x5A: label = "CONNECT"; break;
-        case 0x5B: label = "CONN_INST"; break; // Installer mode
-        case 0x41: label = "SET"; break;       // Command sent to HP
-        case 0x42: label = "ACK/INFO"; break;  // Response/Info from HP
-        case 0x61: label = "GET"; break;       // Request data from HP
-        case 0x62: label = "RESPONSE"; break;  // Data response from HP
-        }
+    switch (type) {
+    case 0x5A: label = "CONNECT"; break;       // Connect request
+    case 0x5B: label = "CONN_INST"; break;     // Connect request, installer mode
+    case 0x7A: label = "CONNECT_OK"; break;    // Connect reply
+    case 0x7B: label = "CONN_INST_OK"; break;  // Installer mode connect reply
+    case 0x41: label = "SET"; break;           // Set request sent to HP
+    case 0x61: label = "ACK"; break;           // Set reply from HP
+    case 0x42: label = "GET"; break;           // Info request sent to HP
+    case 0x62: label = "RESPONSE"; break;      // Info reply from HP
     }
 
-    // Determine specific command/data type (Semantic decoding)
-    // Byte 5 (index 5) is usually the subcommand
+    // Byte 5 is the subcommand, its meaning depends on the packet type
     const char* subLabel = "";
     if (length > 5) {
-        switch (packet[5]) {
-        case 0x01: subLabel = ":Start"; break; // Or "Connect" ?
-        case 0x02: subLabel = ":Settings"; break;
-        case 0x03: subLabel = ":RoomTemp"; break;
-        case 0x04: subLabel = ":Status"; break; // Or "Unknown"? 0x04 is RQST_PKT_STATUS in cn105_types.h
-        case 0x05: subLabel = ":Standby"; break; // RQST_PKT_STANDBY
-        case 0x06: subLabel = ":Status"; break;  // RQST_PKT_HVAC_OPTIONS? Wait, need to check types map.
-                                                 // In cn105_types: 0x06 is RQST_PKT_HVAC_OPTIONS?
-                                                 // Actually 0x06 in RCVD_PKT is TIMER?
-                                                 // Let's stick to common ones seen in logs:
-                                                 // 02=Settings, 03=RoomTemp, 06=Status/Timers?, 09=Power?
-                                                 // 0x09 is RCVD_PKT_STATUS in some contexts or Power?
-                                                 // Looking at logs:
-                                                 // FC 62 ... 09 ... -> Power/Standby?
-                                                 // FC 62 ... 06 ... -> Status?
-        case 0x09: subLabel = ":Power"; break;
-        case 0x10: subLabel = ":Hello"; break; // Connect response
-        case 0x20: subLabel = ":Func1"; break; // Functions part 1
-        case 0x22: subLabel = ":Func2"; break; // Functions part 2
+        if (type == 0x41) {
+            switch (packet[5]) {
+            case 0x01: subLabel = ":Settings"; break;
+            case 0x07: subLabel = ":RemoteTemp"; break;
+            case 0x08: subLabel = ":RunState"; break;
+            case 0x1F: subLabel = ":Func1"; break;
+            case 0x21: subLabel = ":Func2"; break;
+            }
+        } else if (type == 0x42 || type == 0x62) {
+            switch (packet[5]) {
+            case 0x02: subLabel = ":Settings"; break;
+            case 0x03: subLabel = ":RoomTemp"; break;
+            case 0x04: subLabel = ":Error"; break;
+            case 0x05: subLabel = ":Timers"; break;
+            case 0x06: subLabel = ":Status"; break;
+            case 0x09: subLabel = ":SubMode"; break;
+            case 0x20: subLabel = ":Func1"; break;
+            case 0x22: subLabel = ":Func2"; break;
+            case 0x42: subLabel = ":HvacOptions"; break;
+            }
         }
     }
 
-    // For 0x06 specifically, in many logs it's Status or Timers.
-    // In types.h: RCVD_PKT_STATUS = 5, RCVD_PKT_TIMER = 6.
-    // Let's use generic names if unsure, but user wants semantic.
-    if (packet[5] == 0x06) subLabel = ":Status";
-
-    char fullLabel[20];
+    char fullLabel[32];
     snprintf(fullLabel, sizeof(fullLabel), "%s%s", label, subLabel);
 
-    // Format strings
-    std::string headerStr, dataStr, csStr;
-    char byteBuf[4];
-
     // HEADER: First 5 bytes
-    for (unsigned int i = 0; i < 5 && i < length; i++) {
-        snprintf(byteBuf, sizeof(byteBuf), "%02X ", packet[i]);
-        headerStr += byteBuf;
+    char headerStr[5 * 3 + 1];
+    for (unsigned int i = 0; i < 5; i++) {
+        snprintf(headerStr + i * 3, 4, "%02X ", packet[i]);
     }
 
     // DATA: Bytes 5 to Length-2 (payload)
-    if (length > 6) {
-        for (unsigned int i = 5; i < length - 1; i++) {
-            snprintf(byteBuf, sizeof(byteBuf), "%02X ", packet[i]);
-            dataStr += byteBuf;
-        }
+    unsigned int n = 0;
+    for (unsigned int i = 5; i + 1 < length && n + 3 < sizeof(dataStr); i++, n += 3) {
+        snprintf(dataStr + n, 4, "%02X ", packet[i]);
     }
+    dataStr[n] = '\0';
 
     // CHECKSUM: Last byte
-    snprintf(byteBuf, sizeof(byteBuf), "%02X", packet[length - 1]);
-    csStr = byteBuf;
+    char csStr[3];
+    snprintf(csStr, sizeof(csStr), "%02X", packet[length - 1]);
 
-// Output format: [LABEL:SubLabel ] HEADER -> [ PAYLOAD ] CS
+    // Output format: [LABEL:SubLabel ] HEADER -> [ PAYLOAD ] CS
     ESP_LOGD(packetDirection, "%s|%s|->[%s](%s) <%s>",
-        log_prefix, headerStr.c_str(), dataStr.c_str(), csStr.c_str(), fullLabel);
+        log_prefix, headerStr, dataStr, csStr, fullLabel);
 }
 
 
