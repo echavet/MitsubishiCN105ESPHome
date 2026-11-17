@@ -60,6 +60,8 @@ class Cn105ProtocolProfile {
     virtual void restore_setpoints() {}
     virtual void save_setpoints() {}
     virtual void sanitize_setpoints() {}
+    // Re-checks a dual-setpoint HEAT_COOL drive after a status or sub mode update.
+    virtual void reevaluate_heat_cool() {}
 
  protected:
     CN105Climate& hp_;

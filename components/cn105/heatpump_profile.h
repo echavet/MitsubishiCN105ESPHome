@@ -1,5 +1,6 @@
 #pragma once
 #include "protocol_profile.h"
+#include "heat_cool_controller.h"
 #include "heatpump_profile_protocol.h"
 #include "esphome/core/preferences.h"
 
@@ -46,6 +47,8 @@ class HeatPumpProfile final : public Cn105ProtocolProfile {
     void restore_setpoints() override;
     void save_setpoints() override;
     void sanitize_setpoints() override;
+    void reset() override { heat_cool_ = {}; }
+    void reevaluate_heat_cool() override;
 
  private:
     void debug_functions(const uint8_t* packet, unsigned int length);
@@ -73,6 +76,11 @@ class HeatPumpProfile final : public Cn105ProtocolProfile {
 
     void setActionIfOperatingTo(climate::ClimateAction action);
     bool setActionFromAutoDirection();
+
+    cn105_protocol::HeatCoolController heat_cool_;
+    bool managesHeatCool() const;
+    bool queueHeatCoolCommand(bool user_command);
+    void setWantedTemperature(float setting);
 };
 
 }  // namespace esphome::cn105
