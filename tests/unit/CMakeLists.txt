@@ -49,6 +49,7 @@ add_executable(cn105_tests
     test_auto_direction.cpp
     test_sub_mode.cpp
     test_idle_dual_band.cpp
+    test_heat_cool_controller.cpp
     test_heat_cool_drive.cpp
 )
 

@@ -294,6 +294,7 @@ namespace esphome {
         // Unité de puissance brute envoyée par la PAC: false = Watts (défaut), true = BTU/s
         void set_power_unit_is_btu(bool v) { this->power_unit_is_btu_ = v; }
 
+        void set_auto_band_control(bool v) { auto_band_control_ = v; }
         // Opt-in (supports.restore_setpoints): persist HEAT_COOL band across reboots
         void set_restore_setpoints(bool v) { this->restore_setpoints_ = v; }
 
@@ -521,6 +522,7 @@ namespace esphome {
         bool installer_mode_fallback_done_{ false };
 
         bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (conversion ×3600/1055.056 ≈ ×3.412)
+        bool auto_band_control_ = false;
         bool supports_dual_setpoint_ = false;
         int horizontal_vanes_{ 1 }; // Kept for legacy logging if needed, or can be removed if unused.
         VaneType vane_type_{ VaneType::STANDARD };

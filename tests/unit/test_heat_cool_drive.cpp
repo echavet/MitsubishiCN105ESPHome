@@ -8,7 +8,7 @@
 /// only to bring the room back into the band.
 #include <gtest/gtest.h>
 #include <cmath>
-#include "cn105_protocol.h"
+#include "heat_cool_controller.h"
 
 using cn105_protocol::AutoDirection;
 using cn105_protocol::HeatCoolDrive;

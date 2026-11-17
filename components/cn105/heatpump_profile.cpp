@@ -166,6 +166,10 @@ void HeatPumpProfile::decode_settings() {
 
     // --- AIRFLOW CONTROL END
 
+    if (this->managesHeatCool() && !hp_.wantedSettings.hasChanged && power_opt && mode_opt &&
+        strcmp(receivedSettings.power, "ON") == 0) {
+        heat_cool_.settings_report(receivedSettings.mode, receivedSettings.temperature);
+    }
     hp_.heatpumpUpdate(receivedSettings);
 }
 
@@ -276,10 +280,20 @@ bool HeatPumpProfile::decode_submode() {
         if (hp_.Auto_sub_mode_sensor_ != nullptr) {
             hp_.Auto_sub_mode_sensor_->publish_state(receivedSettings.auto_sub_mode);
         }
-        // HEAT_COOL moves its AUTO setpoint to the edge AUTO now runs toward.
-        this->reevaluate_heat_cool();
         this->update_action();
         climate_changed = true;
+    }
+
+    if (this->managesHeatCool()) {
+        // Refresh even when consecutive 0x09 replies carry the same direction.
+        // An unrecognised byte must not refresh the decoder's cached direction.
+        if (auto_sub_mode_opt) {
+            heat_cool_.direction_report(cn105_protocol::auto_direction(*auto_sub_mode_opt),
+                                        CUSTOM_MILLIS, hp_.get_update_interval());
+        }
+        const auto before = hp_.action;
+        this->reevaluate_heat_cool();
+        climate_changed |= hp_.action != before;
     }
 
     return climate_changed;
@@ -357,9 +371,9 @@ void HeatPumpProfile::apply_received_settings(heatpumpSettings& settings) {
 void HeatPumpProfile::reconcile_power_mode(heatpumpSettings& settings, bool updateCurrentSettings) {
     hp_.mode = HeatPumpProtocol::reconcile_power_mode(settings, hp_.currentSettings, hp_.mode,
         hp_.supports_dual_setpoint_, updateCurrentSettings);
-    if (updateCurrentSettings && settings.mode != nullptr &&
+    if (this->managesHeatCool() && updateCurrentSettings && settings.mode != nullptr &&
         settings.power != nullptr && strcmp(settings.power, "ON") == 0) {
-        this->adoptReportedHeatCoolDrive(settings.mode);
+        heat_cool_.adopt(settings.mode, settings.temperature, CUSTOM_MILLIS);
     }
 }
 
@@ -538,7 +552,7 @@ void HeatPumpProfile::apply_wanted_settings() {
 void HeatPumpProfile::control_mode() {
 
     if (hp_.mode != climate::CLIMATE_MODE_HEAT_COOL) {
-        this->heat_cool_drive_ = cn105_protocol::HeatCoolDrive::NONE;
+        heat_cool_ = {};
     }
 
     switch (hp_.mode) {
@@ -660,9 +674,8 @@ void HeatPumpProfile::control_temperature() {
     case climate::CLIMATE_MODE_HEAT_COOL:
         if (this->managesHeatCool()) {
             this->sanitize_setpoints();
-            this->applyHeatCoolDrive(true);
-            setting = this->heatCoolSetpoint();
-            break;
+            this->queueHeatCoolCommand(true);
+            return;
         }
         // Mode HEAT_COOL (new): displays 2 sliders
         // BUT sends AUTO command to Mitsubishi hardware
@@ -751,9 +764,6 @@ void HeatPumpProfile::control_temperature() {
 }
 
 void HeatPumpProfile::setWantedTemperature(float setting) {
-    if (hp_.mode != climate::CLIMATE_MODE_HEAT_COOL) {
-        this->heat_cool_drive_ = cn105_protocol::HeatCoolDrive::NONE;
-    }
     setting = hp_.calculateTemperatureSetting(setting);
     hp_.wantedSettings.temperature = setting;
     // Track last user temperature command: this persists across resetSettings()
@@ -840,11 +850,11 @@ void HeatPumpProfile::update_action() {
             this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
             break;
         case climate::CLIMATE_MODE_HEAT_COOL:
-            if (this->heat_cool_drive_ == cn105_protocol::HeatCoolDrive::HEAT) {
+            if (heat_cool_.drive() == cn105_protocol::HeatCoolDrive::HEAT) {
                 this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
                 break;
             }
-            if (this->heat_cool_drive_ == cn105_protocol::HeatCoolDrive::COOL) {
+            if (heat_cool_.drive() == cn105_protocol::HeatCoolDrive::COOL) {
                 this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
                 break;
             }
@@ -955,136 +965,38 @@ bool HeatPumpProfile::setActionFromAutoDirection() {
 }
 
 bool HeatPumpProfile::managesHeatCool() const {
-    return hp_.supports_dual_setpoint_ && hp_.mode == climate::CLIMATE_MODE_HEAT_COOL;
+    return HeatPumpProtocol::manages_heat_cool(hp_.auto_band_control_, hp_.supports_dual_setpoint_, hp_.mode);
 }
 
-static const char* heatCoolModeName(cn105_protocol::HeatCoolDrive drive) {
-    switch (drive) {
-    case cn105_protocol::HeatCoolDrive::HEAT: return "HEAT";
-    case cn105_protocol::HeatCoolDrive::COOL: return "COOL";
-    default: return "AUTO";
-    }
-}
-
-float HeatPumpProfile::heatCoolSetpoint() const {
-    switch (this->heat_cool_drive_) {
-    case cn105_protocol::HeatCoolDrive::HEAT: return hp_.getTargetTemperatureLow();
-    case cn105_protocol::HeatCoolDrive::COOL: return hp_.getTargetTemperatureHigh();
-    default:
-        return cn105_protocol::heat_cool_auto_setpoint(
-            hp_.getTargetTemperatureLow(), hp_.getTargetTemperatureHigh(), this->heat_cool_auto_dir_);
-    }
-}
-
-void HeatPumpProfile::setHeatCoolDrive(cn105_protocol::HeatCoolDrive next) {
-    const auto before = this->heat_cool_drive_;
-    if (next == before) {
-        return;
-    }
-    if (next == cn105_protocol::HeatCoolDrive::AUTO) {
-        // Coming back from explicit HEAT/COOL, AUTO carries on in that direction.
-        if (before == cn105_protocol::HeatCoolDrive::HEAT) {
-            this->heat_cool_auto_dir_ = cn105_protocol::AutoDirection::HEAT;
-        } else if (before == cn105_protocol::HeatCoolDrive::COOL) {
-            this->heat_cool_auto_dir_ = cn105_protocol::AutoDirection::COOL;
-        } else {
-            this->heat_cool_auto_dir_ = cn105_protocol::auto_direction(hp_.currentSettings.auto_sub_mode);
-        }
-    }
-    ESP_LOGI("control", "HEAT_COOL drive -> %s (room %.1f, band [%.1f - %.1f])",
-        heatCoolModeName(next), hp_.getCurrentTemperature(),
-        hp_.getTargetTemperatureLow(), hp_.getTargetTemperatureHigh());
-    this->heat_cool_drive_ = next;
-    this->heat_cool_switch_ms_ = CUSTOM_MILLIS;
-}
-
-// Decide the drive for the band and queue that hardware mode. A user command may
-// leave explicit HEAT/COOL at once; the loop re-evaluation waits out HEAT_COOL_MIN_DWELL_MS.
-void HeatPumpProfile::applyHeatCoolDrive(bool user_command) {
-    this->setHeatCoolDrive(cn105_protocol::heat_cool_drive(
-        hp_.getCurrentTemperature(), hp_.getTargetTemperatureLow(), hp_.getTargetTemperatureHigh(),
-        this->heat_cool_drive_, cn105_protocol::auto_direction(hp_.currentSettings.auto_sub_mode),
-        CUSTOM_MILLIS, this->heat_cool_switch_ms_,
-        HEAT_COOL_SWITCH_MARGIN, user_command ? 0 : HEAT_COOL_MIN_DWELL_MS));
-    hp_.setModeSetting(heatCoolModeName(this->heat_cool_drive_));
+bool HeatPumpProfile::queueHeatCoolCommand(bool user_command) {
+    const auto command = heat_cool_.update(hp_.getCurrentTemperature(), hp_.getTargetTemperatureLow(),
+        hp_.getTargetTemperatureHigh(), hp_.currentSettings.mode,
+        hp_.wantedSettings.hasChanged || hp_.wantedSettings.hasBeenSent, user_command,
+        CUSTOM_MILLIS, hp_.get_update_interval());
+    if (!command) return false;
+    const char *mode = cn105_protocol::heat_cool_mode_name(command->drive);
+    ESP_LOGD("control", "HEAT_COOL requests %s at %.1f C", mode, command->setpoint);
+    hp_.setModeSetting(mode);
     hp_.setPowerSetting("ON");
-    this->heat_cool_sent_ms_ = CUSTOM_MILLIS;
+    this->setWantedTemperature(command->setpoint);
+    if (user_command) {
+        float target = hp_.wantedSettings.temperature;
+        if (!this->use_temperature_encoding_b_ && !hp_.use_msz_a24na_setpoint_table_) target = std::trunc(target);
+        heat_cool_.await_user_readback(target);
+    }
+    return true;
 }
 
-// Runs on every status update and auto sub mode change. Changes the drive when the
-// room leaves or re-enters the band, moves the AUTO setpoint to the edge AUTO is now
-// running toward, and re-sends the mode when the unit reports a different one
-// (the IR remote, or explicit HEAT/COOL left over from older firmware).
 void HeatPumpProfile::reevaluate_heat_cool() {
     if (!this->managesHeatCool()) {
-        this->heat_cool_drive_ = cn105_protocol::HeatCoolDrive::NONE;
+        if (heat_cool_.drive() != cn105_protocol::HeatCoolDrive::NONE) heat_cool_ = {};
         return;
     }
-    // A pending user command carries its own drive.
-    if (hp_.wantedSettings.hasChanged || hp_.wantedSettings.hasBeenSent) {
-        return;
+    if (this->queueHeatCoolCommand(false)) {
+        hp_.wantedSettings.hasChanged = true;
+        hp_.wantedSettings.lastChange = CUSTOM_MILLIS;
+        this->update_action();
     }
-    if (std::isnan(hp_.getCurrentTemperature()) || hp_.currentSettings.mode == nullptr) {
-        return;
-    }
-    const auto before = this->heat_cool_drive_;
-    const auto next = cn105_protocol::heat_cool_drive(
-        hp_.getCurrentTemperature(), hp_.getTargetTemperatureLow(), hp_.getTargetTemperatureHigh(),
-        before, cn105_protocol::auto_direction(hp_.currentSettings.auto_sub_mode),
-        CUSTOM_MILLIS, this->heat_cool_switch_ms_,
-        HEAT_COOL_SWITCH_MARGIN, HEAT_COOL_MIN_DWELL_MS);
-    if (next == before) {
-        const char* wanted_mode = heatCoolModeName(next);
-        const bool mode_matches = strcmp(hp_.currentSettings.mode, wanted_mode) == 0;
-        bool edge_changed = false;
-        if (next == cn105_protocol::HeatCoolDrive::AUTO && mode_matches) {
-            const auto dir = cn105_protocol::auto_direction(hp_.currentSettings.auto_sub_mode);
-            if (dir != cn105_protocol::AutoDirection::UNKNOWN && dir != this->heat_cool_auto_dir_) {
-                this->heat_cool_auto_dir_ = dir;
-                edge_changed = true;
-                ESP_LOGI("control", "HEAT_COOL: AUTO runs %s, setpoint -> %.1f",
-                    hp_.currentSettings.auto_sub_mode, this->heatCoolSetpoint());
-            }
-        }
-        if (mode_matches && !edge_changed) {
-            return;
-        }
-        if (!mode_matches) {
-            // Give the unit time to apply the previous command before re-sending.
-            if (static_cast<uint32_t>(CUSTOM_MILLIS - this->heat_cool_sent_ms_) < HEAT_COOL_REASSERT_MS) {
-                return;
-            }
-            ESP_LOGW("control", "HEAT_COOL: unit reports %s, re-sending %s", hp_.currentSettings.mode, wanted_mode);
-        }
-    }
-    this->applyHeatCoolDrive(false);
-    this->setWantedTemperature(this->heatCoolSetpoint());
-    hp_.wantedSettings.hasChanged = true;
-    hp_.wantedSettings.hasBeenSent = false;
-    hp_.wantedSettings.lastChange = CUSTOM_MILLIS;
-    this->update_action();
-}
-
-// After a reboot HEAT_COOL is restored while the unit reports AUTO, HEAT or COOL;
-// keep that drive instead of re-picking it.
-void HeatPumpProfile::adoptReportedHeatCoolDrive(const char* reported_mode) {
-    if (!this->managesHeatCool() ||
-        this->heat_cool_drive_ != cn105_protocol::HeatCoolDrive::NONE) {
-        return;
-    }
-    if (strcmp(reported_mode, "HEAT") == 0) {
-        this->heat_cool_drive_ = cn105_protocol::HeatCoolDrive::HEAT;
-    } else if (strcmp(reported_mode, "COOL") == 0) {
-        this->heat_cool_drive_ = cn105_protocol::HeatCoolDrive::COOL;
-    } else if (strcmp(reported_mode, "AUTO") == 0) {
-        this->heat_cool_drive_ = cn105_protocol::HeatCoolDrive::AUTO;
-        this->heat_cool_auto_dir_ = cn105_protocol::auto_direction(hp_.currentSettings.auto_sub_mode);
-    } else {
-        return;
-    }
-    this->heat_cool_switch_ms_ = CUSTOM_MILLIS;
-    this->heat_cool_sent_ms_ = CUSTOM_MILLIS;
-    ESP_LOGI("control", "HEAT_COOL: adopted drive %s reported by the unit", reported_mode);
 }
 
 void HeatPumpProfile::handleDualSetpointBoth(float low, float high) {
