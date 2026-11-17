@@ -5,7 +5,7 @@
 #include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-#if defined(USE_ESP_IDF) || (defined(ESPHOME_VERSION_CODE) && ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 10, 0))
+#ifdef USE_ESP_IDF
 #include "esphome/components/uart/uart_component_esp_idf.h"
 #define CN105_HAS_IDF_UART 1
 #endif
@@ -419,7 +419,8 @@ void CN105Climate::force_low_level_uart_reinit() {
 #ifdef USE_ESP32
     // Low layer reset: reconfigure user control by UARTComponent
 #ifdef CN105_HAS_IDF_UART
-    // ESPHome skips the logger's UART when assigning ports, so ask for the real one
+    // ESPHome skips the logger's UART when assigning ports, so ask for the real one.
+    // IDFUARTComponent exists only on ESP-IDF; ESP32 Arduino must keep the index fallback.
     const uart_port_t port = static_cast<uart_port_t>(
         static_cast<uart::IDFUARTComponent*>(this->parent_)->get_hw_serial_number());
 #else

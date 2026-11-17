@@ -222,12 +222,7 @@ bool HeatPumpProfile::decode_submode() {
             : STAGE_MAP[0];  // default to "IDLE" when no prior value exists
     }
 
-    // Bitmask: the filter reminder bit (0x01) can stay set for weeks (#758)
-    uint8_t sub_mode_byte = hp_.data[3];
-    if (sub_mode_byte & 0xFE) {
-        sub_mode_byte &= 0xFE;
-    }
-    auto sub_mode_opt = cn105_protocol::lookup_value_opt(SUB_MODE_MAP, SUB_MODE, 6, sub_mode_byte);
+    auto sub_mode_opt = HeatPumpProtocol::decode_sub_mode(hp_.data[3]);
     if (sub_mode_opt) {
         receivedSettings.sub_mode = *sub_mode_opt;
     } else {

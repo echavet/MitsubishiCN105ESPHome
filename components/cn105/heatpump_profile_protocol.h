@@ -68,6 +68,17 @@ struct HeatPumpProtocol {
         }
     }
 
+    // Packet 0x09 data[3] is a bitmask. Bit 0x01 is the filter reminder and can
+    // stay set for weeks (#758). When another bit is set, drop 0x01 so 0x03
+    // still maps to DEFROST and 0x05 to PREHEAT. Bare 0x01 stays WARMUP.
+    static std::optional<const char*> decode_sub_mode(uint8_t raw) {
+        uint8_t byte = raw;
+        if (byte & 0xFE) {
+            byte = static_cast<uint8_t>(byte & 0xFE);
+        }
+        return cn105_protocol::lookup_value_opt(SUB_MODE_MAP, SUB_MODE, 6, byte);
+    }
+
     // The protocol cache and action refresh must not depend on a diagnostic sensor.
     template<typename RefreshAction>
     static bool apply_sub_mode(heatpumpSettings& current, const char* sub_mode, RefreshAction refresh_action) {
