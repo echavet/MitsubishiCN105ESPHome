@@ -281,4 +281,34 @@ inline bool is_temp_byte_unused(uint8_t data11) {
     return data11 == 0x80;
 }
 
+// ════════════════════════════════════════════════════════════════
+// Dual-setpoint band outside HEAT_COOL
+// ════════════════════════════════════════════════════════════════
+
+struct DualBand {
+    float low;
+    float high;
+};
+
+/// Band after a settings packet while the climate is OFF or FAN_ONLY.
+/// A defined band is kept: it waits for the next HEAT_COOL, and the unit's single
+/// setpoint is whatever it last ran (in HEAT_COOL usually one band edge), so it says
+/// nothing about the band. Re-centring on the rounded midpoint whenever the two
+/// differed moved a 20-23.5 band to 20.25-23.75 each time the unit was switched off.
+/// A missing edge is still filled from the reported setpoint and the band centred.
+/// @param reported  Single setpoint the unit reports
+/// @param quantize  calculateTemperatureSetting: the setpoint the unit would accept
+template <typename Quantize>
+inline DualBand idle_dual_band(float low, float high, float reported, Quantize quantize) {
+    if (!std::isnan(low) && !std::isnan(high)) return {low, high};
+    if (std::isnan(low)) low = reported;
+    if (std::isnan(high)) high = reported;
+    const float centre = quantize((low + high) / 2.0f);
+    if (centre != reported) {
+        const float delta = (high - low) / 2.0f;
+        return {centre - delta, centre + delta};
+    }
+    return {low, high};
+}
+
 }  // namespace cn105_protocol
