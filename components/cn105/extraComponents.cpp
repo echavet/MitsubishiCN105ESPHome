@@ -1,5 +1,6 @@
 #include "cn105.h"
 #include <algorithm>
+#include <cmath>
 #include <esphome/core/helpers.h>
 
 using namespace esphome;
@@ -250,6 +251,15 @@ void CN105Climate::set_remote_temp_source(esphome::sensor::Sensor* source) {
     this->remote_temp_source_ = source;
     // Subscribe to source sensor state changes and auto-feed remote temperature
     source->add_on_state_callback([this](float value) {
+        // NaN means the source is unavailable (e.g. its Home Assistant entity is). Fall back to the
+        // internal sensor now rather than keep re-sending the last value; the next value resumes.
+        if (std::isnan(value)) {
+            if (this->remoteTemperature_ > 0) {
+                ESP_LOGW(LOG_REMOTE_TEMP, "Remote temperature source unavailable, fall back to internal temperature!");
+                this->set_remote_temperature(0);
+            }
+            return;
+        }
         this->set_remote_temperature(value);
     });
 }

@@ -884,6 +884,8 @@ climate:
 
 That's it — no lambda, no `on_value` block, no manual `set_remote_temperature()` call. The component handles everything internally.
 
+If the source becomes unavailable (Home Assistant reports the entity as unavailable or unknown), the unit reverts to its internal sensor at once instead of holding the last value until `remote_temperature_timeout` expires. Remote control resumes with the next value.
+
 > [!TIP]
 > The optional `info` sub-key creates a text sensor that displays the name of the source sensor in Home Assistant, making it easy to verify which sensor is providing the remote temperature.
 
