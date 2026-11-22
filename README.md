@@ -1117,6 +1117,11 @@ These Mitsubishi resources document the function setting codes for various equip
 > This feature depends on your unit's compatibility. If your unit returns only zeros, it likely does not support reading/writing function settings via CN105, or it may require installer/service privileges. Try setting `installer_mode: true` if your unit supports Function Settings but reports `0` values (seen on some SEZ units). The component will automatically detect fully-zero responses and disable the polling to save resources.
 > Note that the firmware autor's units do not support theses functions settings. So implementation might not be reliable.
 
+> [!WARNING]
+> On at least one ducted P-series unit (PVA with a PAR-40MAAU wired remote), enabling `hardware_settings` switched
+> the unit **off** a few seconds after the ESP connected, even though the settings read back correctly. See
+> #784. Watch the unit's state after the first boot with this block, and remove it if the unit stops.
+
 ### Configuration
 
 Add the `hardware_settings` block to your configuration. You can choose which codes to expose and customize the labels.
@@ -1139,23 +1144,23 @@ climate:
             1: "ON (Default)"
             2: "OFF"
 
-        # Code 102: Temperature Sensing Source
+        # Code 102: Temperature Sensing Source (Mitsubishi Mode 02, "Thermistor selection")
         # Important for remote temperature control!
         - code: 102
           name: "Temperature Source"
           icon: "mdi:thermometer-check"
           options:
-            1: "Indoor Unit (Default)"
-            2: "Remote Controller"
-            3: "External (CN105/WiFi)"
+            1: "Average of Indoor Units in Operation"
+            2: "Indoor Unit Thermistor"
+            3: "Wired Remote Controller Sensor"
 
-        # Code 103: Ventilation / Lossnay interaction
+        # Code 103: Ventilation / Lossnay interaction (Mitsubishi Mode 03, "LOSSNAY connection")
         - code: 103
           name: "Ventilation Link"
           options:
-            1: "None (Default)"
-            2: "With Lossnay"
-            3: "Forced"
+            1: "Not Connected (Default)"
+            2: "Lossnay, No Outdoor Air Intake"
+            3: "Lossnay, With Outdoor Air Intake"
 
         # Code 105: Auto Energy Saving
         - code: 105
