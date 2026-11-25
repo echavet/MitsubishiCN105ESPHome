@@ -102,7 +102,7 @@ The indoor unit also supplies 5V on CN105. The ESP32 can be powered from that 5V
 
 The diagram below shows a Seeed Studio XIAO ESP32-C6 with a 4-channel bidirectional level shifter. The same wiring applies to other ESP32 boards: use that board's `5V`, `GND`, `3V3`, UART TX, and UART RX pins (and match `tx_pin` / `rx_pin` in your ESPHome YAML).
 
-![CN105 to ESP32 via bidirectional level shifter. The ESP32 5V pin is powered from the CN105 5V supply.](docs/cn105-esp32-level-shifter.jpg)
+![CN105 to ESP32 via bidirectional level shifter. The ESP32 5V pin is powered from the CN105 5V supply.](docs/cn105-esp32-level-shifter.png)
 
 #### Wiring
 
