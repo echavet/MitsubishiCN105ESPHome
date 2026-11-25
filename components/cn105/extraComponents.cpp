@@ -1,6 +1,7 @@
 #include "cn105.h"
 #include <algorithm>
 #include <esphome/core/helpers.h>
+#include "esphome/core/version.h"
 
 using namespace esphome;
 
@@ -258,7 +259,12 @@ void CN105Climate::set_remote_temp_source_info_sensor(esphome::text_sensor::Text
     this->remote_temp_source_info_sensor_ = info_sensor;
     // Publish the source sensor name on next loop
     if (this->remote_temp_source_ != nullptr) {
-        info_sensor->publish_state(this->remote_temp_source_->get_name());
+        #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 11, 0)
+            char name_buf[ENTITY_NAME_BUF_SIZE];
+            info_sensor->publish_state(this->remote_temp_source_->get_name_to(name_buf));
+        #else
+            info_sensor->publish_state(this->remote_temp_source_->get_name());
+        #endif
     }
 }
 
