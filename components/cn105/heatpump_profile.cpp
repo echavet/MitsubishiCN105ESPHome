@@ -222,7 +222,7 @@ bool HeatPumpProfile::decode_submode() {
             : STAGE_MAP[0];  // default to "IDLE" when no prior value exists
     }
 
-    auto sub_mode_opt = cn105_protocol::lookup_value_opt(SUB_MODE_MAP, SUB_MODE, 6, hp_.data[3]);
+    auto sub_mode_opt = HeatPumpProtocol::decode_sub_mode(hp_.data[3]);
     if (sub_mode_opt) {
         receivedSettings.sub_mode = *sub_mode_opt;
     } else {
@@ -269,9 +269,15 @@ bool HeatPumpProfile::decode_submode() {
         // Ask the driver to publish the refreshed action even without a sub-mode sensor.
         climate_changed = true;
     }
-    if (hp_.Auto_sub_mode_sensor_ != nullptr && (!hp_.currentSettings.auto_sub_mode || strcmp(receivedSettings.auto_sub_mode, hp_.currentSettings.auto_sub_mode) != 0)) {
+    // Track the auto sub mode even without its sensor: update_action() reads it to
+    // report the direction hardware AUTO actually chose.
+    if (!hp_.currentSettings.auto_sub_mode || strcmp(receivedSettings.auto_sub_mode, hp_.currentSettings.auto_sub_mode) != 0) {
         hp_.currentSettings.auto_sub_mode = receivedSettings.auto_sub_mode;
-        hp_.Auto_sub_mode_sensor_->publish_state(receivedSettings.auto_sub_mode);
+        if (hp_.Auto_sub_mode_sensor_ != nullptr) {
+            hp_.Auto_sub_mode_sensor_->publish_state(receivedSettings.auto_sub_mode);
+        }
+        this->update_action();
+        climate_changed = true;
     }
 
     return climate_changed;
@@ -673,7 +679,7 @@ void HeatPumpProfile::control_temperature() {
         } else {
             setting = hp_.getTargetTemperature();
         }
-        ESP_LOGD("control", "HEAT mode : getting temperature (low/target): %1.f", setting);
+        ESP_LOGD("control", "HEAT mode : getting temperature (low/target): %.1f", setting);
         break;
     case climate::CLIMATE_MODE_COOL:
         // Mode COOL : using high target temperature
@@ -682,7 +688,7 @@ void HeatPumpProfile::control_temperature() {
         } else {
             setting = hp_.getTargetTemperature();
         }
-        ESP_LOGD("control", "COOL mode : getting temperature (high/target): %1.f", setting);
+        ESP_LOGD("control", "COOL mode : getting temperature (high/target): %.1f", setting);
         break;
     case climate::CLIMATE_MODE_DRY:
         // Mode DRY : using high target temperature
@@ -691,7 +697,7 @@ void HeatPumpProfile::control_temperature() {
         } else {
             setting = hp_.getTargetTemperature();
         }
-        ESP_LOGD("control", "DRY mode : getting temperature (high/target): %1.f", setting);
+        ESP_LOGD("control", "DRY mode : getting temperature (high/target): %.1f", setting);
         break;
     default:
         // Other modes : use median temperature
@@ -700,7 +706,7 @@ void HeatPumpProfile::control_temperature() {
         } else {
             setting = hp_.getTargetTemperature();
         }
-        ESP_LOGD("control", "DEFAULT mode : getting temperature median:%1.f", setting);
+        ESP_LOGD("control", "DEFAULT mode : getting temperature median:%.1f", setting);
         break;
     }
 
@@ -790,6 +796,9 @@ void HeatPumpProfile::update_action() {
             this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
             break;
         case climate::CLIMATE_MODE_HEAT_COOL:
+            if (this->setActionFromAutoDirection()) {
+                break;
+            }
             if (hp_.traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
                 hp_.traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
                 // Logique Deadband pour HEAT_COOL
@@ -806,7 +815,9 @@ void HeatPumpProfile::update_action() {
             break;
 
         case climate::CLIMATE_MODE_AUTO:
-
+            if (this->setActionFromAutoDirection()) {
+                break;
+            }
             if (hp_.traits().supports_mode(climate::CLIMATE_MODE_HEAT) &&
                 hp_.traits().supports_mode(climate::CLIMATE_MODE_COOL)) {
                 // If the unit supports both heating and cooling
@@ -873,6 +884,22 @@ bool HeatPumpProfile::can_control_airflow() const {
 void HeatPumpProfile::setActionIfOperatingTo(climate::ClimateAction action_if_operating) {
     hp_.action = HeatPumpProtocol::operating_action(hp_.currentStatus.operating,
         hp_.use_stage_for_operating_status_, hp_.currentSettings.stage, action_if_operating);
+}
+
+// Hardware AUTO (HEAT_COOL / AUTO) picks its own direction, which can disagree with
+// the band: a unit can heat with the room above the high setpoint. Trust the unit's
+// reported auto sub mode; returns false when it reports no direction.
+bool HeatPumpProfile::setActionFromAutoDirection() {
+    switch (cn105_protocol::auto_direction(hp_.currentSettings.auto_sub_mode)) {
+    case cn105_protocol::AutoDirection::HEAT:
+        this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
+        return true;
+    case cn105_protocol::AutoDirection::COOL:
+        this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
+        return true;
+    default:
+        return false;
+    }
 }
 
 void HeatPumpProfile::handleDualSetpointBoth(float low, float high) {

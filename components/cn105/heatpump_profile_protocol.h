@@ -56,16 +56,27 @@ struct HeatPumpProtocol {
                 targets.setTargetTemperatureHigh(temperature + 2.0f);
             }
         } else {
-            if (std::isnan(targets.getTargetTemperatureLow())) targets.setTargetTemperatureLow(temperature);
-            if (std::isnan(targets.getTargetTemperatureHigh())) targets.setTargetTemperatureHigh(temperature);
-            const float theoretical = targets.calculateTemperatureSetting(
-                (targets.getTargetTemperatureLow() + targets.getTargetTemperatureHigh()) / 2.0f);
-            if (theoretical != temperature) {
-                const float delta = (targets.getTargetTemperatureHigh() - targets.getTargetTemperatureLow()) / 2.0f;
-                targets.setTargetTemperatureLow(theoretical - delta);
-                targets.setTargetTemperatureHigh(theoretical + delta);
-            }
+            // OFF / FAN_ONLY: keep the band for the next HEAT_COOL. Only write an edge
+            // that changed: the Fahrenheit table round trip is not idempotent (#673).
+            const float low = targets.getTargetTemperatureLow();
+            const float high = targets.getTargetTemperatureHigh();
+            const cn105_protocol::DualBand band = cn105_protocol::idle_dual_band(
+                low, high, temperature,
+                [&targets](float setting) { return targets.calculateTemperatureSetting(setting); });
+            if (std::isnan(low) || band.low != low) targets.setTargetTemperatureLow(band.low);
+            if (std::isnan(high) || band.high != high) targets.setTargetTemperatureHigh(band.high);
         }
+    }
+
+    // Packet 0x09 data[3] is a bitmask. Bit 0x01 is the filter reminder and can
+    // stay set for weeks (#758). When another bit is set, drop 0x01 so 0x03
+    // still maps to DEFROST and 0x05 to PREHEAT. Bare 0x01 stays WARMUP.
+    static std::optional<const char*> decode_sub_mode(uint8_t raw) {
+        uint8_t byte = raw;
+        if (byte & 0xFE) {
+            byte = static_cast<uint8_t>(byte & 0xFE);
+        }
+        return cn105_protocol::lookup_value_opt(SUB_MODE_MAP, SUB_MODE, 6, byte);
     }
 
     // The protocol cache and action refresh must not depend on a diagnostic sensor.

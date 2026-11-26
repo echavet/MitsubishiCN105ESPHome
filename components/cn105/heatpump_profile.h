@@ -72,6 +72,7 @@ class HeatPumpProfile final : public Cn105ProtocolProfile {
     bool shouldIgnoreIncomingVane(const heatpumpSettings& settings) const;
 
     void setActionIfOperatingTo(climate::ClimateAction action);
+    bool setActionFromAutoDirection();
 };
 
 }  // namespace esphome::cn105

@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1019" viewBox="0 0 1280 1019" font-family="Arial, Helvetica, 'Liberation Sans', sans-serif" role="img" aria-labelledby="title desc">
+<title id="title">CN105 to ESP32 wiring via a bidirectional level shifter (XIAO ESP32-C6 example)</title>
+<desc id="desc">CN105 pin 2 GND to shifter GND (HV side); pin 3 5V to shifter HV and XIAO 5V; pin 4 TX to HV2, LV2 to XIAO D6 (GPIO16, UART RX); XIAO D7 (GPIO17, UART TX) to LV1, HV1 to CN105 pin 5 RX; XIAO 3V3 to shifter LV; XIAO GND to shifter GND (LV side); CN105 pin 1 12V not connected.</desc>
+<defs><clipPath id="offboard"><path clip-rule="evenodd" d="M0,0 H1280 V1019 H0 Z M880,230 H1160 V560 H880 Z M462,332 H668 V578 H462 Z M104,368 H214 V582 H104 Z"/></clipPath></defs>
+<rect x="1" y="1" width="1278" height="1017" rx="16" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+<rect x="30" y="702" width="1220" height="287" rx="12" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+<text x="40" y="60" font-size="28" fill="#1f2328" font-weight="bold">CN105 → level shifter → ESP32 wiring</text>
+<text x="40" y="89" font-size="17" fill="#59636e">Example build: Seeed Studio XIAO ESP32-C6 + 4-channel BSS138 bidirectional level shifter, powered from the CN105 5 V pin</text>
+<line x1="565" y1="112" x2="565" y2="615" stroke="#d0d7de" stroke-width="1.5" stroke-dasharray="6 6"/>
+<text x="297" y="129" font-size="13" fill="#8c959f" font-weight="bold" text-anchor="middle" letter-spacing="1">5 V LOGIC · INDOOR-UNIT SIDE</text>
+<text x="907" y="129" font-size="13" fill="#8c959f" font-weight="bold" text-anchor="middle" letter-spacing="1">3.3 V LOGIC · ESP32 SIDE</text>
+<polygon points="112,350 50,350 40,366 50,382 40,398 50,414 40,430 50,446 40,462 50,478 40,494 50,510 40,526 50,542 40,558 50,574 40,590 50,600 112,600" fill="#1f6f4a"/>
+<text x="78" y="481" font-size="14" fill="#ffffff" font-weight="bold" text-anchor="middle">CN105</text>
+<text x="97" y="400" font-size="11" fill="#ffffff" font-weight="bold" text-anchor="middle">1</text>
+<rect x="104" y="372" width="110" height="214" rx="5" fill="#000000" opacity="0.10"/>
+<rect x="104" y="368" width="44" height="214" rx="4" fill="#e4dccb" stroke="#b3a88f" stroke-width="1.4"/>
+<rect x="146" y="374" width="68" height="202" rx="6" fill="#f6f1e4" stroke="#b3a88f" stroke-width="1.4"/>
+<text x="176" y="400" font-size="15" fill="#6e6250" font-weight="bold" text-anchor="middle">1</text>
+<text x="176" y="440" font-size="15" fill="#6e6250" font-weight="bold" text-anchor="middle">2</text>
+<text x="176" y="480" font-size="15" fill="#6e6250" font-weight="bold" text-anchor="middle">3</text>
+<text x="176" y="520" font-size="15" fill="#6e6250" font-weight="bold" text-anchor="middle">4</text>
+<text x="176" y="560" font-size="15" fill="#6e6250" font-weight="bold" text-anchor="middle">5</text>
+<rect x="462" y="336" width="206" height="246" rx="10" fill="#000000" opacity="0.10"/>
+<rect x="462" y="332" width="206" height="246" rx="10" fill="#1d4ea6" stroke="#153a7c" stroke-width="1.5"/>
+<text x="486" y="321" font-size="13.5" fill="#1d4ea6" font-weight="bold" text-anchor="middle">HV (5 V)</text>
+<text x="644" y="321" font-size="13.5" fill="#1d4ea6" font-weight="bold" text-anchor="middle">LV (3.3 V)</text>
+<text x="502" y="360" font-size="14" fill="#93acd9" font-weight="bold">HV4</text>
+<text x="628" y="360" font-size="14" fill="#93acd9" font-weight="bold" text-anchor="end">LV4</text>
+<rect x="553" y="348" width="24" height="14" rx="2" fill="#1f2328"/>
+<rect x="548" y="351" width="5" height="3" rx="0" fill="#c8d1da"/>
+<rect x="548" y="357" width="5" height="3" rx="0" fill="#c8d1da"/>
+<rect x="577" y="353.5" width="5" height="3" rx="0" fill="#c8d1da"/>
+<text x="502" y="400" font-size="14" fill="#93acd9" font-weight="bold">HV3</text>
+<text x="628" y="400" font-size="14" fill="#93acd9" font-weight="bold" text-anchor="end">LV3</text>
+<rect x="553" y="388" width="24" height="14" rx="2" fill="#1f2328"/>
+<rect x="548" y="391" width="5" height="3" rx="0" fill="#c8d1da"/>
+<rect x="548" y="397" width="5" height="3" rx="0" fill="#c8d1da"/>
+<rect x="577" y="393.5" width="5" height="3" rx="0" fill="#c8d1da"/>
+<text x="502" y="440" font-size="14" fill="#ffffff" font-weight="bold">GND</text>
+<text x="628" y="440" font-size="14" fill="#ffffff" font-weight="bold" text-anchor="end">GND</text>
+<text x="502" y="480" font-size="14" fill="#ffffff" font-weight="bold">HV</text>
+<text x="628" y="480" font-size="14" fill="#ffffff" font-weight="bold" text-anchor="end">LV</text>
+<text x="502" y="520" font-size="14" fill="#ffffff" font-weight="bold">HV2</text>
+<text x="628" y="520" font-size="14" fill="#ffffff" font-weight="bold" text-anchor="end">LV2</text>
+<rect x="553" y="508" width="24" height="14" rx="2" fill="#1f2328"/>
+<rect x="548" y="511" width="5" height="3" rx="0" fill="#c8d1da"/>
+<rect x="548" y="517" width="5" height="3" rx="0" fill="#c8d1da"/>
+<rect x="577" y="513.5" width="5" height="3" rx="0" fill="#c8d1da"/>
+<text x="502" y="560" font-size="14" fill="#ffffff" font-weight="bold">HV1</text>
+<text x="628" y="560" font-size="14" fill="#ffffff" font-weight="bold" text-anchor="end">LV1</text>
+<rect x="553" y="548" width="24" height="14" rx="2" fill="#1f2328"/>
+<rect x="548" y="551" width="5" height="3" rx="0" fill="#c8d1da"/>
+<rect x="548" y="557" width="5" height="3" rx="0" fill="#c8d1da"/>
+<rect x="577" y="553.5" width="5" height="3" rx="0" fill="#c8d1da"/>
+<rect x="880" y="234" width="280" height="330" rx="22" fill="#000000" opacity="0.10"/>
+<rect x="983" y="208" width="74" height="44" rx="8" fill="#c3cad2" stroke="#8b949e" stroke-width="1.2"/>
+<rect x="880" y="230" width="280" height="330" rx="22" fill="#1c1f24" stroke="#0d1117" stroke-width="1.5"/>
+<rect x="983" y="208" width="74" height="30" rx="8" fill="#c3cad2" stroke="#8b949e" stroke-width="1.2"/>
+<rect x="995" y="216" width="50" height="12" rx="5" fill="#59636e"/>
+<rect x="921" y="241" width="18" height="11" rx="2" fill="#e6edf3" stroke="#8b949e" stroke-width="1"/>
+<rect x="1101" y="241" width="18" height="11" rx="2" fill="#e6edf3" stroke="#8b949e" stroke-width="1"/>
+<rect x="940" y="262" width="160" height="208" rx="6" fill="#d5dbe1" stroke="#9aa3ab" stroke-width="1.5"/>
+<text x="1020" y="298" font-size="12.5" fill="#57606a" text-anchor="middle">seeed studio</text>
+<text x="1020" y="352" font-size="32" fill="#24292f" font-weight="bold" text-anchor="middle">XIAO</text>
+<text x="1020" y="383" font-size="19" fill="#24292f" font-weight="bold" text-anchor="middle">ESP32-C6</text>
+<circle cx="996" cy="510" r="8" fill="#e3b341" stroke="#a37800" stroke-width="1"/>
+<rect x="1030" y="502" width="22" height="16" rx="2" fill="#30363d"/>
+<text x="897" y="280" font-size="14.5" fill="#7d8590" font-weight="bold">D0</text>
+<text x="897" y="320" font-size="14.5" fill="#7d8590" font-weight="bold">D1</text>
+<text x="897" y="360" font-size="14.5" fill="#7d8590" font-weight="bold">D2</text>
+<text x="897" y="400" font-size="14.5" fill="#7d8590" font-weight="bold">D3</text>
+<text x="897" y="440" font-size="14.5" fill="#7d8590" font-weight="bold">D4</text>
+<text x="897" y="480" font-size="14.5" fill="#7d8590" font-weight="bold">D5</text>
+<text x="897" y="520" font-size="14.5" fill="#ffffff" font-weight="bold">D6</text>
+<text x="1143" y="280" font-size="14.5" fill="#ffffff" font-weight="bold" text-anchor="end">5V</text>
+<text x="1143" y="320" font-size="14.5" fill="#ffffff" font-weight="bold" text-anchor="end">GND</text>
+<text x="1143" y="360" font-size="14.5" fill="#ffffff" font-weight="bold" text-anchor="end">3V3</text>
+<text x="1143" y="400" font-size="14.5" fill="#7d8590" font-weight="bold" text-anchor="end">D10</text>
+<text x="1143" y="440" font-size="14.5" fill="#7d8590" font-weight="bold" text-anchor="end">D9</text>
+<text x="1143" y="480" font-size="14.5" fill="#7d8590" font-weight="bold" text-anchor="end">D8</text>
+<text x="1143" y="520" font-size="14.5" fill="#ffffff" font-weight="bold" text-anchor="end">D7</text>
+<path d="M214,395 L250,395" fill="none" stroke="#8c959f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 6"/>
+<line x1="256" y1="389" x2="268" y2="401" stroke="#8c959f" stroke-width="2.6" stroke-linecap="round"/>
+<line x1="256" y1="401" x2="268" y2="389" stroke="#8c959f" stroke-width="2.6" stroke-linecap="round"/>
+<text x="278" y="400" font-size="15" fill="#8c959f">12 V · not used</text>
+<path d="M214,435 L486,435" fill="none" stroke="#ffffff" stroke-width="14" stroke-linejoin="round" clip-path="url(#offboard)"/>
+<path d="M214,435 L486,435" fill="none" stroke="#24292f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M214,475 L486,475" fill="none" stroke="#ffffff" stroke-width="14" stroke-linejoin="round" clip-path="url(#offboard)"/>
+<path d="M214,475 L486,475" fill="none" stroke="#cf222e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M214,515 L486,515" fill="none" stroke="#ffffff" stroke-width="14" stroke-linejoin="round" clip-path="url(#offboard)"/>
+<path d="M214,515 L486,515" fill="none" stroke="#1a7f37" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M486,555 L214,555" fill="none" stroke="#ffffff" stroke-width="14" stroke-linejoin="round" clip-path="url(#offboard)"/>
+<path d="M486,555 L214,555" fill="none" stroke="#0969da" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M644,515 L880,515" fill="none" stroke="#ffffff" stroke-width="14" stroke-linejoin="round" clip-path="url(#offboard)"/>
+<path d="M644,515 L880,515" fill="none" stroke="#1a7f37" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1160,515 L1180,515 Q1192,515 1192,527 L1192,588 Q1192,600 1180,600 L712,600 Q700,600 700,588 L700,567 Q700,555 688,555 L644,555" fill="none" stroke="#ffffff" stroke-width="14" stroke-linejoin="round" clip-path="url(#offboard)"/>
+<path d="M1160,515 L1180,515 Q1192,515 1192,527 L1192,588 Q1192,600 1180,600 L712,600 Q700,600 700,588 L700,567 Q700,555 688,555 L644,555" fill="none" stroke="#0969da" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1160,315 L1198,315 Q1210,315 1210,303 L1210,182 Q1210,170 1198,170 L782,170 Q770,170 770,182 L770,423 Q770,435 758,435 L644,435" fill="none" stroke="#ffffff" stroke-width="14" stroke-linejoin="round" clip-path="url(#offboard)"/>
+<path d="M1160,315 L1198,315 Q1210,315 1210,303 L1210,182 Q1210,170 1198,170 L782,170 Q770,170 770,182 L770,423 Q770,435 758,435 L644,435" fill="none" stroke="#24292f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1160,355 L1218,355 Q1230,355 1230,343 L1230,162 Q1230,150 1218,150 L812,150 Q800,150 800,162 L800,463 Q800,475 788,475 L644,475" fill="none" stroke="#ffffff" stroke-width="14" stroke-linejoin="round" clip-path="url(#offboard)"/>
+<path d="M1160,355 L1218,355 Q1230,355 1230,343 L1230,162 Q1230,150 1218,150 L812,150 Q800,150 800,162 L800,463 Q800,475 788,475 L644,475" fill="none" stroke="#e8790c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1160,275 L1178,275 Q1190,275 1190,263 L1190,202 Q1190,190 1178,190 L452,190 Q440,190 440,202 L440,461" fill="none" stroke="#ffffff" stroke-width="14" stroke-linejoin="round" clip-path="url(#offboard)"/>
+<path d="M1160,275 L1178,275 Q1190,275 1190,263 L1190,202 Q1190,190 1178,190 L452,190 Q440,190 440,202 L440,475" fill="none" stroke="#cf222e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="440" cy="475" r="7" fill="#cf222e" stroke="#ffffff" stroke-width="2"/>
+<circle cx="486" cy="355" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="486" cy="355" r="4.5" fill="#f6f8fa"/>
+<circle cx="644" cy="355" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="644" cy="355" r="4.5" fill="#f6f8fa"/>
+<circle cx="486" cy="395" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="486" cy="395" r="4.5" fill="#f6f8fa"/>
+<circle cx="644" cy="395" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="644" cy="395" r="4.5" fill="#f6f8fa"/>
+<circle cx="486" cy="435" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="486" cy="435" r="4.5" fill="#24292f"/>
+<circle cx="644" cy="435" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="644" cy="435" r="4.5" fill="#24292f"/>
+<circle cx="486" cy="475" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="486" cy="475" r="4.5" fill="#cf222e"/>
+<circle cx="644" cy="475" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="644" cy="475" r="4.5" fill="#e8790c"/>
+<circle cx="486" cy="515" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="486" cy="515" r="4.5" fill="#1a7f37"/>
+<circle cx="644" cy="515" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="644" cy="515" r="4.5" fill="#1a7f37"/>
+<circle cx="486" cy="555" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="486" cy="555" r="4.5" fill="#0969da"/>
+<circle cx="644" cy="555" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="644" cy="555" r="4.5" fill="#0969da"/>
+<circle cx="880" cy="275" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="880" cy="275" r="4.5" fill="#f6f8fa"/>
+<circle cx="880" cy="315" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="880" cy="315" r="4.5" fill="#f6f8fa"/>
+<circle cx="880" cy="355" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="880" cy="355" r="4.5" fill="#f6f8fa"/>
+<circle cx="880" cy="395" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="880" cy="395" r="4.5" fill="#f6f8fa"/>
+<circle cx="880" cy="435" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="880" cy="435" r="4.5" fill="#f6f8fa"/>
+<circle cx="880" cy="475" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="880" cy="475" r="4.5" fill="#f6f8fa"/>
+<circle cx="880" cy="515" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="880" cy="515" r="4.5" fill="#1a7f37"/>
+<circle cx="1160" cy="275" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="1160" cy="275" r="4.5" fill="#cf222e"/>
+<circle cx="1160" cy="315" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="1160" cy="315" r="4.5" fill="#24292f"/>
+<circle cx="1160" cy="355" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="1160" cy="355" r="4.5" fill="#e8790c"/>
+<circle cx="1160" cy="395" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="1160" cy="395" r="4.5" fill="#f6f8fa"/>
+<circle cx="1160" cy="435" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="1160" cy="435" r="4.5" fill="#f6f8fa"/>
+<circle cx="1160" cy="475" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="1160" cy="475" r="4.5" fill="#f6f8fa"/>
+<circle cx="1160" cy="515" r="9" fill="#e3b341" stroke="#a37800" stroke-width="1.2"/>
+<circle cx="1160" cy="515" r="4.5" fill="#0969da"/>
+<rect x="207" y="390.5" width="17" height="9" rx="1.5" fill="#aab3bc" stroke="#8c959f" stroke-width="0.8"/>
+<rect x="207" y="430.5" width="17" height="9" rx="1.5" fill="#aab3bc" stroke="#8c959f" stroke-width="0.8"/>
+<rect x="207" y="470.5" width="17" height="9" rx="1.5" fill="#aab3bc" stroke="#8c959f" stroke-width="0.8"/>
+<rect x="207" y="510.5" width="17" height="9" rx="1.5" fill="#aab3bc" stroke="#8c959f" stroke-width="0.8"/>
+<rect x="207" y="550.5" width="17" height="9" rx="1.5" fill="#aab3bc" stroke="#8c959f" stroke-width="0.8"/>
+<polygon points="427,515 413,508 413,522" fill="#1a7f37" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="413,555 427,548 427,562" fill="#0969da" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="697,515 683,508 683,522" fill="#1a7f37" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="873,600 887,593 887,607" fill="#0969da" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<rect x="304.445" y="422.5" width="51.1094" height="25" rx="12.5" fill="#ffffff" stroke="#24292f" stroke-width="1.6"/>
+<text x="330" y="440.04" font-size="14" fill="#24292f" font-weight="bold" text-anchor="middle">GND</text>
+<rect x="309.492" y="462.5" width="41.0156" height="25" rx="12.5" fill="#ffffff" stroke="#cf222e" stroke-width="1.6"/>
+<text x="330" y="480.04" font-size="14" fill="#cf222e" font-weight="bold" text-anchor="middle">5 V</text>
+<rect x="274.516" y="502.5" width="110.969" height="25" rx="12.5" fill="#ffffff" stroke="#1a7f37" stroke-width="1.6"/>
+<text x="330" y="520.04" font-size="14" fill="#1a7f37" font-weight="bold" text-anchor="middle">TX · from unit</text>
+<rect x="282.688" y="542.5" width="94.625" height="25" rx="12.5" fill="#ffffff" stroke="#0969da" stroke-width="1.6"/>
+<text x="330" y="560.04" font-size="14" fill="#0969da" font-weight="bold" text-anchor="middle">RX · to unit</text>
+<rect x="719.219" y="502.5" width="133.562" height="25" rx="12.5" fill="#ffffff" stroke="#1a7f37" stroke-width="1.6"/>
+<text x="786" y="520.04" font-size="14" fill="#1a7f37" font-weight="bold" text-anchor="middle">RX · GPIO16 (D6)</text>
+<rect x="964" y="587.5" width="132" height="25" rx="12.5" fill="#ffffff" stroke="#0969da" stroke-width="1.6"/>
+<text x="1030" y="605.04" font-size="14" fill="#0969da" font-weight="bold" text-anchor="middle">TX · GPIO17 (D7)</text>
+<text x="127" y="648" font-size="18" fill="#1f2328" font-weight="bold" text-anchor="middle">CN105 (indoor unit)</text>
+<text x="127" y="670" font-size="14.5" fill="#59636e" text-anchor="middle">JST PA 5-pin plug, PAP-05V-S</text>
+<text x="565" y="648" font-size="18" fill="#1f2328" font-weight="bold" text-anchor="middle">Level shifter</text>
+<text x="565" y="670" font-size="14.5" fill="#59636e" text-anchor="middle">4-ch bidirectional, BSS138</text>
+<text x="1020" y="648" font-size="18" fill="#1f2328" font-weight="bold" text-anchor="middle">XIAO ESP32-C6</text>
+<text x="1020" y="670" font-size="14.5" fill="#59636e" text-anchor="middle">Seeed Studio, 3.3 V GPIO</text>
+<line x1="60" y1="733" x2="92" y2="733" stroke="#cf222e" stroke-width="5" stroke-linecap="round"/>
+<text x="104" y="738" font-size="15" fill="#1f2328">5 V</text>
+<line x1="198.209375" y1="733" x2="230.209375" y2="733" stroke="#24292f" stroke-width="5" stroke-linecap="round"/>
+<text x="242.209" y="738" font-size="15" fill="#1f2328">GND</text>
+<line x1="347.23125" y1="733" x2="379.23125" y2="733" stroke="#e8790c" stroke-width="5" stroke-linecap="round"/>
+<text x="391.231" y="738" font-size="15" fill="#1f2328">3.3 V</text>
+<line x1="497.95624999999995" y1="733" x2="529.95625" y2="733" stroke="#0969da" stroke-width="5" stroke-linecap="round"/>
+<polygon points="519.956,733 507.956,727 507.956,739" fill="#0969da" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<text x="541.956" y="738" font-size="15" fill="#1f2328">Data ESP32 → indoor unit</text>
+<line x1="789.603125" y1="733" x2="821.603125" y2="733" stroke="#1a7f37" stroke-width="5" stroke-linecap="round"/>
+<polygon points="811.603,733 799.603,727 799.603,739" fill="#1a7f37" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<text x="833.603" y="738" font-size="15" fill="#1f2328">Data indoor unit → ESP32</text>
+<line x1="1081.25" y1="733" x2="1113.25" y2="733" stroke="#8c959f" stroke-width="5" stroke-linecap="round" stroke-dasharray="4 6"/>
+<text x="1125.25" y="738" font-size="15" fill="#1f2328">Not connected</text>
+<line x1="50" y1="760" x2="1230" y2="760" stroke="#d0d7de" stroke-width="1"/>
+<text x="58" y="794" font-size="15" fill="#1f2328" font-weight="bold">Notes</text>
+<circle cx="67" cy="817" r="9" fill="#59636e"/>
+<text x="67" y="821.5" font-size="11.5" fill="#ffffff" font-weight="bold" text-anchor="middle">1</text>
+<text x="86" y="822" font-size="15" fill="#1f2328">TX and RX are crossed: ESP32 TX → CN105 RX (pin 5), and CN105 TX (pin 4) → ESP32 RX.</text>
+<circle cx="67" cy="846" r="9" fill="#59636e"/>
+<text x="67" y="850.5" font-size="11.5" fill="#ffffff" font-weight="bold" text-anchor="middle">2</text>
+<text x="86" y="851" font-size="15" fill="#1f2328">Seeed's XIAO pinout labels D6 as TX and D7 as RX. This wiring uses GPIO17 (D7) as TX and GPIO16</text>
+<text x="86" y="872" font-size="15" fill="#1f2328">(D6) as RX to match the README YAML. Other GPIOs work too if the YAML matches.</text>
+<circle cx="67" cy="896" r="9" fill="#59636e"/>
+<text x="67" y="900.5" font-size="11.5" fill="#ffffff" font-weight="bold" text-anchor="middle">3</text>
+<text x="86" y="901" font-size="15" fill="#1f2328">Leave pin 1 (12 V) unconnected. Pigtail wire colours vary between suppliers: go by pin position, not colour.</text>
+<circle cx="67" cy="925" r="9" fill="#59636e"/>
+<text x="67" y="929.5" font-size="11.5" fill="#ffffff" font-weight="bold" text-anchor="middle">4</text>
+<text x="86" y="930" font-size="15" fill="#1f2328">The XIAO 5V pin is tied to USB VBUS: disconnect CN105 before plugging in USB, or add a Schottky diode</text>
+<text x="86" y="951" font-size="15" fill="#1f2328">in series with the 5 V feed.</text>
+<text x="858" y="794" font-size="15" fill="#1f2328" font-weight="bold">ESPHome UART for this wiring</text>
+<rect x="858" y="808" width="364" height="137" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+<text x="874" y="837" font-size="15" fill="#1f2328" font-family="Consolas, Menlo, 'Liberation Mono', 'DejaVu Sans Mono', monospace" xml:space="preserve" style="white-space:pre"><tspan fill="#0550ae">uart</tspan><tspan fill="#1f2328">:</tspan></text>
+<text x="874" y="860" font-size="15" fill="#1f2328" font-family="Consolas, Menlo, 'Liberation Mono', 'DejaVu Sans Mono', monospace" xml:space="preserve" style="white-space:pre"><tspan fill="#0550ae">  id</tspan><tspan fill="#1f2328">: </tspan><tspan fill="#0a3069">HP_UART</tspan></text>
+<text x="874" y="883" font-size="15" fill="#1f2328" font-family="Consolas, Menlo, 'Liberation Mono', 'DejaVu Sans Mono', monospace" xml:space="preserve" style="white-space:pre"><tspan fill="#0550ae">  baud_rate</tspan><tspan fill="#1f2328">: </tspan><tspan fill="#953800">2400</tspan></text>
+<text x="874" y="906" font-size="15" fill="#1f2328" font-family="Consolas, Menlo, 'Liberation Mono', 'DejaVu Sans Mono', monospace" xml:space="preserve" style="white-space:pre"><tspan fill="#0550ae">  tx_pin</tspan><tspan fill="#1f2328">: </tspan><tspan fill="#0a3069">GPIO17</tspan><tspan fill="#6e7781">   # XIAO D7</tspan></text>
+<text x="874" y="929" font-size="15" fill="#1f2328" font-family="Consolas, Menlo, 'Liberation Mono', 'DejaVu Sans Mono', monospace" xml:space="preserve" style="white-space:pre"><tspan fill="#0550ae">  rx_pin</tspan><tspan fill="#1f2328">: </tspan><tspan fill="#0a3069">GPIO16</tspan><tspan fill="#6e7781">   # XIAO D6</tspan></text>
+<text x="858" y="967" font-size="13.5" fill="#59636e">Same pins as the README's ESP32 example.</text>
+</svg>

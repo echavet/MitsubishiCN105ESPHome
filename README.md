@@ -102,7 +102,7 @@ The indoor unit also supplies 5V on CN105. The ESP32 can be powered from that 5V
 
 The diagram below shows a Seeed Studio XIAO ESP32-C6 with a 4-channel bidirectional level shifter. The same wiring applies to other ESP32 boards: use that board's `5V`, `GND`, `3V3`, UART TX, and UART RX pins (and match `tx_pin` / `rx_pin` in your ESPHome YAML).
 
-![CN105 to ESP32 via bidirectional level shifter. The ESP32 5V pin is powered from the CN105 5V supply.](docs/cn105-esp32-level-shifter.jpg)
+![CN105 to ESP32 via bidirectional level shifter. The ESP32 5V pin is powered from the CN105 5V supply.](docs/cn105-esp32-level-shifter.png)
 
 #### Wiring
 
@@ -415,6 +415,35 @@ logger:
 #    Decoder : DEBUG
 #    CONTROL_WANTED_SETTINGS: DEBUG
 ```
+
+#### Raw packet logging
+
+Every frame sent to and received from the heat pump can be printed in the logs. This is useful for bug reports and for working out unknown packets. The frames are logged at `DEBUG` level under the `READ` and `WRITE` tags. The global `level` must also be `DEBUG`, otherwise ESPHome leaves these logs out of the firmware.
+
+```yaml
+logger:
+  level: DEBUG
+  logs:
+    wifi: INFO
+    api: INFO
+    component: INFO
+    sensor: WARN
+    text_sensor: WARN
+    CN105: DEBUG
+    READ: DEBUG            # frames received from the heat pump
+    WRITE: DEBUG           # frames sent to the heat pump
+    WRITE_SETTINGS: DEBUG  # settings (SET) frames
+    ACK: DEBUG             # heat pump replies to SET frames
+    Decoder: DEBUG         # decoded values
+```
+
+A frame looks like this: header (5 bytes), payload, checksum, and the packet type:
+
+```
+[D][READ]: |FC 62 01 30 10 |->[02 00 00 01 0B 19 00 00 00 00 80 AD 00 00 00 00 ](xx) <RESPONSE:Settings>
+```
+
+`GET` and `RESPONSE` are info requests and replies, `SET` and `ACK` are commands and their confirmations. Debug logging adds load on the ESP, so switch back to `INFO` when you are done.
 
 ### Step 6: Build the project and install
 
@@ -1088,6 +1117,11 @@ These Mitsubishi resources document the function setting codes for various equip
 > This feature depends on your unit's compatibility. If your unit returns only zeros, it likely does not support reading/writing function settings via CN105, or it may require installer/service privileges. Try setting `installer_mode: true` if your unit supports Function Settings but reports `0` values (seen on some SEZ units). The component will automatically detect fully-zero responses and disable the polling to save resources.
 > Note that the firmware autor's units do not support theses functions settings. So implementation might not be reliable.
 
+> [!WARNING]
+> On at least one ducted P-series unit (PVA with a PAR-40MAAU wired remote), enabling `hardware_settings` switched
+> the unit **off** a few seconds after the ESP connected, even though the settings read back correctly. See
+> #784. Watch the unit's state after the first boot with this block, and remove it if the unit stops.
+
 ### Configuration
 
 Add the `hardware_settings` block to your configuration. You can choose which codes to expose and customize the labels.
@@ -1110,23 +1144,23 @@ climate:
             1: "ON (Default)"
             2: "OFF"
 
-        # Code 102: Temperature Sensing Source
+        # Code 102: Temperature Sensing Source (Mitsubishi Mode 02, "Thermistor selection")
         # Important for remote temperature control!
         - code: 102
           name: "Temperature Source"
           icon: "mdi:thermometer-check"
           options:
-            1: "Indoor Unit (Default)"
-            2: "Remote Controller"
-            3: "External (CN105/WiFi)"
+            1: "Average of Indoor Units in Operation"
+            2: "Indoor Unit Thermistor"
+            3: "Wired Remote Controller Sensor"
 
-        # Code 103: Ventilation / Lossnay interaction
+        # Code 103: Ventilation / Lossnay interaction (Mitsubishi Mode 03, "LOSSNAY connection")
         - code: 103
           name: "Ventilation Link"
           options:
-            1: "None (Default)"
-            2: "With Lossnay"
-            3: "Forced"
+            1: "Not Connected (Default)"
+            2: "Lossnay, No Outdoor Air Intake"
+            3: "Lossnay, With Outdoor Air Intake"
 
         # Code 105: Auto Energy Saving
         - code: 105
@@ -1255,7 +1289,9 @@ There are two split-vane configurations depending on your unit's hardware:
 | -------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | `standard` (default) | Single motor per vane axis — standard behavior                                         | Most units                                                             |
 | `split_horizontal`   | Dual horizontal (wide) vane motors — both left/right wide-vane motors are synchronized | MSZ-GE24NA (confirmed by [@polskikrol](https://github.com/polskikrol)) |
-| `split_vertical`     | Dual vertical vane motors — experimental, awaiting community validation                | MSZ-FH series (pending)                                                |
+| `split_vertical`     | Dual vertical vane motors — **not implemented yet**, behaves like `standard`           | —                                                                      |
+
+The older `horizontal_vanes: 2` option still works and is the same as `vane_type: split_horizontal`.
 
 #### Example: Split Horizontal Vane Configuration
 
@@ -1277,24 +1313,14 @@ climate:
       vane_type: split_horizontal # ← Synchronizes both horizontal vane motors
 ```
 
-#### Example: Split Vertical Vane Configuration (Experimental)
+#### Dual vertical vanes (left/right)
 
-For units with two independent vertical vane motors (e.g. MSZ-FH series):
+Some units (e.g. MSZ-LN, MSZ-FH, MSZ-EF) have separate left and right vertical vanes, and the IR remote can set each side on its own. Over CN105 this is not possible today: the vertical vane setting moves both sides together, and no packet is known that sets one side only.
 
-```yaml
-climate:
-  - platform: cn105
-    name: "My Heat Pump"
-    # ... your existing config ...
-    vertical_vane_select:
-      name: Vertical Vane
-    supports:
-      swing_mode: ["OFF", VERTICAL]
-      vane_type: split_vertical # ← Experimental: synchronizes both vertical vane motors
-```
+- The [mUART protocol docs](https://muart-group.github.io/developer/it-protocol/) state that both vanes update in sync and there is no known way to set them separately.
+- [Tasmota tested an MSZ-LN](https://github.com/arendst/Tasmota/pull/25027): the vane byte in the settings reply follows the right vane only, and moving the left vane with the remote changes nothing in that reply.
 
-> [!WARNING]
-> `split_vertical` is experimental and has not yet been validated by community testers. If your unit has dual vertical vane motors, please test and report your findings in [Issue #505](https://github.com/echavet/MitsubishiCN105ESPHome/issues/505).
+`vane_type: split_vertical` is accepted for now, but it has no effect and ESPHome prints a warning when it is used. If you have a dual vertical vane unit and want to help, turn on [raw packet logging](#raw-packet-logging), move each vane with the remote, and share the logs in [Issue #505](https://github.com/echavet/MitsubishiCN105ESPHome/issues/505).
 
 ## Comparison with ESPHome Native `mitsubishi_cn105`
 
@@ -1310,7 +1336,7 @@ Since ESPHome 2026.4.0, a native `mitsubishi_cn105` component (by [@crnjan](http
 | **Dual setpoint support**                       |   ✅ Native via `supports: dual_setpoint: true`    |                              ❌ Single setpoint only                              |
 | **Vertical vane (swing) select**                |               ✅ 5 positions + SWING               |        ⏳ Draft PR [#15653](https://github.com/esphome/esphome/pull/15653)        |
 | **Horizontal vane (wide vane) select**          |             ✅ All 8 positions + SWING             |        ⏳ Draft PR [#15653](https://github.com/esphome/esphome/pull/15653)        |
-| **Dual/split vane support**                     | ✅ `vane_type: split_horizontal / split_vertical`  |                                  ❌ Not planned                                   |
+| **Dual/split vane support**                     |     ✅ `vane_type: split_horizontal` (synced)      |                                  ❌ Not planned                                   |
 | **Remote temperature sensor**                   | ✅ Built-in keep-alive + debounce + native binding | ⏳ Open PR [#15558](https://github.com/esphome/esphome/pull/15558) (lambda-only)  |
 | **Remote temperature timeout / fallback**       |   ✅ Configurable auto-revert to internal sensor   |                                  ❌ Manual only                                   |
 | **Fahrenheit compatibility**                    |          ✅ Standard + Alt lookup tables           |        ⏳ Draft PR [#15488](https://github.com/esphome/esphome/pull/15488)        |
