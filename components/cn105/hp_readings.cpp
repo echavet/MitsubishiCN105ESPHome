@@ -262,6 +262,8 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
 }
 
 void CN105Climate::heatpumpUpdate(heatpumpSettings& settings) {
+    // Must run before the comparison below so queued restores keep the UI on the intended state.
+    this->restoreStateAfterFunctions(settings);
     // settings correponds to current settings
     ESP_LOGV(LOG_SETTINGS_TAG, "Settings received");
     // if received settings are different from current settings

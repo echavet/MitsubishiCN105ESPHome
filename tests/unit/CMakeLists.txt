@@ -52,6 +52,7 @@ add_executable(cn105_tests
     test_auto_direction.cpp
     test_sub_mode.cpp
     test_idle_dual_band.cpp
+    test_functions_restore.cpp
 )
 
 target_link_libraries(cn105_tests

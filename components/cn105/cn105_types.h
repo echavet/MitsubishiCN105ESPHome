@@ -138,6 +138,12 @@ static const uint8_t FUNCTIONS_GET_PART1 = 0x20;
 static const uint8_t FUNCTIONS_SET_PART2 = 0x21;
 static const uint8_t FUNCTIONS_GET_PART2 = 0x22;
 
+// After a functions read/write the unit may power itself off. The state saved beforehand is
+// restored if the unit reports a different power state within this window after the read.
+static const uint32_t FUNCTIONS_RESTORE_WINDOW_MS = 5000;
+// A saved state whose functions read never completed is discarded after this long.
+static const uint32_t FUNCTIONS_SNAPSHOT_MAX_AGE_MS = 10000;
+
 const uint8_t ESPMHP_MIN_TEMPERATURE = 16;
 const uint8_t ESPMHP_MAX_TEMPERATURE = 26;
 const float ESPMHP_TEMPERATURE_STEP = 0.5;

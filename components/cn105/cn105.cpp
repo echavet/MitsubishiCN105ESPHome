@@ -212,6 +212,9 @@ void CN105Climate::registerHardwareSettingsRequests() {
     r_funcs2.onResponse = [this, check_and_disable](CN105Climate& self) {
         // Log the raw packet and decoded pairs even if the unit returns all zeros
         self.hpPacketDebug(self.parser_.raw(), self.parser_.frame_size(), "RX 0x22");
+        // part 2 arrived: the read is over, watch for a power-off even if the payload
+        // was declined (all zeros): the unit may still have switched itself off.
+        self.openFunctionsRestoreWindow();
         if (check_and_disable(self, 0x22)) {
             ESP_LOGD(LOG_FUNCTIONS_TAG, "Got functions packet 2 (via InfoRequest)");
             self.functionsArrived();

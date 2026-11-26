@@ -303,6 +303,10 @@ bool CN105Climate::buildAndSendInfoPacket(uint8_t code) {
         ESP_LOGW(TAG, "Not sending info request 0x%02X: another request is waiting for its reply", code);
         return false;
     }
+    // Only once the read is really going out: a refused claim must not leave a snapshot behind.
+    if (code == FUNCTIONS_GET_PART1) {
+        this->captureStateBeforeFunctions();
+    }
     uint8_t packet[PACKET_LEN] = {};
     createInfoPacket(packet, code);
     // false -> lambda ends the cycle

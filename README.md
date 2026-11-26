@@ -249,6 +249,8 @@ Recommended: start with `10s` and increase (e.g., `30s`) if you still miss early
 
 `installer_mode` enables an extended CN105 connection handshake (CONNECT command `0x5B`) after a successful standard handshake (`0x5A`). Some indoor units (notably some ducted SEZ variants) may require this to unlock installer/service privileges so that Function Settings (ISU / `hardware_settings`) return real values instead of `0`. If the unit does not answer `0x5B` with `0x7B` within 5 s, the component stays on the standard session and skips `0x5B` on later reconnects until the next reboot. Handshake replies that do not answer the pending CONNECT (a `0x7A` after `0x5B`, a late `0x7B`, any reply once connected) are logged and ignored. Default is `false` for maximum compatibility.
 
+`restore_state_after_functions` protects against units that power themselves off after a Function Settings read or write (`hardware_settings`, or the functions get/set buttons). The component saves the unit's state (power, mode, setpoint, fan, vanes) before the access and, if the unit turns off within 5 s (plus one `update_interval`) of the read finishing, queues a command to put it back. Default is `true`; set it to `false` to disable. See [Restoring the unit state after a functions access](#restoring-the-unit-state-after-a-functions-access).
+
 `fahrenheit_compatibility` improves compatibility with HomeAssistant installations using Fahrenheit units. Mitsubishi uses a custom lookup table to convert F to C which doesn't correspond to the actual math in all cases. This can result in external thermostats and HomeAssistant "disagreeing" on what the current setpoint is. Setting this value to `standard` (or `alt` for alternative conversion tables) forces the component to use the same lookup tables, resulting in more consistent display of setpoints. For MSZ-A24NA and similar units, use `msz_a24na` to use the MSZ-A24NA Fahrenheit-to-Celsius table. Recommended for Fahrenheit users. (See https://github.com/echavet/MitsubishiCN105ESPHome/pull/298.)
 
 `msz_a24na_setpoint_table` enables the alternate temperature setpoint encoding used by some indoor units such as the MSZ-A24NA. Default is `false`. When enabled, setpoints are encoded/decoded with the A24NA lookup table and restricted to 16–31 °C in 0.5 °C steps. If you use Fahrenheit with an A24NA, pair this with `fahrenheit_compatibility: "msz_a24na"`.
@@ -282,6 +284,8 @@ climate:
     connection_bootstrap_delay: 30s
     # Optional: use extended CONNECT handshake (0x5B) for installer/service privileges
     installer_mode: false
+    # Re-apply the unit's previous state if a Function Settings read/write switches it off (default: true)
+    restore_state_after_functions: true
     # Various optional sensors, not all sensors are supported by all heatpumps
     compressor_frequency_sensor:
       name: Compressor Frequency
@@ -1120,7 +1124,35 @@ These Mitsubishi resources document the function setting codes for various equip
 > [!WARNING]
 > On at least one ducted P-series unit (PVA with a PAR-40MAAU wired remote), enabling `hardware_settings` switched
 > the unit **off** a few seconds after the ESP connected, even though the settings read back correctly. See
-> #784. Watch the unit's state after the first boot with this block, and remove it if the unit stops.
+> #784. `restore_state_after_functions` (on by default) turns the unit back on, but the unit may still stop briefly.
+> Watch the unit's state after the first boot with this block, and remove it if the unit keeps stopping.
+
+### Restoring the unit state after a functions access
+
+Reading or writing Function Settings can make some units power themselves off. The `restore_state_after_functions` option (default `true`) detects this and puts the unit back.
+
+- **When the state is saved:** just before the functions read (`0x20`) starts, or before a functions write. A write followed by its read-back keeps the state saved before the write.
+- **What is saved:** power, mode, target temperature, fan speed, vane and horizontal vane, as last reported by the unit. Nothing is saved until the unit has reported power and mode at least once.
+- **When it restores:** only if the unit was **on** before the access and reports **off** within 5 s plus one `update_interval` after the read finishes (second functions packet, `0x22`). The window opens even when the unit's functions payload is all zeros.
+- **What is re-sent:** power ON and the saved mode, plus any of fan, vanes and setpoint that differ from what the unit now reports. They go out as a normal queued command, and a warning is logged: `Unit was powered off by the functions access, restoring previous state`.
+- **When the saved state is discarded without restoring:**
+  - the unit was already off before the access
+  - you change anything from Home Assistant (an explicit user change always wins), or a command is already pending
+  - the read does not finish within 10 s
+  - the window (5 s plus one `update_interval`) ends with the unit still on
+- **Limitations:**
+  - it only restores the *power-off* case. Other side effects of a functions access are not corrected.
+  - it cannot tell the difference between the unit switching itself off and someone switching it off with the IR remote inside the window, so the unit would be turned back on.
+  - a second functions access within 10 s of the first keeps the state saved by the first, even if the unit was changed in between.
+  - it has no effect when no functions access happens (no `hardware_settings`, and the get/set buttons are never pressed).
+
+To turn it off:
+
+```yaml
+climate:
+  - platform: cn105
+    restore_state_after_functions: false
+```
 
 ### Configuration
 

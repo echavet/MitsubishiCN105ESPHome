@@ -133,6 +133,8 @@ void CN105Climate::finalizeControlIfUpdated(bool updated) {
     if (!updated) {
         return;
     }
+    // an explicit user change always wins
+    this->discardFunctionsSnapshot();
     ESP_LOGD(LOG_ACTION_EVT_TAG, "clim.control() -> User changed something...");
     logCheckWantedSettingsMutex(this->wantedSettings);
     this->wantedSettings.hasChanged = true;

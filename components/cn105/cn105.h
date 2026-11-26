@@ -30,6 +30,7 @@
 #include "request_scheduler.h"
 #include "connect_handshake.h"
 #include "bus_gate.h"
+#include "functions_restore.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/button/button.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
@@ -112,6 +113,7 @@ namespace esphome {
         void set_functions_set_button(FunctionsButton* Button);
         void set_functions_set_code(FunctionsNumber* Number);
         void set_functions_set_value(FunctionsNumber* Number);
+        void set_restore_state_after_functions(bool value) { this->functions_snapshot_.set_enabled(value); }
 
         void set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor);
         void set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor);
@@ -530,5 +532,13 @@ namespace esphome {
         void handleHeatpumpAck();
         void sendSecondFunctionsPacket();
         void checkBusTimeout();
+
+        // Restore the unit's state after a functions read/write (it can power the unit off)
+        // Decisions live in cn105::FunctionsSnapshot (functions_restore.h)
+        cn105::FunctionsSnapshot functions_snapshot_;
+        void captureStateBeforeFunctions();
+        void openFunctionsRestoreWindow();
+        void discardFunctionsSnapshot();
+        void restoreStateAfterFunctions(const heatpumpSettings& received);
     };
 }
