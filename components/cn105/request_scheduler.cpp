@@ -213,7 +213,13 @@ bool RequestScheduler::process_response(uint8_t code, CN105Climate* context) {
     if (!handled) return false;
 
     mark_response_seen(code, context);
-    send_next_after(code, context);
+    // Let the line go idle before the next write (see RESPONSE_GAP_MS). send_next_after()
+    // also ends the cycle, and ending it can write the remote temperature packet.
+    if (timeout_callback_) {
+        timeout_callback_(next_timeout_name_, RESPONSE_GAP_MS, [this, code]() { this->send_next_after(code); });
+    } else {
+        send_next_after(code, context);
+    }
     return true;
 }
 
