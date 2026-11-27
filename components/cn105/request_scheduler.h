@@ -115,6 +115,12 @@ namespace esphome {
         bool process_response(uint8_t code, CN105Climate* context = nullptr);
 
         /**
+         * @brief The request sent last, if its response has not arrived yet
+         * @return The awaited request, or nullptr when nothing is awaited
+         */
+        const InfoRequest* awaiting_request() const;
+
+        /**
          * @brief Method to call in the main loop to manage timeouts
          *Note: Timeout management is currently managed via callbacks,
          *this method is intended for future management if necessary.

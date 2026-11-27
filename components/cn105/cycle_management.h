@@ -13,6 +13,6 @@ struct cycleManagement {
     bool doesCycleTimeOut(unsigned int update_interval);
     bool isCycleRunning();
     void deferCycle();
-    void checkTimeout(unsigned int update_interval);
+    bool checkTimeout(unsigned int update_interval);  // true when it ended a timed-out cycle
 
 };

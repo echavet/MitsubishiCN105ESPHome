@@ -217,6 +217,14 @@ bool RequestScheduler::process_response(uint8_t code, CN105Climate* context) {
     return true;
 }
 
+const InfoRequest* RequestScheduler::awaiting_request() const {
+    if (current_request_index_ < 0 || current_request_index_ >= static_cast<int>(requests_.size())) {
+        return nullptr;
+    }
+    const InfoRequest& req = requests_[current_request_index_];
+    return req.awaiting ? &req : nullptr;
+}
+
 void RequestScheduler::loop() {
     // Currently, timeouts are managed via callbacks
     // This method is intended for future management if necessary
