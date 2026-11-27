@@ -349,6 +349,16 @@ climate:
       horizontal_vane_mode: ["←←", "←", "|", "→", "→→", SWING]
 ```
 
+With `supports.dual_setpoint: true`, opt into `supports.auto_band_control: true`
+on heads where AUTO_HEAT and AUTO_COOL identify the actual direction. In HEAT_COOL,
+the head stays in hardware AUTO inside the band and targets the heating or cooling edge.
+Before the first direction, or after direction reports stop for at least one minute
+and three poll intervals, it uses the midpoint. At 0.5 °C beyond an edge it can switch
+to explicit HEAT or COOL. After the room recovers it returns to AUTO following a
+10-minute minimum dwell. Editing the band can release the dwell early. The option
+defaults to false. Some models use the AUTO byte for engagement instead of direction
+([captures](https://github.com/echavet/MitsubishiCN105ESPHome/issues/768)).
+
 #### Lossnay example
 
 Lossnay ventilation units can use the same component with the explicit `lossnay: true` option. Heat Recovery is exposed as `heat`, Bypass as `fan_only`, and Automatic as `auto`. Lossnay does not have a target temperature, swing, vane, compressor, or auxiliary-control packet. ESPHome climate entities always expose a target temperature; their traits cannot disable it. Any target-temperature control shown in Home Assistant has no effect on Lossnay and its commands are ignored.

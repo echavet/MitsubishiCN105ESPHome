@@ -156,6 +156,7 @@ CONF_POWER_UNIT_IS_BTU = "power_unit_is_btu"
 CONF_REPORT_WHEN_IDLE = "report_when_idle"
 
 # Support explicite du DUAL setpoint via YAML
+CONF_AUTO_BAND_CONTROL = "auto_band_control"
 CONF_DUAL_SETPOINT = "dual_setpoint"
 CONF_RESTORE_SETPOINTS = "restore_setpoints"
 
@@ -491,6 +492,9 @@ def validate_lossnay_config(config):
     if config.get(CONF_MSZ_A24NA_SETPOINT_TABLE, False):
         raise cv.Invalid("lossnay does not support msz_a24na_setpoint_table")
 
+    if supports.get(CONF_AUTO_BAND_CONTROL, False):
+        raise cv.Invalid("lossnay does not support auto band control")
+
     if supports.get(CONF_RESTORE_SETPOINTS, False):
         raise cv.Invalid("lossnay does not support setpoint restoration")
 
@@ -589,6 +593,7 @@ CONFIG_SCHEMA = (
                     cv.Optional(
                         CONF_SWING_MODE
                     ): cv.ensure_list(climate.validate_climate_swing_mode),
+                    cv.Optional(CONF_AUTO_BAND_CONTROL, default=False): cv.boolean,
                     cv.Optional(CONF_DUAL_SETPOINT, default=False): cv.boolean,
                     cv.Optional(CONF_RESTORE_SETPOINTS, default=False): cv.boolean,
                     cv.Optional(CONF_SUPPORTS_HORIZONTAL_VANE_MODE): cv.ensure_list(
@@ -670,6 +675,8 @@ def to_code(config):
         # Set dual setpoint support via YAML (default: False if missing)
         # Note: this enables global dual setpoint support in HA.
         yaml_dual = supports.get(CONF_DUAL_SETPOINT, False)
+
+        cg.add(var.set_auto_band_control(supports[CONF_AUTO_BAND_CONTROL]))
 
         if yaml_dual:
             if _HAS_CLIMATE_FEATURE_FLAGS:

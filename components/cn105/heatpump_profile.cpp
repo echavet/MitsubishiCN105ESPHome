@@ -166,6 +166,10 @@ void HeatPumpProfile::decode_settings() {
 
     // --- AIRFLOW CONTROL END
 
+    if (this->managesHeatCool() && !hp_.wantedSettings.hasChanged && power_opt && mode_opt &&
+        strcmp(receivedSettings.power, "ON") == 0) {
+        heat_cool_.settings_report(receivedSettings.mode, receivedSettings.temperature);
+    }
     hp_.heatpumpUpdate(receivedSettings);
 }
 
@@ -280,6 +284,18 @@ bool HeatPumpProfile::decode_submode() {
         climate_changed = true;
     }
 
+    if (this->managesHeatCool()) {
+        // Refresh even when consecutive 0x09 replies carry the same direction.
+        // An unrecognised byte must not refresh the decoder's cached direction.
+        if (auto_sub_mode_opt) {
+            heat_cool_.direction_report(cn105_protocol::auto_direction(*auto_sub_mode_opt),
+                                        CUSTOM_MILLIS, hp_.get_update_interval());
+        }
+        const auto before = hp_.action;
+        this->reevaluate_heat_cool();
+        climate_changed |= hp_.action != before;
+    }
+
     return climate_changed;
 }
 
@@ -325,6 +341,8 @@ void HeatPumpProfile::apply_received_settings(heatpumpSettings& settings) {
         this->reconcile_power_mode(settings, true);
     }
 
+    this->reevaluate_heat_cool();
+
     this->update_action();       // update action info on HA climate component
 
     if (hp_.wantedSettings.fan == nullptr) {  // to prevent overwriting a user demand
@@ -353,6 +371,10 @@ void HeatPumpProfile::apply_received_settings(heatpumpSettings& settings) {
 void HeatPumpProfile::reconcile_power_mode(heatpumpSettings& settings, bool updateCurrentSettings) {
     hp_.mode = HeatPumpProtocol::reconcile_power_mode(settings, hp_.currentSettings, hp_.mode,
         hp_.supports_dual_setpoint_, updateCurrentSettings);
+    if (this->managesHeatCool() && updateCurrentSettings && settings.mode != nullptr &&
+        settings.power != nullptr && strcmp(settings.power, "ON") == 0) {
+        heat_cool_.adopt(settings.mode, settings.temperature, CUSTOM_MILLIS);
+    }
 }
 
 void HeatPumpProfile::checkVaneSettings(heatpumpSettings& settings, bool updateCurrentSettings) {
@@ -529,6 +551,10 @@ void HeatPumpProfile::apply_wanted_settings() {
 
 void HeatPumpProfile::control_mode() {
 
+    if (hp_.mode != climate::CLIMATE_MODE_HEAT_COOL) {
+        heat_cool_ = {};
+    }
+
     switch (hp_.mode) {
     case climate::CLIMATE_MODE_COOL:
         ESP_LOGI("control", "changing mode to COOL");
@@ -549,6 +575,12 @@ void HeatPumpProfile::control_mode() {
         break;
 
     case climate::CLIMATE_MODE_HEAT_COOL:
+        if (this->managesHeatCool()) {
+            // Picks AUTO, HEAT or COOL and sends the matching setpoint.
+            ESP_LOGI("control", "changing mode to HEAT_COOL (AUTO in band, HEAT/COOL outside)");
+            this->control_temperature();
+            break;
+        }
         ESP_LOGI("control", "changing mode to HEAT_COOL (hardware AUTO)");
         hp_.setModeSetting("AUTO");
         hp_.setPowerSetting("ON");
@@ -640,6 +672,11 @@ void HeatPumpProfile::control_temperature() {
     // Utiliser la logique appropriée selon les traits
     switch (hp_.mode) {
     case climate::CLIMATE_MODE_HEAT_COOL:
+        if (this->managesHeatCool()) {
+            this->sanitize_setpoints();
+            this->queueHeatCoolCommand(true);
+            return;
+        }
         // Mode HEAT_COOL (new): displays 2 sliders
         // BUT sends AUTO command to Mitsubishi hardware
         // with internal deadband logic
@@ -723,6 +760,10 @@ void HeatPumpProfile::control_temperature() {
         break;
     }
 
+    this->setWantedTemperature(setting);
+}
+
+void HeatPumpProfile::setWantedTemperature(float setting) {
     setting = hp_.calculateTemperatureSetting(setting);
     hp_.wantedSettings.temperature = setting;
     // Track last user temperature command: this persists across resetSettings()
@@ -809,6 +850,14 @@ void HeatPumpProfile::update_action() {
             this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
             break;
         case climate::CLIMATE_MODE_HEAT_COOL:
+            if (heat_cool_.drive() == cn105_protocol::HeatCoolDrive::HEAT) {
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_HEATING);
+                break;
+            }
+            if (heat_cool_.drive() == cn105_protocol::HeatCoolDrive::COOL) {
+                this->setActionIfOperatingTo(climate::CLIMATE_ACTION_COOLING);
+                break;
+            }
             if (this->setActionFromAutoDirection()) {
                 break;
             }
@@ -912,6 +961,41 @@ bool HeatPumpProfile::setActionFromAutoDirection() {
         return true;
     default:
         return false;
+    }
+}
+
+bool HeatPumpProfile::managesHeatCool() const {
+    return HeatPumpProtocol::manages_heat_cool(hp_.auto_band_control_, hp_.supports_dual_setpoint_, hp_.mode);
+}
+
+bool HeatPumpProfile::queueHeatCoolCommand(bool user_command) {
+    const auto command = heat_cool_.update(hp_.getCurrentTemperature(), hp_.getTargetTemperatureLow(),
+        hp_.getTargetTemperatureHigh(), hp_.currentSettings.mode,
+        hp_.wantedSettings.hasChanged || hp_.wantedSettings.hasBeenSent, user_command,
+        CUSTOM_MILLIS, hp_.get_update_interval());
+    if (!command) return false;
+    const char *mode = cn105_protocol::heat_cool_mode_name(command->drive);
+    ESP_LOGD("control", "HEAT_COOL requests %s at %.1f C", mode, command->setpoint);
+    hp_.setModeSetting(mode);
+    hp_.setPowerSetting("ON");
+    this->setWantedTemperature(command->setpoint);
+    if (user_command) {
+        float target = hp_.wantedSettings.temperature;
+        if (!this->use_temperature_encoding_b_ && !hp_.use_msz_a24na_setpoint_table_) target = std::trunc(target);
+        heat_cool_.await_user_readback(target);
+    }
+    return true;
+}
+
+void HeatPumpProfile::reevaluate_heat_cool() {
+    if (!this->managesHeatCool()) {
+        if (heat_cool_.drive() != cn105_protocol::HeatCoolDrive::NONE) heat_cool_ = {};
+        return;
+    }
+    if (this->queueHeatCoolCommand(false)) {
+        hp_.wantedSettings.hasChanged = true;
+        hp_.wantedSettings.lastChange = CUSTOM_MILLIS;
+        this->update_action();
     }
 }
 

@@ -24,6 +24,9 @@ struct HeatPumpProtocol {
             std::isnan(state.target_low) || std::isnan(state.target_high) || !supports_dual) return std::nullopt;
         return state;
     }
+    static bool manages_heat_cool(bool enabled, bool dual_setpoint, climate::ClimateMode mode) {
+        return enabled && dual_setpoint && mode == climate::CLIMATE_MODE_HEAT_COOL;
+    }
     static float deadband_setting(float current, float low, float high) {
         if (current < low) return low;
         if (current > high) return high;

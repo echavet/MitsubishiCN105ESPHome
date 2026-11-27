@@ -223,7 +223,11 @@ void CN105Climate::statusChanged(heatpumpStatus status) {
         this->debugStatus("received", status);
         this->debugStatus("current", currentStatus);
         cn105::CommonProtocol::apply_status(*this, status);
-    } // else no change
+    }
+    // Dwell, direction expiry and resend deadlines also elapse on unchanged readings.
+    const auto before = this->action;
+    this->profile_->reevaluate_heat_cool();
+    if (this->action != before) this->publish_state();
 }
 
 
