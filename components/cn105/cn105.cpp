@@ -127,11 +127,16 @@ void CN105Climate::registerInfoRequests() {
     r_hvac_opts.onResponse = [this](CN105Climate& self) { (void)self; this->getHVACOptionsFromResponsePacket(); };
     scheduler_.register_request(r_hvac_opts);
 
-    // Placeholders
-    InfoRequest r_error_info("error_info", "Error Info", 0x04, 3, 0);
+    // 0x04 Error info: only read by the error code sensor, so only polled when one is configured.
+    // Decided at send time: the sensor setter runs after this constructor, so error_code_sensor_
+    // is still null here. A soft timeout, as for the other optional requests, keeps a unit that
+    // doesn't answer from stalling the cycle (and the remote temperature sent at its end).
+    InfoRequest r_error_info("error_info", "Error Info", 0x04, 3, 500);
+    r_error_info.canSend = [this](const CN105Climate& self) { (void)self; return this->error_code_sensor_ != nullptr; };
     r_error_info.onResponse = [this](CN105Climate& self) { (void)self; this->getErrorInfoFromResponsePacket(); };
     scheduler_.register_request(r_error_info);
 
+    // Placeholders
     InfoRequest r_timers("timers", "Timers", 0x05, 1, 0);
     r_timers.disabled = true;
     scheduler_.register_request(r_timers);
