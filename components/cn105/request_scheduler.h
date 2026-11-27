@@ -19,6 +19,20 @@ namespace esphome {
     class RequestScheduler {
     public:
         /**
+         * @brief Idle time between a response and the next write (the next request, or the end of the cycle)
+         *
+         * ESPHome wakes the loop on every UART byte, so without a gap the next request goes out
+         * within microseconds of the reply's last byte. Some units miss a request sent that soon,
+         * and a request without a soft timeout then stalls the cycle until the cycle timeout (#780).
+         * Before #766 the hex formatting in hpPacketDebug() happened to leave a gap at every log level.
+         *
+         * It has to be idle time, not just a yield: on a unit that missed every request sent at once,
+         * a zero-delay defer() still timed out 9 cycles in 22, while 1 to 20 ms were all clean.
+         * 10 ms leaves a wide margin and costs about 50 ms per cycle.
+         */
+        static constexpr uint32_t RESPONSE_GAP_MS = 10;
+
+        /**
          * @brief Type of callback for sending a packet
          * @param code The code of the request to send
          */
@@ -115,6 +129,12 @@ namespace esphome {
         bool process_response(uint8_t code, CN105Climate* context = nullptr);
 
         /**
+         * @brief The request sent last, if its response has not arrived yet
+         * @return The awaited request, or nullptr when nothing is awaited
+         */
+        const InfoRequest* awaiting_request() const;
+
+        /**
          * @brief Method to call in the main loop to manage timeouts
          *Note: Timeout management is currently managed via callbacks,
          *this method is intended for future management if necessary.
@@ -128,6 +148,7 @@ namespace esphome {
         TimeoutCallback timeout_callback_;          // Callback to manage timeouts
         TerminateCallback terminate_callback_;      // Callback to end a cycle
         ContextCallback context_callback_;          // Callback to get the CN105Climate context
+        std::string next_timeout_name_ = "info_next_after_response";  // set_timeout keeps the name pointer
 
         /**
          * @brief Sends a specific request by its code

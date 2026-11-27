@@ -4,11 +4,13 @@
 
 using namespace esphome;
 
-void cycleManagement::checkTimeout(unsigned int update_interval) {
-    if (doesCycleTimeOut(update_interval)) {                          // does it last too long ?                    
+bool cycleManagement::checkTimeout(unsigned int update_interval) {
+    if (doesCycleTimeOut(update_interval)) {                          // does it last too long ?
         ESP_LOGW(TAG, "Cycle timeout, resetting cycle...");
         cycleEnded(true);
+        return true;
     }
+    return false;
 }
 
 

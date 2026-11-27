@@ -97,7 +97,19 @@ void CN105Climate::loop() {
             }
         } else {
             if (this->loopCycle.isCycleRunning()) {                         // if we are  running an update cycle
-                this->loopCycle.checkTimeout(this->update_interval_);
+                if (this->loopCycle.checkTimeout(this->update_interval_)) {
+                    const InfoRequest* stalled = this->scheduler_.awaiting_request();
+                    if (stalled != nullptr) {
+                        ESP_LOGW(LOG_CYCLE_TAG, "No reply to %s (0x%02X) before the cycle timeout",
+                            stalled->description, stalled->code);
+                    }
+                    // A timed-out cycle never reaches terminateCycle(), the only other place the remote
+                    // temperature is sent. Without this, a unit that keeps missing a request keeps the
+                    // last remote temperature it received for as long as the cycles keep timing out.
+                    if (this->shouldSendExternalTemperature_) {
+                        this->sendRemoteTemperature();
+                    }
+                }
             } else { // we are not running a cycle
                 if (this->loopCycle.hasUpdateIntervalPassed(this->get_update_interval())) {
                     if (this->isGetFunctions_) {
