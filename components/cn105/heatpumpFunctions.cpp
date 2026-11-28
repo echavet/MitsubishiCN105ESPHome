@@ -17,29 +17,29 @@ bool CN105Climate::setFunctions(heatpumpFunctions const& functions) {
     }
 
     uint8_t packet1[PACKET_LEN] = {};
-    uint8_t packet2[PACKET_LEN] = {};
     prepareSetPacket(packet1, PACKET_LEN);
-    prepareSetPacket(packet2, PACKET_LEN);
-    if (!this->profile_->encode_functions(packet1, packet2, functions)) return false;
+    prepareSetPacket(this->functions_second_packet_, PACKET_LEN);
+    if (!this->profile_->encode_functions(packet1, this->functions_second_packet_, functions)) {
+        return false;
+    }
 
     packet1[21] = checkSum(packet1, 21);
-    packet2[21] = checkSum(packet2, 21);
-    /*
-        while (!canSend(false)) {
-            //esphome::CUSTOM_DELAY(10);
-            CUSTOM_DELAY(10);
-        }*/
-    ESP_LOGD(TAG, "sending a setFunctions packet part 1");
-    writePacket(packet1, PACKET_LEN);
-    //readPacket();
+    this->functions_second_packet_[21] = checkSum(this->functions_second_packet_, 21);
 
-    /*while (!canSend(false)) {
-        //esphome::CUSTOM_DELAY(10);
-        CUSTOM_DELAY(10);
-    }*/
-    ESP_LOGD(TAG, "sending a setFunctions packet part 2");
-    writePacket(packet2, PACKET_LEN);
-    //readPacket();
+    // Part 2 is sent from handleHeatpumpAck() once part 1 has been acknowledged.
+    if (!this->bus_gate_.begin(cn105::BusRequestKind::SET_FUNCTIONS_PART1, cn105::BusExpectedResponse::ACK, CUSTOM_MILLIS)) {
+        ESP_LOGW(TAG, "setFunctions not sent: another request is waiting for its reply");
+        // retry on a later pass
+        this->isSetFunctions_ = true;
+        return false;
+    }
+    ESP_LOGD(TAG, "sending a setFunctions packet part 1");
+    if (!writePacket(packet1, PACKET_LEN)) {
+        // Do not blindly rewrite hardware configuration after a reconnect: re-read what the unit
+        // actually holds instead.
+        this->isGetFunctions_ = true;
+        return false;
+    }
 
     return true;
 }

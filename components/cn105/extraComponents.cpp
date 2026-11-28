@@ -258,7 +258,14 @@ void CN105Climate::set_remote_temp_source_info_sensor(esphome::text_sensor::Text
     this->remote_temp_source_info_sensor_ = info_sensor;
     // Publish the source sensor name on next loop
     if (this->remote_temp_source_ != nullptr) {
-        info_sensor->publish_state(this->remote_temp_source_->get_name());
+        // get_name() is deprecated.
+        #if ESPHOME_VERSION_CODE >= VERSION_CODE(2026, 11, 0)
+            char name_buf[ENTITY_NAME_BUF_SIZE];
+            auto name = this->remote_temp_source_->get_name_to(name_buf);
+            info_sensor->publish_state(std::string(name));
+        #else
+            info_sensor->publish_state(remote_temp_source_->get_name());
+        #endif
     }
 }
 

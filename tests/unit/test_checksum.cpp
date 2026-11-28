@@ -29,6 +29,19 @@ TEST(CheckSumTest, ConnectPacketHasCorrectChecksum) {
         << "checkSum of CONNECT packet should equal its last byte (0xA8)";
 }
 
+TEST(CheckSumTest, InstallerConnectPacketHasCorrectChecksum) {
+    // INST_CONNECT constant: {0xfc, 0x5b, 0x01, 0x30, 0x01, 0xc9, 0xaa}
+    // Last byte (0xaa) IS the checksum of the first 6 bytes
+    uint8_t packet[INST_CONNECT_LEN];
+    memcpy(packet, INST_CONNECT, INST_CONNECT_LEN);
+
+    uint8_t expected = packet[INST_CONNECT_LEN - 1]; // 0xaa
+    uint8_t computed = checkSum(packet, INST_CONNECT_LEN - 1);
+
+    EXPECT_EQ(computed, expected)
+        << "checkSum of INST_CONNECT packet should equal its last byte (0xAA)";
+}
+
 TEST(CheckSumTest, InfoPacketSettings) {
     // Info request for settings (0x02):
     // FC 42 01 30 10 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 7B

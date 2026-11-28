@@ -87,7 +87,13 @@ bool CN105Climate::processModeChange(const esphome::climate::ClimateCall& call) 
     }
 
     ESP_LOGD("control", "Mode change asked");
+    const auto previous_mode = this->mode;
     this->mode = *call.get_mode();
+    if (this->mode != previous_mode) {
+        ESP_LOGI("control", "changing mode to %s%s",
+            LOG_STR_ARG(climate_mode_to_string(this->mode)),
+            this->mode == climate::CLIMATE_MODE_HEAT_COOL ? " (hardware AUTO)" : "");
+    }
     this->controlMode();
     // Do NOT call controlTemperature() here unconditionally.
     // A mode-only change (e.g. switching to DRY) should not emit a SET temperature
