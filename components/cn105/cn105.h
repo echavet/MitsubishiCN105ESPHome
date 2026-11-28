@@ -28,6 +28,9 @@
 #include "localization.h"
 #include "info_request.h"
 #include "request_scheduler.h"
+#include "connect_handshake.h"
+#include "bus_gate.h"
+#include "functions_restore.h"
 #include <esphome/components/sensor/sensor.h>
 #include <esphome/components/button/button.h>
 #include <esphome/components/binary_sensor/binary_sensor.h>
@@ -110,6 +113,7 @@ namespace esphome {
         void set_functions_set_button(FunctionsButton* Button);
         void set_functions_set_code(FunctionsNumber* Number);
         void set_functions_set_value(FunctionsNumber* Number);
+        void set_restore_state_after_functions(bool value) { this->functions_snapshot_.set_enabled(value); }
 
         void set_sub_mode_sensor(esphome::text_sensor::TextSensor* Sub_mode_sensor);
         void set_auto_sub_mode_sensor(esphome::text_sensor::TextSensor* Auto_sub_mode_sensor);
@@ -214,7 +218,7 @@ namespace esphome {
         void reconnectUART();
         void buildAndSendRequestsInfoPackets();
         void buildAndSendRequestPacket(int packetType);
-        void buildAndSendInfoPacket(uint8_t code);
+        bool buildAndSendInfoPacket(uint8_t code);
         bool isHeatpumpConnectionActive();
         void reconnectIfConnectionLost();
 
@@ -275,20 +279,15 @@ namespace esphome {
 
         void controlFan();
         void controlSwing();
-        // Bootstrap connexion CN105 en loop() (évite de perdre les tout premiers logs OTA)
+        // Bootstrap CN105 connection in loop() (avoids losing the very first OTA logs)
         void maybe_start_connection_();
 
-        // Délai de grâce configurable avant d'envoyer CONNECT (pour laisser le flux OTA s'attacher)
+        // Configurable grace period before sending CONNECT (to let the OTA stream attach)
         void set_connection_bootstrap_delay(uint32_t delay_ms) { this->conn_bootstrap_delay_ms_ = delay_ms; }
 
-
-        // Mode installateur: utilise un handshake CONNECT étendu (0x5B) au lieu du standard (0x5A)
+        // Installer mode: uses an extended CONNECT handshake (0x5B) after the standard one (0x5A)
         void set_installer_mode(bool mode) {
-            // Mode demandé via YAML
-            this->installer_mode_ = mode;
-            // Mode effectivement utilisé: peut tomber en fallback vers standard si la PAC ignore 0x5B
-            this->installer_mode_effective_ = mode && this->profile_->supports(cn105::ProfileFeature::INSTALLER_MODE);
-            this->installer_mode_fallback_done_ = false;
+            this->handshake_.set_installer_mode(mode && this->profile_->supports(cn105::ProfileFeature::INSTALLER_MODE));
         }
 
         // Unité de puissance brute envoyée par la PAC: false = Watts (défaut), true = BTU/s
@@ -315,6 +314,7 @@ namespace esphome {
 
 
         void sendFirstConnectionPacket();
+        void sendInstallerConnectPacket();
         void terminateCycle();
         //bool can_proceed() override;
 
@@ -394,7 +394,7 @@ namespace esphome {
         friend class cn105::LossnayProfile;
         std::unique_ptr<cn105::Cn105ProtocolProfile> profile_;
         void force_low_level_uart_reinit();
-        void handleConnectionSuccess();
+        void onHandshakeEvent(cn105::HandshakeEvent event);
 
         int uart_port_ = -1;
         const char* lookupByteMapValue(const char* valuesMap[], const uint8_t byteMap[], int len, uint8_t byteValue, const char* debugInfo = "", const char* defaultValue = nullptr);
@@ -402,7 +402,9 @@ namespace esphome {
         int lookupByteMapIndex(const char* valuesMap[], int len, const char* lookupValue, const char* debugInfo = "");
         int lookupByteMapIndex(const int valuesMap[], int len, int lookupValue, const char* debugInfo = "");
 
-        void writePacket(uint8_t* packet, int length, bool checkIsActive = true);
+        // Returns true when the bytes were written. On false the link has been reset
+        // (reconnectUART) and the bus claim released; the CALLER keeps its own intent queued.
+        bool writePacket(uint8_t* packet, int length, bool checkIsActive = true);
         void prepareInfoPacket(uint8_t* packet, int length);
         void prepareSetPacket(uint8_t* packet, int length);
 
@@ -450,6 +452,8 @@ namespace esphome {
 
         // Orchestrateur des requêtes INFO
         RequestScheduler scheduler_;
+        // CONNECT handshake (0x5A, optional installer 0x5B): flags, timers, decisions
+        cn105::ConnectHandshake handshake_;
         void registerInfoRequests();
         void registerHardwareSettingsRequests();
 
@@ -504,21 +508,10 @@ namespace esphome {
 
         // foundStart, bytesRead, dataLength, command → moved into parser_ (Phase 3A)
 
-        // Gestion sûre d'un paquet différé à écrire pour éviter la capture d'un buffer de pile
-        void try_write_pending_packet();
-        uint8_t pending_packet_[PACKET_LEN] = {};
-        int pending_packet_len_ = 0;
-        bool pending_check_is_active_ = true;
-        bool has_pending_packet_ = false;
-
         // Connection lifecycle FSM
         DriverState state_ = DriverState::BOOT;
         uint32_t boot_ms_ = 0;
         uint32_t conn_bootstrap_delay_ms_{ 10000 };  // par défaut 10s
-
-        bool installer_mode_{ false };
-        bool installer_mode_effective_{ false };
-        bool installer_mode_fallback_done_{ false };
 
         bool power_unit_is_btu_{ false };  // true = la PAC envoie en BTU/s (conversion ×3600/1055.056 ≈ ×3.412)
         bool supports_dual_setpoint_ = false;
@@ -532,5 +525,20 @@ namespace esphome {
         bool restore_setpoints_ = false;
         void restore_setpoint_state_();
         void save_setpoint_state_();
+        // Records the one request that is waiting for a heat pump reply. Every sender claims it
+        // before writing and every reply is matched against it (see bus_gate.h).
+        cn105::BusGate bus_gate_;
+        uint8_t functions_second_packet_[PACKET_LEN] = {};
+        void handleHeatpumpAck();
+        void sendSecondFunctionsPacket();
+        void checkBusTimeout();
+
+        // Restore the unit's state after a functions read/write (it can power the unit off)
+        // Decisions live in cn105::FunctionsSnapshot (functions_restore.h)
+        cn105::FunctionsSnapshot functions_snapshot_;
+        void captureStateBeforeFunctions();
+        void openFunctionsRestoreWindow();
+        void discardFunctionsSnapshot();
+        void restoreStateAfterFunctions(const heatpumpSettings& received);
     };
 }

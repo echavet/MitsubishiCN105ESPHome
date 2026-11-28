@@ -131,6 +131,7 @@ CONF_FUNCTIONS_BUTTON = "functions_get_button"
 CONF_FUNCTIONS_SET_BUTTON = "functions_set_button"
 CONF_FUNCTIONS_SET_CODE = "functions_set_code"
 CONF_FUNCTIONS_SET_VALUE = "functions_set_value"
+CONF_RESTORE_STATE_AFTER_FUNCTIONS = "restore_state_after_functions"
 CONF_STAGE_SENSOR = "stage_sensor"
 CONF_SUB_MODE_SENSOR = "sub_mode_sensor"
 CONF_AUTO_SUB_MODE_SENSOR = "auto_sub_mode_sensor"
@@ -577,6 +578,7 @@ CONFIG_SCHEMA = (
             ): REMOTE_TEMPERATURE_CONTROL_SENSOR_SCHEMA,
             #cv.Optional(CONF_REMOTE_TEMPERATURE_MARGIN, default=0.4): cv.positive_float,
             cv.Optional(CONF_POWER_UNIT_IS_BTU, default=False): cv.boolean,
+            cv.Optional(CONF_RESTORE_STATE_AFTER_FUNCTIONS, default=True): cv.boolean,
             # mode/fan_mode/swing_mode defaults depend on the profile and are applied in to_code.
             cv.Optional(CONF_SUPPORTS, default={}): cv.Schema(
                 {
@@ -618,6 +620,7 @@ def to_code(config):
 
     cg.add(var.set_installer_mode(config[CONF_INSTALLER_MODE]))
     cg.add(var.set_power_unit_is_btu(config[CONF_POWER_UNIT_IS_BTU]))
+    cg.add(var.set_restore_state_after_functions(config[CONF_RESTORE_STATE_AFTER_FUNCTIONS]))
 
     cg.add(uart_var.set_data_bits(8))
     cg.add(uart_var.set_parity(UARTParityOptions.UART_CONFIG_PARITY_EVEN))

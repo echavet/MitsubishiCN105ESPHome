@@ -33,11 +33,18 @@ static const int DEFER_SCHEDULE_UPDATE_LOOP_DELAY = 750;
 static const uint32_t RECEIVED_SETPOINT_GRACE_WINDOW_MS = 3000;
 static const uint32_t UI_SETPOINT_ANTIREBOUND_MS = 600;
 
+// A user change that could not be sent (link down) is discarded after this long:
+// it describes a state the user may no longer want.
+static const uint32_t WANTED_SETTINGS_MAX_AGE_MS = 30000;
+
 static const int PACKET_LEN = 22;
 static const int PACKET_TYPE_DEFAULT = 99;
 
 static const int CONNECT_LEN = 8;
 static const uint8_t CONNECT[CONNECT_LEN] = { 0xfc, 0x5a, 0x01, 0x30, 0x02, 0xca, 0x01, 0xa8 };
+static const int INST_CONNECT_LEN = 7;
+// Old INST_CONNECT frame had a 2 byte payload (0xca, 0x01) but captures from PAC show a 1 byte frame (0xc9)
+static const uint8_t INST_CONNECT[INST_CONNECT_LEN] = { 0xfc, 0x5b, 0x01, 0x30, 0x01, 0xc9, 0xaa };
 static const uint8_t HEATPUMP_PROFILE = 0x30;
 static const int HEADER_LEN = 8;
 static const uint8_t HEADER[HEADER_LEN] = { 0xfc, 0x41, 0x01, 0x30, 0x10, 0x01, 0x00, 0x00 };
@@ -130,6 +137,12 @@ static const uint8_t FUNCTIONS_SET_PART1 = 0x1F;
 static const uint8_t FUNCTIONS_GET_PART1 = 0x20;
 static const uint8_t FUNCTIONS_SET_PART2 = 0x21;
 static const uint8_t FUNCTIONS_GET_PART2 = 0x22;
+
+// After a functions read/write the unit may power itself off. The state saved beforehand is
+// restored if the unit reports a different power state within this window after the read.
+static const uint32_t FUNCTIONS_RESTORE_WINDOW_MS = 5000;
+// A saved state whose functions read never completed is discarded after this long.
+static const uint32_t FUNCTIONS_SNAPSHOT_MAX_AGE_MS = 10000;
 
 const uint8_t ESPMHP_MIN_TEMPERATURE = 16;
 const uint8_t ESPMHP_MAX_TEMPERATURE = 26;

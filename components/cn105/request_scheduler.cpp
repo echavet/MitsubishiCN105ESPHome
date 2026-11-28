@@ -1,7 +1,11 @@
 #include "request_scheduler.h"
+#include "cn105_types.h"
+#include <cinttypes>
+#ifndef CN105_UNIT_TEST
 #include "Globals.h"
 #include "cn105.h"
 #include <esphome.h>
+#endif
 
 using namespace esphome;
 
@@ -9,12 +13,14 @@ RequestScheduler::RequestScheduler(
     SendCallback send_callback,
     TimeoutCallback timeout_callback,
     TerminateCallback terminate_callback,
-    ContextCallback context_callback
+    ContextCallback context_callback,
+    AbandonCallback abandon_callback
 ) : current_request_index_(-1),
 send_callback_(send_callback),
 timeout_callback_(timeout_callback),
 terminate_callback_(terminate_callback),
-context_callback_(context_callback) {}
+context_callback_(context_callback),
+abandon_callback_(abandon_callback) {}
 
 void RequestScheduler::register_request(InfoRequest& req) {
     requests_.push_back(req);
@@ -77,13 +83,13 @@ void RequestScheduler::send_request(uint8_t code, CN105Climate* context) {
         const char* tag = req.log_tag ? req.log_tag : LOG_CYCLE_TAG;
         ESP_LOGD(tag, "Sending %s (0x%02X)", req.description, req.code);
 
+        // Send the packet via callback
+        if (send_callback_ && !send_callback_(req.code)) {
+            // nothing went out: leave awaiting / last_request_time untouched
+            return;
+        }
         req.awaiting = true;
         req.last_request_time = CUSTOM_MILLIS;
-
-        // Send the packet via callback
-        if (send_callback_) {
-            send_callback_(req.code);
-        }
 
         // Manage the timeout if configured and if the callback is available
         if (req.soft_timeout_ms > 0 && timeout_callback_) {
@@ -107,6 +113,9 @@ void RequestScheduler::send_request(uint8_t code, CN105Climate* context) {
                             r.disabled = true;
                             ESP_LOGW(LOG_CYCLE_TAG, "%s (0x%02X) disabled (not supported)",
                                 r.description, r.code);
+                        }
+                        if (this->abandon_callback_) {
+                            this->abandon_callback_();
                         }
                         this->send_next_after(code_copy, ctx);
                         break;
@@ -203,18 +212,33 @@ bool RequestScheduler::process_response(uint8_t code, CN105Climate* context) {
     }
 
     // Find out if the code is managed by the scheduler
-    bool handled = false;
-    for (auto& req : requests_) {
+    const InfoRequest* managed_request = nullptr;
+    for (const auto& req : requests_) {
         if (req.code == code) {
-            handled = true;
+            managed_request = &req;
             break;
         }
     }
-    if (!handled) return false;
+    if (managed_request == nullptr) return false;
+
+    // Only a request that is still awaiting may advance the cycle. Anything else is a
+    // duplicate, or a reply to a request that was already given up on: ignore it.
+    if (!managed_request->awaiting) {
+        ESP_LOGD(LOG_CYCLE_TAG, "Ignoring reply for %s (0x%02X): not awaiting",
+            managed_request->description, managed_request->code);
+        return true;
+    }
 
     mark_response_seen(code, context);
     send_next_after(code, context);
     return true;
+}
+
+void RequestScheduler::reset_pending() {
+    for (auto& req : requests_) {
+        req.awaiting = false;
+    }
+    current_request_index_ = -1;
 }
 
 void RequestScheduler::loop() {
@@ -222,4 +246,3 @@ void RequestScheduler::loop() {
     // This method is intended for future management if necessary
     // (for example, to check timeouts manually in the main loop)
 }
-

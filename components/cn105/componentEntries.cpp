@@ -15,7 +15,6 @@ void CN105Climate::setup() {
 
     ESP_LOGD(TAG, "Component initialization: setup call");
     ESP_LOGI(TAG, "CN105 protocol profile: 0x%02X (%s)", this->profile_->id(), this->profile_->name());
-    if (this->installer_mode_) this->profile_->allow_operation(cn105::ProfileFeature::INSTALLER_MODE);
     this->boot_ms_ = CUSTOM_MILLIS;
     this->current_temperature = NAN;
     this->target_temperature = NAN;
@@ -62,6 +61,8 @@ void CN105Climate::loop() {
     // Bootstrap connection CN105 (UART + CONNECT) from loop()
     this->maybe_start_connection_();
 
+    this->checkBusTimeout();
+
     // Inform user about report_when_idle property if not configured, but only if compressor frequency sensor is configured.
     // Wait for UART to be ready so log messages appear via OTA update.
     if (!this->compressor_frequency_report_when_idle_warning_shown_ &&
@@ -77,42 +78,42 @@ void CN105Climate::loop() {
     // As long as the connection is not successful, we do not launch ANY cycle/write (otherwise it short-circuits the delay).
     // We still continue to read/process the input in order to detect 0x7A/0x7B (connection success).
     const bool can_talk_to_hp = this->isHeatpumpConnected();
+    // Only one request may wait for a reply at a time. While one does, nothing new is sent and
+    // the pending work is retried on a later pass.
+    const bool bus_idle = this->bus_gate_.is_idle(CUSTOM_MILLIS);
 
     if (!this->processInput()) {                                            // if we don't get any input: no read op
-        if (!can_talk_to_hp) {
-            return;
-        }
-        if ((this->wantedSettings.hasChanged) && (!this->loopCycle.isCycleRunning())) {
-            this->checkPendingWantedSettings();
-        } else if ((this->wantedRunStates.hasChanged) && (!this->loopCycle.isCycleRunning())) {
-            this->checkPendingWantedRunStates();
-        } else if ((this->isSetFunctions_) && (!this->loopCycle.isCycleRunning())) {
-            this->isSetFunctions_ = false;
-            if (!this->profile_->allow_operation(cn105::ProfileFeature::AUXILIARY_CONTROLS)) {
-                this->isGetFunctions_ = false;
+        if (can_talk_to_hp) {
+            if ((this->wantedSettings.hasChanged) && (!this->loopCycle.isCycleRunning()) && bus_idle) {
+                this->checkPendingWantedSettings();
+            } else if ((this->wantedRunStates.hasChanged) && (!this->loopCycle.isCycleRunning()) && bus_idle) {
+                this->checkPendingWantedRunStates();
+            } else if ((this->isSetFunctions_) && (!this->loopCycle.isCycleRunning()) && bus_idle) {
+                this->isSetFunctions_ = false;
+                if (!this->profile_->allow_operation(cn105::ProfileFeature::AUXILIARY_CONTROLS)) {
+                    this->isGetFunctions_ = false;
+                } else {
+                    this->setFunctions(this->functions);
+                }
             } else {
-                this->setFunctions(this->functions);
-                // Also request to get function settings from heat pump to update UI with latest values.
-                this->isGetFunctions_ = true;
-            }
-        } else {
-            if (this->loopCycle.isCycleRunning()) {                         // if we are  running an update cycle
-                this->loopCycle.checkTimeout(this->update_interval_);
-            } else { // we are not running a cycle
-                if (this->loopCycle.hasUpdateIntervalPassed(this->get_update_interval())) {
-                    if (this->isGetFunctions_) {
-                        if (this->profile_->allow_operation(cn105::ProfileFeature::AUXILIARY_CONTROLS)) {
-                            // Reactivate requests 0x20/0x22 and bypass interval timers.
-                            // This must be done before starting a new cycle to prevent a race hazard of
-                            // request 0x22 occurring before request 0x20.
-                            this->scheduler_.enable_request(0x20);
-                            this->scheduler_.timer_bypass(0x20);
-                            this->scheduler_.enable_request(0x22);
-                            this->scheduler_.timer_bypass(0x22);
+                if (this->loopCycle.isCycleRunning()) {                         // if we are  running an update cycle
+                    this->loopCycle.checkTimeout(this->update_interval_);
+                } else { // we are not running a cycle
+                    if (this->loopCycle.hasUpdateIntervalPassed(this->get_update_interval()) && bus_idle) {
+                        if (this->isGetFunctions_) {
+                            if (this->profile_->allow_operation(cn105::ProfileFeature::AUXILIARY_CONTROLS)) {
+                                // Reactivate requests 0x20/0x22 and bypass interval timers.
+                                // This must be done before starting a new cycle to prevent a race hazard of
+                                // request 0x22 occurring before request 0x20.
+                                this->scheduler_.enable_request(0x20);
+                                this->scheduler_.timer_bypass(0x20);
+                                this->scheduler_.enable_request(0x22);
+                                this->scheduler_.timer_bypass(0x22);
+                            }
+                            this->isGetFunctions_ = false;
                         }
-                        this->isGetFunctions_ = false;
+                        this->buildAndSendRequestsInfoPackets();            // initiate an update cycle with this->cycleStarted();
                     }
-                    this->buildAndSendRequestsInfoPackets();            // initiate an update cycle with this->cycleStarted();
                 }
             }
         }
@@ -181,4 +182,23 @@ void CN105Climate::set_update_interval(uint32_t update_interval) {
 
     this->update_interval_ = update_interval;
     this->autoUpdate = (update_interval != 0);
+}
+
+// Called every loop pass. A request that got no reply within its timeout is lost: late replies are
+// not handled, so all that is left is to react to the loss.
+void CN105Climate::checkBusTimeout() {
+    const std::optional<cn105::BusRequestKind> expired_kind = this->bus_gate_.expire(CUSTOM_MILLIS);
+    if (!expired_kind.has_value()) {
+        return;
+    }
+    switch (*expired_kind) {
+    case cn105::BusRequestKind::SET_FUNCTIONS_PART1:
+    case cn105::BusRequestKind::SET_FUNCTIONS_PART2:
+        ESP_LOGW(TAG, "No ack for setFunctions, re-reading settings");
+        this->isGetFunctions_ = true;
+        break;
+    default:
+        ESP_LOGW(TAG, "No heat pump reply to request (kind %u)", static_cast<unsigned>(*expired_kind));
+        break;
+    }
 }

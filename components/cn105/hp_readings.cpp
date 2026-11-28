@@ -42,10 +42,12 @@ void CN105Climate::processDataPacket() {
 
     this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), "READ");
 
-    // During handshake, log every received frame for diagnostics
-    if (!this->isHeatpumpConnected()) {
+    // During handshake, log every received frame for diagnostics. Handshake replies are
+    // logged even when connected, so stray ones (e.g. a late 0x7B) show up in the log.
+    const uint8_t command = this->parser_.command();
+    if (!this->isHeatpumpConnected() || command == 0x7A || command == 0x7B) {
         ESP_LOGD(LOG_CONN_TAG, "RX during handshake (cmd=0x%02X len=%d)",
-            this->parser_.command(), this->parser_.data_length());
+            command, this->parser_.data_length());
         this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
     }
 
@@ -60,8 +62,7 @@ void CN105Climate::processDataPacket() {
         ESP_LOGW("chkSum", "KO -> checksum mismatch (cmd=0x%02X len=%d)",
             this->parser_.command(), this->parser_.data_length());
         if (!this->isHeatpumpConnected()) {
-            ESP_LOGD(LOG_CONN_TAG, "Checksum KO during handshake");
-            this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
+            ESP_LOGD(LOG_CONN_TAG, "Checksum KO during handshake");  // frame already dumped above
         }
     }
 }
@@ -128,6 +129,12 @@ void CN105Climate::getDataFromResponsePacket() {
 
     // D'abord, laissons l'orchestrateur traiter les codes connus
     const uint8_t code = this->data[0];
+    // Replies are matched to requests by order only: one that no request is waiting for
+    // (after a timeout, a duplicate) is ignored.
+    if (!this->bus_gate_.complete(cn105::BusResponse::DATA, CUSTOM_MILLIS, code).has_value()) {
+        ESP_LOGD("Decoder", "Ignoring data reply 0x%02X: no request is waiting for it", code);
+        return;
+    }
     if (this->scheduler_.process_response(code)) {
         return;
     }
@@ -180,18 +187,23 @@ void CN105Climate::processCommand() {
     switch (this->parser_.command()) {
     case 0x61:  /* last update was successful */
         this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_ACK);
-        this->updateSuccess();
+        this->handleHeatpumpAck();
         break;
-
     case 0x62:  /* packet contains data (room °C, settings, timer, status, or functions...)*/
         this->getDataFromResponsePacket();
         break;
     case 0x7a:  // Standard handshake
-    case 0x7b:  // Installer handshake
         if (this->profile_->accepts_handshake(this->parser_.command(), this->parser_.raw()[3])) {
-            this->handleConnectionSuccess();
+            this->handshake_.on_standard_reply();
         } else {
             ESP_LOGW(LOG_CONN_TAG, "Ignoring unexpected handshake response for %s", this->profile_->name());
+        }
+        break;
+    case 0x7b:  // Installer handshake
+        if (this->profile_->accepts_handshake(this->parser_.command(), this->parser_.raw()[3])) {
+            this->handshake_.on_installer_reply();
+        } else {
+            ESP_LOGW(LOG_CONN_TAG, "Ignoring unexpected installer handshake response for %s", this->profile_->name());
         }
         break;
     default:
@@ -199,29 +211,46 @@ void CN105Climate::processCommand() {
     }
 }
 
-void CN105Climate::handleConnectionSuccess() {
-    const bool installer = this->parser_.command() == 0x7b;
-    ESP_LOGI(
-        LOG_CONN_TAG,
-        "--> %s did reply: connection success (%s, 0x%02X)! <--",
-        this->profile_->name(),
-        installer ? "Installer" : "User",
-        this->parser_.command()
-    );
-    this->hpPacketDebug(this->parser_.raw(), this->parser_.frame_size(), LOG_CONN_TAG);
-    this->setHeatpumpConnected(true);
-    this->loopCycle.lastCompleteCycleMs = CUSTOM_MILLIS;
-    // Reset cached settings so the first read after reconnect performs a full sync.
-    this->currentSettings.resetSettings();
-    this->currentRunStates.resetSettings();
-    this->profile_->reset();
+void CN105Climate::onHandshakeEvent(cn105::HandshakeEvent event) {
+    using cn105::HandshakeEvent;
+    switch (event) {
+    case HandshakeEvent::SESSION_STARTED:
+        ESP_LOGI(LOG_CONN_TAG, "--> %s replied: connection success (User, 0x%02X)! <--",
+            this->profile_->name(),
+            this->parser_.command());
+        this->loopCycle.lastCompleteCycleMs = CUSTOM_MILLIS;
+        // Reset cached settings so the first read after reconnect performs a full sync.
+        this->currentSettings.resetSettings();
+        this->currentRunStates.resetSettings();
+        this->scheduler_.reset_pending();
+        this->profile_->reset();
+        break;
+    case HandshakeEvent::INSTALLER_SKIPPED:
+        ESP_LOGI(LOG_CONN_TAG, "Skipping installer handshake (0x5B): the unit declined it earlier this boot.");
+        break;
+    case HandshakeEvent::INSTALLER_TIMEOUT:
+        ESP_LOGW(LOG_CONN_TAG, "No reply to installer handshake (0x5B). Staying on the standard session until reboot.");
+        // Update lastResponseMs so we don't get a timeout and reconnect.
+        this->lastResponseMs = CUSTOM_MILLIS;
+        break;
+    case HandshakeEvent::INSTALLER_ACTIVE:
+        ESP_LOGI(LOG_CONN_TAG, "--> %s replied: installer session active (0x%02X)! <--",
+            this->profile_->name(),
+            this->parser_.command());
+        break;
+    case HandshakeEvent::UNEXPECTED_STANDARD:
+        ESP_LOGW(LOG_CONN_TAG, "Ignoring stray standard handshake reply (0x7A) from %s: no CONNECT (0x5A) pending", this->profile_->name());
+        break;
+    case HandshakeEvent::UNEXPECTED_INSTALLER:
+        ESP_LOGW(LOG_CONN_TAG, "Ignoring stray installer handshake reply (0x7B) from %s: no installer CONNECT (0x5B) pending", this->profile_->name());
+        break;
+    }
 }
-
 
 void CN105Climate::statusChanged(heatpumpStatus status) {
     if (status != currentStatus) {
-        this->debugStatus("received", status);
         this->debugStatus("current", currentStatus);
+        this->debugStatus("received", status);
         cn105::CommonProtocol::apply_status(*this, status);
     } // else no change
 }
@@ -233,6 +262,8 @@ void CN105Climate::publishStateToHA(heatpumpSettings& settings) {
 }
 
 void CN105Climate::heatpumpUpdate(heatpumpSettings& settings) {
+    // Must run before the comparison below so queued restores keep the UI on the intended state.
+    this->restoreStateAfterFunctions(settings);
     // settings correponds to current settings
     ESP_LOGV(LOG_SETTINGS_TAG, "Settings received");
     // if received settings are different from current settings
